@@ -4,6 +4,11 @@ import type { GameAction } from "../engine/actions";
 import type { AIObservation, AIObservationOpponent } from "../engine/aiObservation";
 import type { DecisionContext } from "../engine/decisionContext";
 import type { CardDefinition, CardInstanceId, CharacterId } from "../engine/types";
+import {
+  NATBA1_BASE_WEIGHTS,
+  NATBA1X_TUNED_WEIGHTS,
+  type NATBA1Weights,
+} from "./natba1Weights";
 import type { NATBAPolicy } from "./types";
 
 function getCardDefinition(
@@ -39,6 +44,7 @@ function getCardDefinition(
 export function scoreFiniteAction(
   action: GameAction,
   observation: AIObservation,
+  weights: NATBA1Weights = NATBA1_BASE_WEIGHTS,
 ): number {
   const self = observation.self;
   const opponents = observation.opponents;
@@ -53,75 +59,76 @@ export function scoreFiniteAction(
     : false;
   const selfHasFire = self.statuses.some((s) => s.statusId === "FIRE");
   const missingHp = Math.max(0, self.maxHp - self.hp);
+  const w = weights.finiteActions;
 
   switch (action.type) {
     case "PASS_ACTION": {
-      return 10;
+      return w.passAction;
     }
 
     case "PASS_RESPONSE": {
-      return 0;
+      return w.passResponse;
     }
 
     case "PASS_STATUS_HANDLING": {
-      return 0;
+      return w.passStatusHandling;
     }
 
     case "RESPOND_WITH_CARD": {
-      let score = 160;
+      let score = w.response.base;
       const def = getCardDefinition(action.cardInstanceId, observation);
       if (def) {
         if (def.id === "substance_na2co3" || def.id === "ion_co3") {
-          score += 40;
+          score += w.response.carbonateBonus;
         } else if (def.type === "ion") {
-          score += 25;
+          score += w.response.ionBonus;
         } else {
-          score += 5;
+          score += w.response.otherBonus;
         }
       }
       if (self.hp <= 3) {
-        score += 80;
+        score += w.response.lowHpBonus;
       }
       return score;
     }
 
     case "HANDLE_STATUS_WITH_CARD": {
-      let score = 190;
+      let score = w.handleStatus.base;
       const def = getCardDefinition(action.cardInstanceId, observation);
       if (def) {
         if (def.id === "substance_h2o" || def.id === "substance_co2") {
-          score += 35;
+          score += w.handleStatus.extinguishH2oCo2Bonus;
         } else if (def.id === "ion_oh") {
-          score += 25;
+          score += w.handleStatus.ionOhBonus;
         }
       }
       if (self.hp <= 4) {
-        score += 80;
+        score += w.handleStatus.lowHpBonus;
       }
       return score;
     }
 
     case "RESOLVE_EXPERIMENT_COUNTERATTACK": {
       if (action.option === "recover") {
-        let score = 150;
+        let score = w.counterattack.recoverBase;
         if (missingHp >= 2) {
-          score += 40;
+          score += w.counterattack.recoverMissingHp2Bonus;
         }
         if (self.hp <= 3) {
-          score += 60;
+          score += w.counterattack.recoverLowHpBonus;
         }
         if (self.hp === self.maxHp) {
-          score = 0;
+          score = w.counterattack.recoverFullHpScore;
         }
         return score;
       }
       if (action.option === "acid-base-pursuit") {
-        let score = 180;
+        let score = w.counterattack.pursuitBase;
         if (opponentHp <= 2) {
-          score += 70;
+          score += w.counterattack.pursuitLethalBonus;
         }
         if (self.hp === self.maxHp) {
-          score += 30;
+          score += w.counterattack.pursuitFullHpBonus;
         }
         return score;
       }
@@ -131,56 +138,64 @@ export function scoreFiniteAction(
     case "PLAY_CARD": {
       const def = getCardDefinition(action.cardInstanceId, observation);
       if (!def) {
-        return 40;
+        return w.playCard.unknownDef;
       }
 
       if (def.id === "substance_o2" || action.targetPlayerId === self.playerId) {
         if (missingHp >= 2) {
-          return 130 + (self.hp <= 3 ? 50 : 0);
+          return (
+            w.playCard.o2MissingHp2Base +
+            (self.hp <= 3 ? w.playCard.o2LowHpBonus : 0)
+          );
         }
         if (missingHp === 1) {
-          return 70;
+          return w.playCard.o2MissingHp1Base;
         }
-        return 0;
+        return w.playCard.o2FullHpScore;
       }
 
       if (def.id === "substance_so2") {
         if (!opponentHasSo2) {
-          return 120 + (opponentHp <= 3 ? 30 : 0);
+          return (
+            w.playCard.so2NewBase +
+            (opponentHp <= 3 ? w.playCard.so2LethalBonus : 0)
+          );
         }
-        return 20;
+        return w.playCard.so2ExistingScore;
       }
 
-      let score = 115;
+      let score = w.playCard.attackBase;
       if (opponentHp <= 2) {
-        score += 80;
+        score += w.playCard.opponentLowHp2Bonus;
       } else if (opponentHp <= 4) {
-        score += 40;
+        score += w.playCard.opponentLowHp4Bonus;
       }
 
       if (opponentHandCount === 0) {
-        score += 40;
+        score += w.playCard.opponentHandEmptyBonus;
       } else if (opponentHandCount <= 2) {
-        score += 20;
+        score += w.playCard.opponentHandLow2Bonus;
       }
 
       if (self.characterId === "acid_king" && def.tags.includes("strong-acid")) {
-        score += 80;
-      } else if (self.characterId === "caustic_soda_captain" && def.tags.includes("strong-alkali")) {
-        score += 40;
+        score += w.playCard.acidKingStrongAcidBonus;
+      } else if (
+        self.characterId === "caustic_soda_captain" &&
+        def.tags.includes("strong-alkali")
+      ) {
+        score += w.playCard.causticSodaStrongAlkaliBonus;
       } else if (
         self.characterId === "sulfuric_acid_factory_director" &&
         def.id === "substance_h2so4_dilute"
       ) {
-        score += 35;
+        score += w.playCard.factoryDirectorH2so4Bonus;
       }
 
       return score;
     }
 
     case "PLAY_REFERENCE_CARD": {
-      // 桌面基准牌纯垫牌，不产生伤害，打分低于 PASS 与进攻动作
-      return 5;
+      return w.playReferenceCard;
     }
 
     case "PLAY_DIY_SELECTION": {
@@ -196,27 +211,27 @@ export function scoreFiniteAction(
 
       if ((hasC && hasO) || (hasH && hasOH && !action.targetPlayerId)) {
         if (selfHasFire) {
-          return 180;
+          return w.playDiy.fireExtinguishFireScore;
         }
-        return 0;
+        return w.playDiy.fireExtinguishNoFireScore;
       }
 
       if (hasS && hasO) {
         if (!opponentHasSo2) {
-          return 125;
+          return w.playDiy.so2NewScore;
         }
-        return 20;
+        return w.playDiy.so2ExistingScore;
       }
 
-      let score = 135;
+      let score = w.playDiy.attackBase;
       if (opponentHp <= 2) {
-        score += 80;
+        score += w.playDiy.opponentLowHp2Bonus;
       }
       if (opponentHandCount === 0) {
-        score += 35;
+        score += w.playDiy.opponentHandEmptyBonus;
       }
       if (self.characterId === "chemistry_enthusiast" && !self.usedDIYThisCycle) {
-        score += 60;
+        score += w.playDiy.chemistryEnthusiastBonus;
       }
       return score;
     }
@@ -224,50 +239,54 @@ export function scoreFiniteAction(
     case "ACTIVATE_CHARACTER_SKILL": {
       switch (action.skillId) {
         case "extra_lesson":
+          return w.skills.extraLesson;
         case "emergency_supply":
-          return 160;
+          return w.skills.emergencySupply;
 
         case "alkali_recovery":
           if (missingHp >= 2) {
-            return 130;
+            return w.skills.alkaliRecoveryMissingHp2;
           }
           if (missingHp === 1) {
-            return 80;
+            return w.skills.alkaliRecoveryMissingHp1;
           }
-          return 10;
+          return w.skills.alkaliRecoveryFullHp;
 
         case "exhaust_discharge":
           if (!opponentHasSo2) {
-            return 125;
+            return w.skills.exhaustDischargeNewSo2;
           }
-          return 25;
+          return w.skills.exhaustDischargeExistingSo2;
 
         case "exhaust_leak":
-          return 135 + (opponentHp <= 2 ? 60 : 0);
+          return (
+            w.skills.exhaustLeakBase +
+            (opponentHp <= 2 ? w.skills.exhaustLeakLethalBonus : 0)
+          );
 
         case "exothermic_accident":
           if (opponentHp <= 1) {
-            return 300;
+            return w.skills.exothermicAccidentLethal;
           }
           if (self.hp <= 1 && opponentHp > 1) {
-            return -100;
+            return w.skills.exothermicAccidentSelfLethal;
           }
-          return 140;
+          return w.skills.exothermicAccidentNormal;
 
         case "lab_fire":
           if (selfHasFire) {
-            return 110;
+            return w.skills.labFireSelfFire;
           }
           if (self.hp >= 6 || opponentHp <= 3) {
-            return 100;
+            return w.skills.labFireHealthyOrLethal;
           }
           if (self.hp <= 3) {
-            return -30;
+            return w.skills.labFireLowHp;
           }
-          return 75;
+          return w.skills.labFireNormal;
 
         default:
-          return 60;
+          return w.skills.defaultSkill;
       }
     }
 
@@ -280,34 +299,42 @@ export function evaluateCandidateCard(
   def: CardDefinition,
   alreadyKept: readonly CardDefinition[],
   selfCharacterId: CharacterId,
+  weights: NATBA1Weights = NATBA1_BASE_WEIGHTS,
 ): number {
-  let score = 35;
+  const p = weights.prep;
+  let score = p.baseScore;
 
   if (def.tags.includes("strong-acid")) {
-    score = 130;
+    score = p.strongAcid;
   } else if (def.tags.includes("strong-alkali")) {
-    score = 125;
+    score = p.strongAlkali;
   } else if (def.id === "substance_o2") {
-    score = 95;
+    score = p.substanceO2;
   } else if (def.id === "substance_so2") {
-    score = 90;
+    score = p.substanceSo2;
   } else if (def.id === "ion_h" || def.id === "ion_oh") {
-    score = 80;
+    score = p.ionHOrOh;
   } else if (def.tags.includes("carbonate")) {
-    score = 70;
+    score = p.carbonate;
   } else if (def.tags.includes("fire-extinguish")) {
-    score = 55;
+    score = p.fireExtinguish;
   }
 
-  if (selfCharacterId === "acid_king" && (def.tags.includes("acid") || def.id === "ion_h")) {
-    score += 35;
-  } else if (selfCharacterId === "caustic_soda_captain" && (def.tags.includes("base") || def.id === "ion_oh")) {
-    score += 35;
+  if (
+    selfCharacterId === "acid_king" &&
+    (def.tags.includes("acid") || def.id === "ion_h")
+  ) {
+    score += p.charAcidKingBonus;
+  } else if (
+    selfCharacterId === "caustic_soda_captain" &&
+    (def.tags.includes("base") || def.id === "ion_oh")
+  ) {
+    score += p.charCausticSodaBonus;
   } else if (
     selfCharacterId === "sulfuric_acid_factory_director" &&
     (def.id === "substance_h2so4_dilute" || def.id === "ion_so4")
   ) {
-    score += 30;
+    score += p.charFactoryDirectorBonus;
   }
 
   const sameDefCount = alreadyKept.filter((k) => k.id === def.id).length;
@@ -317,17 +344,17 @@ export function evaluateCandidateCard(
 
   if (def.tags.includes("fire-extinguish")) {
     if (sameTypeExtinguishCount === 1) {
-      score -= 25;
+      score -= p.fireExtinguishDup1Penalty;
     } else if (sameTypeExtinguishCount >= 2) {
-      score -= 60;
+      score -= p.fireExtinguishDup2Penalty;
     }
   }
 
   if (def.id === "substance_o2" && sameDefCount >= 2) {
-    score -= 40;
+    score -= p.o2Dup2Penalty;
   }
   if (def.id === "substance_so2" && sameDefCount >= 2) {
-    score -= 50;
+    score -= p.so2Dup2Penalty;
   }
 
   if (
@@ -336,7 +363,7 @@ export function evaluateCandidateCard(
       (k) => k.id === "ion_oh" || k.id === "ion_cl" || k.id === "ion_so4",
     )
   ) {
-    score += 25;
+    score += p.ionHSynergy;
   }
   if (
     def.id === "ion_oh" &&
@@ -348,13 +375,13 @@ export function evaluateCandidateCard(
         k.id === "ion_ca",
     )
   ) {
-    score += 25;
+    score += p.ionOhSynergy;
   }
   if (def.id === "element_s" && alreadyKept.some((k) => k.id === "element_o")) {
-    score += 20;
+    score += p.elementSSynergy;
   }
   if (def.id === "element_o" && alreadyKept.some((k) => k.id === "element_s")) {
-    score += 15;
+    score += p.elementOSynergy;
   }
 
   return score;
@@ -365,6 +392,7 @@ export function selectLaboratoryPreparationCards(
   keepCount: number,
   observation: AIObservation,
   random: RandomSource,
+  weights: NATBA1Weights = NATBA1_BASE_WEIGHTS,
 ): CardInstanceId[] {
   const candidates = [...candidateCardInstanceIds];
   const keptCardInstanceIds: CardInstanceId[] = [];
@@ -386,7 +414,12 @@ export function selectLaboratoryPreparationCards(
         rulesText: "",
       };
 
-      const score = evaluateCandidateCard(def, keptDefinitions, observation.self.characterId);
+      const score = evaluateCandidateCard(
+        def,
+        keptDefinitions,
+        observation.self.characterId,
+        weights,
+      );
       if (score > bestScore) {
         bestScore = score;
         bestCandidates.length = 0;
@@ -415,60 +448,73 @@ export function selectLaboratoryPreparationCards(
   return keptCardInstanceIds;
 }
 
-export const natba1HeuristicPolicy: NATBAPolicy = (
-  observation: AIObservation,
-  context: DecisionContext,
-  random: RandomSource = Math.random,
-): GameAction | undefined => {
-  if (context.kind === "finite-actions") {
-    if (context.legalActions.length === 0) {
-      return undefined;
-    }
-
-    let highestScore = Number.NEGATIVE_INFINITY;
-    const bestActions: GameAction[] = [];
-
-    for (const action of context.legalActions) {
-      const score = scoreFiniteAction(action, observation);
-      if (score > highestScore) {
-        highestScore = score;
-        bestActions.length = 0;
-        bestActions.push(action);
-      } else if (score === highestScore) {
-        bestActions.push(action);
+export function createNATBA1Policy(
+  weights: NATBA1Weights = NATBA1_BASE_WEIGHTS,
+): NATBAPolicy {
+  return (
+    observation: AIObservation,
+    context: DecisionContext,
+    random: RandomSource = Math.random,
+  ): GameAction | undefined => {
+    if (context.kind === "finite-actions") {
+      if (context.legalActions.length === 0) {
+        return undefined;
       }
+
+      let highestScore = Number.NEGATIVE_INFINITY;
+      const bestActions: GameAction[] = [];
+
+      for (const action of context.legalActions) {
+        const score = scoreFiniteAction(action, observation, weights);
+        if (score > highestScore) {
+          highestScore = score;
+          bestActions.length = 0;
+          bestActions.push(action);
+        } else if (score === highestScore) {
+          bestActions.push(action);
+        }
+      }
+
+      if (bestActions.length === 0) {
+        return context.legalActions[0];
+      }
+
+      if (bestActions.length === 1) {
+        return bestActions[0];
+      }
+
+      const selectedIndex = Math.floor(random() * bestActions.length);
+      const clampedIndex = Math.min(
+        Math.max(0, selectedIndex),
+        bestActions.length - 1,
+      );
+      return bestActions[clampedIndex];
     }
 
-    if (bestActions.length === 0) {
-      return context.legalActions[0];
+    if (context.kind === "laboratory-preparation") {
+      const keptCardInstanceIds = selectLaboratoryPreparationCards(
+        context.candidateCardInstanceIds,
+        context.keepCount,
+        observation,
+        random,
+        weights,
+      );
+
+      return {
+        type: "CONFIRM_LABORATORY_PREPARATION",
+        playerId: context.playerId,
+        keptCardInstanceIds,
+      };
     }
 
-    if (bestActions.length === 1) {
-      return bestActions[0];
-    }
+    return undefined;
+  };
+}
 
-    const selectedIndex = Math.floor(random() * bestActions.length);
-    const clampedIndex = Math.min(
-      Math.max(0, selectedIndex),
-      bestActions.length - 1,
-    );
-    return bestActions[clampedIndex];
-  }
+export const natba1HeuristicPolicy: NATBAPolicy = createNATBA1Policy(
+  NATBA1_BASE_WEIGHTS,
+);
 
-  if (context.kind === "laboratory-preparation") {
-    const keptCardInstanceIds = selectLaboratoryPreparationCards(
-      context.candidateCardInstanceIds,
-      context.keepCount,
-      observation,
-      random,
-    );
-
-    return {
-      type: "CONFIRM_LABORATORY_PREPARATION",
-      playerId: context.playerId,
-      keptCardInstanceIds,
-    };
-  }
-
-  return undefined;
-};
+export const natba1xSelfPlayTunedPolicy: NATBAPolicy = createNATBA1Policy(
+  NATBA1X_TUNED_WEIGHTS,
+);

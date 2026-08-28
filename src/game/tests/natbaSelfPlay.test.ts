@@ -4,6 +4,7 @@ import {
   allDefaultCharacterIds,
   natba0RandomLegalPolicy,
   natba1HeuristicPolicy,
+  natba1xSelfPlayTunedPolicy,
   runBatchSelfPlay,
   runSelfPlayGame,
   type NATBAPolicy,
@@ -383,4 +384,140 @@ describe("Phase 19E — NATBA-1 Heuristic Policy Self-Play & Win-Rate Benchmark"
     expect(totalHeuristicWins).toBeGreaterThan(totalRandomWins * 2);
   });
 });
+
+describe("Phase 19G — NATBA-1.x Self-Play Tuned Policy Benchmark", () => {
+  it("replays full NATBA-1.x vs NATBA-1.x game deterministically with bit-identical final states and logs", () => {
+    const seed = 654321987;
+    const run1 = runSelfPlayGame({
+      gameId: "natba1x_replay_test",
+      seed,
+      characterIds: ["laboratory_teacher", "chemistry_enthusiast"],
+      policyPlayer1: natba1xSelfPlayTunedPolicy,
+      policyPlayer2: natba1xSelfPlayTunedPolicy,
+    });
+
+    const run2 = runSelfPlayGame({
+      gameId: "natba1x_replay_test",
+      seed,
+      characterIds: ["laboratory_teacher", "chemistry_enthusiast"],
+      policyPlayer1: natba1xSelfPlayTunedPolicy,
+      policyPlayer2: natba1xSelfPlayTunedPolicy,
+    });
+    expect(run1.completed).toBe(true);
+    expect(run2.completed).toBe(true);
+    expect(run1.deadlocked).toBe(false);
+    expect(run2.deadlocked).toBe(false);
+    expect(run1.illegalActionAttempts).toBe(0);
+    expect(run2.illegalActionAttempts).toBe(0);
+
+    expect(run1.totalSteps).toBe(run2.totalSteps);
+    expect(run1.actionLog).toEqual(run2.actionLog);
+    expect(run1.finalState).toEqual(run2.finalState);
+    expect(JSON.stringify(run1.finalState)).toBe(JSON.stringify(run2.finalState));
+    expect(run1.finalState.log).toEqual(run2.finalState.log);
+  });
+
+  it("completes clean NATBA-1.x self-play matches across all 7 playable characters with zero illegal actions", () => {
+    const testPairs = [
+      ["laboratory_teacher", "chemical_factory_ceo"] as const,
+      ["clumsy_party_secretary", "caustic_soda_captain"] as const,
+      ["acid_king", "chemistry_enthusiast"] as const,
+      ["sulfuric_acid_factory_director", "laboratory_teacher"] as const,
+      ["caustic_soda_captain", "acid_king"] as const,
+      ["chemistry_enthusiast", "clumsy_party_secretary"] as const,
+      ["chemical_factory_ceo", "sulfuric_acid_factory_director"] as const,
+    ];
+
+    for (let index = 0; index < testPairs.length; index += 1) {
+      const pair = testPairs[index];
+      const result = runSelfPlayGame({
+        gameId: `natba1x_char_test_${index}`,
+        seed: 3000 + index * 43,
+        characterIds: pair,
+        policyPlayer1: natba1xSelfPlayTunedPolicy,
+        policyPlayer2: natba1xSelfPlayTunedPolicy,
+        maxSteps: 1000,
+      });
+
+      expect(result.completed).toBe(true);
+      expect(result.deadlocked).toBe(false);
+      expect(result.illegalActionAttempts).toBe(0);
+      expect(result.totalSteps).toBeGreaterThan(0);
+      expect(result.finalState.phase).toBe("gameOver");
+    }
+  });
+
+  it("demonstrates significant win-rate superiority of NATBA-1.x over NATBA-0 baseline in paired matchups", () => {
+    const summaryP1Tuned = runBatchSelfPlay({
+      gameCount: 50,
+      baseSeed: 20260901,
+      policyPlayer1: natba1xSelfPlayTunedPolicy,
+      policyPlayer2: natba0RandomLegalPolicy,
+      maxStepsPerGame: 1000,
+    });
+
+    const summaryP2Tuned = runBatchSelfPlay({
+      gameCount: 50,
+      baseSeed: 20260901,
+      policyPlayer1: natba0RandomLegalPolicy,
+      policyPlayer2: natba1xSelfPlayTunedPolicy,
+      maxStepsPerGame: 1000,
+    });
+
+    expect(summaryP1Tuned.totalIllegalActionAttempts).toBe(0);
+    expect(summaryP1Tuned.totalDeadlocks).toBe(0);
+    expect(summaryP1Tuned.abortedGames).toBe(0);
+
+    expect(summaryP2Tuned.totalIllegalActionAttempts).toBe(0);
+    expect(summaryP2Tuned.totalDeadlocks).toBe(0);
+    expect(summaryP2Tuned.abortedGames).toBe(0);
+
+    const totalTunedWins =
+      summaryP1Tuned.winsPlayer1 + summaryP2Tuned.winsPlayer2;
+    const totalRandomWins =
+      summaryP1Tuned.winsPlayer2 + summaryP2Tuned.winsPlayer1;
+    const totalCompleted =
+      100 - (summaryP1Tuned.draws + summaryP2Tuned.draws);
+
+    const overallTunedWinRate = totalTunedWins / totalCompleted;
+
+    expect(overallTunedWinRate).toBeGreaterThanOrEqual(0.7);
+    expect(totalTunedWins).toBeGreaterThan(totalRandomWins * 2);
+  });
+
+  it("verifies NATBA-1.x vs NATBA-1 mirror matchup baseline under deterministic paired seeds", () => {
+    const summaryP1Tuned = runBatchSelfPlay({
+      gameCount: 50,
+      baseSeed: 20260901,
+      policyPlayer1: natba1xSelfPlayTunedPolicy,
+      policyPlayer2: natba1HeuristicPolicy,
+      maxStepsPerGame: 1000,
+    });
+
+    const summaryP2Tuned = runBatchSelfPlay({
+      gameCount: 50,
+      baseSeed: 20260901,
+      policyPlayer1: natba1HeuristicPolicy,
+      policyPlayer2: natba1xSelfPlayTunedPolicy,
+      maxStepsPerGame: 1000,
+    });
+
+    expect(summaryP1Tuned.totalIllegalActionAttempts).toBe(0);
+    expect(summaryP2Tuned.totalIllegalActionAttempts).toBe(0);
+
+    const totalTunedWins =
+      summaryP1Tuned.winsPlayer1 + summaryP2Tuned.winsPlayer2;
+    const totalBaseWins =
+      summaryP1Tuned.winsPlayer2 + summaryP2Tuned.winsPlayer1;
+    const totalDecided = totalTunedWins + totalBaseWins;
+
+    expect(totalDecided).toBeGreaterThan(0);
+    const overallTunedWinRate = totalTunedWins / totalDecided;
+
+    // Tuned policy matches or exceeds base policy in paired matchup
+    expect(overallTunedWinRate).toBeGreaterThanOrEqual(0.5);
+    expect(totalTunedWins).toBeGreaterThanOrEqual(totalBaseWins);
+  });
+});
+
 

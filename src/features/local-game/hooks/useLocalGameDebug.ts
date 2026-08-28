@@ -3,7 +3,7 @@ import { createInitialGame } from "../../../game/engine/createInitialGame";
 import { engineReducer } from "../../../game/engine/reducer";
 import { getAIObservation } from "../../../game/engine/aiObservation";
 import { getDecisionContext } from "../../../game/engine/decisionContext";
-import { natba1HeuristicPolicy } from "../../../game/natba/natba1HeuristicPolicy";
+import { natba1xSelfPlayTunedPolicy } from "../../../game/natba/natba1HeuristicPolicy";
 import type { NATBAPolicy } from "../../../game/natba/types";
 import type { RandomSource } from "../../../shared/random";
 import type { GameState } from "../../../game/engine/types";
@@ -69,7 +69,7 @@ export function useLocalGameDebug(
   const createGame = opts.createGame ?? defaultLocalGameFactory;
   const reduceGame = opts.reduceGame ?? engineReducer;
   const createSession = opts.createSession ?? createConfiguringLocalGameSession;
-  const policy = opts.policy ?? natba1HeuristicPolicy;
+  const policy = opts.policy ?? natba1xSelfPlayTunedPolicy;
   const aiDelayMs = opts.aiDelayMs ?? 250;
   const random = opts.random ?? Math.random;
 

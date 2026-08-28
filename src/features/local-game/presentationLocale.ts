@@ -276,4 +276,17 @@ export const getPlayerControllerDisplayName = (controller: PlayerController, loc
 export const getAiAutoActionNote = (locale: DisplayLocale): string =>
   locale === "en" ? "NATBA-1 AI is taking action..." : "NATBA-1 AI 正在自动行动...";
 
+const diyBlockerNames: Readonly<Record<string, LocalizedLabel>> = {
+  NOT_ACTIVE_PLAYER: ["非当前行动玩家", "Not active player"],
+  INVALID_PHASE: ["当前阶段不可使用主动 DIY", "Active DIY is not allowed in current phase"],
+  DIY_ALREADY_USED_THIS_CYCLE: ["本周期已使用过主动 DIY", "Active DIY already used this cycle"],
+  OWN_FIRE_REQUIRED: ["需自身处于火情状态方可灭火", "Requires active Fire status on self"],
+  TARGET_PLAYER_REQUIRED: ["请选择目标对手", "Please select a target opponent"],
+  TARGET_PLAYER_INVALID: ["所选目标对手无效", "Invalid target opponent selected"],
+  UNEXPECTED_TARGET: ["此配方不需要选择目标", "No target required for this recipe"],
+};
+
+export const getDiyBlockerDisplayName = (blockerCode: string, locale: DisplayLocale): string =>
+  lookup(diyBlockerNames, blockerCode, locale);
+
 

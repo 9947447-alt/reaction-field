@@ -1080,6 +1080,74 @@ select {
   gap: 8px;
 }
 
+.diy-candidate-section {
+  display: grid;
+  gap: 8px;
+}
+
+.diy-candidate-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.diy-candidate-label {
+  color: #334250;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.compact-button {
+  font-size: 0.76rem;
+  min-height: 28px;
+  padding: 4px 8px;
+}
+
+.candidate-card {
+  cursor: pointer;
+}
+
+.diy-preview-section {
+  min-width: 0;
+}
+
+.diy-preview-card {
+  border-radius: 6px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.diy-preview-card.is-executable {
+  background: #eef7f2;
+  border: 1px solid #c8e3d5;
+}
+
+.diy-preview-card.is-blocked {
+  background: #fff8eb;
+  border: 1px solid #fed7aa;
+}
+
+.diy-preview-title {
+  color: #334250;
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+.diy-blocker-message {
+  color: #9a3412;
+  font-size: 0.84rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.diy-outcome-message {
+  color: #166534;
+  font-size: 0.84rem;
+  font-weight: 700;
+  margin: 0;
+}
+
 .error-banner,
 .quiet-banner {
   border-radius: 6px;

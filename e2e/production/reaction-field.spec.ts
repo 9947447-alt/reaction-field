@@ -285,6 +285,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   const virtualAttackRecipes = [
     {
       id: "diy_hcl_from_h_cl",
+      components: ["H+", "Cl-"],
       recipeZh: "H+ + Cl- -> 稀 HCl",
       recipeEn: "H+ + Cl- -> dilute HCl",
       productZh: "稀 HCl",
@@ -295,6 +296,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
     },
     {
       id: "diy_naoh_from_na_oh",
+      components: ["Na+", "OH-"],
       recipeZh: "Na+ + OH- -> 稀 NaOH",
       recipeEn: "Na+ + OH- -> dilute NaOH",
       productZh: "稀 NaOH",
@@ -305,6 +307,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
     },
     {
       id: "diy_koh_from_k_oh",
+      components: ["K+", "OH-"],
       recipeZh: "K+ + OH- -> 稀 KOH",
       recipeEn: "K+ + OH- -> dilute KOH",
       productZh: "稀 KOH",
@@ -315,6 +318,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
     },
     {
       id: "diy_h2so4_from_2h_so4",
+      components: ["H+", "H+", "SO4^2-"],
       recipeZh: "2H+ + SO4^2- -> 稀 H2SO4",
       recipeEn: "2H+ + SO4^2- -> dilute H2SO4",
       productZh: "稀 H2SO4",
@@ -325,6 +329,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
     },
     {
       id: "diy_limewater_from_ca_2oh",
+      components: ["Ca2+", "OH-", "OH-"],
       recipeZh: "Ca2+ + 2OH- -> 石灰水 Ca(OH)2",
       recipeEn: "Ca2+ + 2OH- -> limewater Ca(OH)2",
       productZh: "石灰水 Ca(OH)2",
@@ -336,29 +341,43 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   ];
 
   let selectedRecipeInfo = virtualAttackRecipes[0];
-  const recipeSelect = diyPanel.locator("select").first();
-  const componentSelects = diyPanel.locator(".component-slots select");
+  const candidateButtons = diyPanel.locator(".candidate-card");
+  const candidateCount = await candidateButtons.count();
+  const availableCandidates: { element: ReturnType<typeof candidateButtons.nth>; name: string }[] = [];
+
+  for (let i = 0; i < candidateCount; i += 1) {
+    const card = candidateButtons.nth(i);
+    const name = (await card.locator(".debug-card__name").textContent()) ?? "";
+    availableCandidates.push({ element: card, name: name.trim() });
+  }
 
   for (const recipeInfo of virtualAttackRecipes) {
-    await recipeSelect.selectOption(recipeInfo.id);
-    const slotCount = await componentSelects.count();
-    let allAvailable = true;
-    for (let i = 0; i < slotCount; i += 1) {
-      const optCount = await componentSelects.nth(i).locator("option").count();
-      if (optCount <= 1) {
-        allAvailable = false;
+    const matchedButtons: (typeof availableCandidates)[0]["element"][] = [];
+    const usedIndices = new Set<number>();
+
+    let allFound = true;
+    for (const comp of recipeInfo.components) {
+      const foundIdx = availableCandidates.findIndex(
+        (c, idx) => !usedIndices.has(idx) && (c.name === comp || c.name.startsWith(comp)),
+      );
+      if (foundIdx === -1) {
+        allFound = false;
         break;
       }
+      usedIndices.add(foundIdx);
+      matchedButtons.push(availableCandidates[foundIdx].element);
     }
-    if (allAvailable) {
+
+    if (allFound) {
       selectedRecipeInfo = recipeInfo;
-      for (let i = 0; i < slotCount; i += 1) {
-        await componentSelects.nth(i).selectOption({ index: 1 });
+      for (const btn of matchedButtons) {
+        await btn.click();
       }
       break;
     }
   }
 
+  await expect(page.getByRole("button", { name: "执行主动 DIY" })).toBeEnabled();
   await page.getByRole("button", { name: "执行主动 DIY" }).click();
 
   const logItems = gameLog.locator("ol li");

@@ -154,7 +154,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
     }
   });
 
-  it("defaults to NATBA-1 heuristic policy when no policy prop is provided", async () => {
+  it("defaults to NATBA-1.x policy when no policy prop is provided", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
     document.body.append(container);
@@ -203,7 +203,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
         confirmPrepButton?.click();
       });
 
-      // Player A ends turn, Player B (NATBA-1 AI) executes automatically
+      // Player A ends turn, Player B (default NATBA-1.x AI) executes automatically
       const passActionButton = Array.from(container.querySelectorAll("button")).find(
         (b) => b.textContent?.includes("结束本次行动"),
       );
@@ -211,7 +211,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
         passActionButton?.click();
       });
 
-      // No error banner; game progressed cleanly under NATBA-1 default
+      // No error banner; game progressed cleanly under NATBA-1.x default
       expect(container.querySelector(".error-banner")).toBeNull();
       expect(container.textContent).toContain("本地人机公开对局");
     } finally {
@@ -483,6 +483,77 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
       });
 
       expect(container.querySelector("h1")?.textContent).toBe("Solo vs NATBA-1");
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("preserves baseline NATBA-1 heuristic policy when explicitly injected as baseline comparator", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    let natba1Invoked = 0;
+    const injectedNatba1: NATBAPolicy = (observation, context, random) => {
+      natba1Invoked += 1;
+      return natba1HeuristicPolicy(observation, context, random);
+    };
+
+    try {
+      await act(async () => {
+        root.render(
+          <StrictMode>
+            <LocalGamePage
+              createGame={deterministicGameFactory}
+              policy={injectedNatba1}
+              aiDelayMs={0}
+            />
+          </StrictMode>,
+        );
+      });
+
+      const controllerSelects = container.querySelectorAll(
+        "select[aria-label*='controller'], select[aria-label*='控制方']",
+      );
+      const playerBControllerSelect = controllerSelects[1] as HTMLSelectElement;
+      await act(async () => {
+        playerBControllerSelect.value = "ai";
+        playerBControllerSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      const startButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("开始游戏"),
+      );
+      await act(async () => {
+        startButton?.click();
+      });
+
+      const candidateButtons = container.querySelectorAll(".preparation-candidate-grid button.debug-card__select");
+      await act(async () => {
+        for (let i = 0; i < 10; i += 1) {
+          (candidateButtons[i] as HTMLButtonElement).click();
+        }
+      });
+      const confirmPrepButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("确认备课选择"),
+      );
+      await act(async () => {
+        confirmPrepButton?.click();
+      });
+
+      const passActionButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("结束本次行动"),
+      );
+      await act(async () => {
+        passActionButton?.click();
+      });
+
+      expect(natba1Invoked).toBeGreaterThan(0);
+      expect(container.querySelector(".error-banner")).toBeNull();
     } finally {
       await act(async () => {
         root.unmount();

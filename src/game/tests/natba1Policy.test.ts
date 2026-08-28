@@ -7,7 +7,15 @@ import { getDecisionContext } from "../engine/decisionContext";
 import { validateGameAction } from "../engine/legalActions";
 import { engineReducer } from "../engine/reducer";
 import type { GameState } from "../engine/types";
-import { natba1HeuristicPolicy } from "../natba/natba1HeuristicPolicy";
+import {
+  createNATBA1Policy,
+  natba1HeuristicPolicy,
+  natba1xSelfPlayTunedPolicy,
+} from "../natba/natba1HeuristicPolicy";
+import {
+  NATBA1_BASE_WEIGHTS,
+  NATBA1X_TUNED_WEIGHTS,
+} from "../natba/natba1Weights";
 
 function confirmPreparation(state: GameState): GameState {
   const pending = state.pendingLaboratoryPreparation;
@@ -257,5 +265,81 @@ describe("Phase 19E — NATBA-1 Heuristic Policy", () => {
     const actions2 = runA();
 
     expect(actions1).toEqual(actions2);
+  });
+});
+
+describe("Phase 19G — NATBA-1.x Weight Decoupling & Default Policy", () => {
+  it("separates NATBA-1 base weights from NATBA-1.x overrides without sharing nested objects", () => {
+    expect(NATBA1_BASE_WEIGHTS).toBeDefined();
+    expect(NATBA1X_TUNED_WEIGHTS).toBeDefined();
+
+    expect(NATBA1_BASE_WEIGHTS.finiteActions.playCard.opponentLowHp2Bonus).toBe(80);
+    expect(NATBA1_BASE_WEIGHTS.finiteActions.playCard.opponentLowHp4Bonus).toBe(40);
+    expect(NATBA1_BASE_WEIGHTS.finiteActions.playDiy.attackBase).toBe(135);
+    expect(NATBA1_BASE_WEIGHTS.finiteActions.skills.exhaustLeakLethalBonus).toBe(60);
+
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.playCard.opponentLowHp2Bonus).toBe(95);
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.playCard.opponentHandEmptyBonus).toBe(45);
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.counterattack.pursuitLethalBonus).toBe(85);
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.skills.exothermicAccidentLethal).toBe(350);
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.skills.exhaustLeakLethalBonus).toBe(70);
+
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.response).not.toBe(
+      NATBA1_BASE_WEIGHTS.finiteActions.response,
+    );
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.handleStatus).not.toBe(
+      NATBA1_BASE_WEIGHTS.finiteActions.handleStatus,
+    );
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.playDiy).not.toBe(
+      NATBA1_BASE_WEIGHTS.finiteActions.playDiy,
+    );
+    expect(NATBA1X_TUNED_WEIGHTS.prep).not.toBe(NATBA1_BASE_WEIGHTS.prep);
+  });
+
+  it("supports createNATBA1Policy factory and generates fully legal actions for 1.x", () => {
+    const customPolicy = createNATBA1Policy(NATBA1X_TUNED_WEIGHTS);
+    const state = createReadyMainGameState();
+    const context = getDecisionContext(state);
+    expect(context.kind).toBe("finite-actions");
+    if (context.kind !== "finite-actions") return;
+
+    const observation = getAIObservation(state, context.playerId);
+    const prng = createMulberry32(998877);
+
+    const action = customPolicy(observation, context, prng);
+    expect(action).toBeDefined();
+    if (!action) return;
+
+    expect(context.legalActions).toContainEqual(action);
+    expect(validateGameAction(state, action)).toBe(true);
+
+    const tunedAction = natba1xSelfPlayTunedPolicy(observation, context, prng);
+    expect(tunedAction).toBeDefined();
+    if (!tunedAction) return;
+    expect(context.legalActions).toContainEqual(tunedAction);
+  });
+
+  it("executes laboratory preparation cleanly under NATBA-1.x policy", () => {
+    const state = createInitialGame({
+      gameId: "test_prep_natba1x",
+      characterIds: ["laboratory_teacher", "chemical_factory_ceo"],
+      shuffle: identityShuffle,
+    });
+    const context = getDecisionContext(state);
+    expect(context.kind).toBe("laboratory-preparation");
+    if (context.kind !== "laboratory-preparation") return;
+
+    const observation = getAIObservation(state, context.playerId);
+    const prng = createMulberry32(554433);
+
+    const action = natba1xSelfPlayTunedPolicy(observation, context, prng);
+    expect(action).toBeDefined();
+    if (!action) return;
+
+    expect(action.type).toBe("CONFIRM_LABORATORY_PREPARATION");
+    if (action.type !== "CONFIRM_LABORATORY_PREPARATION") return;
+    expect(action.keptCardInstanceIds).toHaveLength(10);
+    expect(new Set(action.keptCardInstanceIds).size).toBe(10);
+    expect(validateGameAction(state, action)).toBe(true);
   });
 });

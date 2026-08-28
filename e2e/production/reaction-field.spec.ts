@@ -281,6 +281,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   // 1. Formal DIY Virtual Attack execution
   const diyPanel = page.locator(".diy-panel");
   await expect(diyPanel).toBeVisible();
+  await page.getByRole("button", { name: "进入主动 DIY" }).click();
 
   const virtualAttackRecipes = [
     {

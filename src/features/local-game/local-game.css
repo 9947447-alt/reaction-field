@@ -1148,6 +1148,17 @@ select {
   margin: 0;
 }
 
+.diy-entry-section {
+  display: grid;
+  gap: 8px;
+}
+
+.diy-action-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .error-banner,
 .quiet-banner {
   border-radius: 6px;

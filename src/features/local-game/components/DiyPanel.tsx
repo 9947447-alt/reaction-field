@@ -48,6 +48,7 @@ export function DiyPanel({ game, playerControllers, dispatchGameAction }: DiyPan
     });
   }, [activePlayer, game]);
 
+  const [isSelecting, setIsSelecting] = useState<boolean>(false);
   const [selectedCardIds, setSelectedCardIds] = useState<CardInstanceId[]>([]);
   const [targetPlayerId, setTargetPlayerId] = useState<PlayerId | undefined>();
   const targets = activePlayer ? getOpponentTargets(game, activePlayer.id) : [];
@@ -59,11 +60,16 @@ export function DiyPanel({ game, playerControllers, dispatchGameAction }: DiyPan
       : defaultTargetPlayerId;
 
   useEffect(() => {
+    setIsSelecting(false);
+    setSelectedCardIds([]);
+  }, [activePlayer?.id, game.cycleNumber, game.roundInCycle, game.phase]);
+
+  useEffect(() => {
     setSelectedCardIds((prev) => prev.filter((id) => candidateCardIds.includes(id)));
   }, [candidateCardIds]);
 
   const analysis: DIYSelectionAnalysis | null = useMemo(() => {
-    if (!activePlayer || selectedCardIds.length === 0) {
+    if (!isSelecting || !activePlayer || selectedCardIds.length === 0) {
       return null;
     }
     const initialAnalysis = analyzeDIYSelection(
@@ -84,7 +90,7 @@ export function DiyPanel({ game, playerControllers, dispatchGameAction }: DiyPan
       );
     }
     return initialAnalysis;
-  }, [activePlayer, effectiveTargetPlayerId, game, selectedCardIds]);
+  }, [activePlayer, effectiveTargetPlayerId, game, isSelecting, selectedCardIds]);
 
   if (game.phase !== "mainAction" || !activePlayer) {
     return null;
@@ -202,6 +208,11 @@ export function DiyPanel({ game, playerControllers, dispatchGameAction }: DiyPan
     return null;
   }
 
+  function handleCancelDiy() {
+    setSelectedCardIds([]);
+    setIsSelecting(false);
+  }
+
   function handlePlayDiy() {
     if (!activePlayer || !canSubmit || !analysis || analysis.status !== "EXECUTABLE") {
       return;
@@ -219,6 +230,7 @@ export function DiyPanel({ game, playerControllers, dispatchGameAction }: DiyPan
       targetPlayerId: targetId,
     });
     setSelectedCardIds([]);
+    setIsSelecting(false);
   }
 
   return (
@@ -244,103 +256,128 @@ export function DiyPanel({ game, playerControllers, dispatchGameAction }: DiyPan
       <details className="debug-details">
         <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
         <p>
-          PLAY_DIY_SELECTION · status: {analysis?.status ?? "NO_SELECTION"}
-          {analysis && "recipeId" in analysis ? ` · recipe: ${analysis.recipeId}` : ""}
-          {analysis && "blockerCode" in analysis ? ` · blocker: ${analysis.blockerCode}` : ""}
+          PLAY_DIY_SELECTION · status: {isSelecting ? (analysis?.status ?? "NO_SELECTION") : "NOT_IN_DIY_MODE"}
+          {isSelecting && analysis && "recipeId" in analysis ? ` · recipe: ${analysis.recipeId}` : ""}
+          {isSelecting && analysis && "blockerCode" in analysis ? ` · blocker: ${analysis.blockerCode}` : ""}
         </p>
       </details>
 
-      <div className="diy-candidate-section">
-        <div className="diy-candidate-heading">
-          <span className="diy-candidate-label">
-            {isEnglish ? "Hand component cards" : "手牌组件卡"}
-          </span>
-          {selectedCardIds.length > 0 ? (
-            <button
-              className="secondary-button compact-button"
-              disabled={isAi}
-              onClick={() => setSelectedCardIds([])}
-              type="button"
-            >
-              {isEnglish
-                ? `Clear selection (${selectedCardIds.length})`
-                : `清空选择 (${selectedCardIds.length})`}
-            </button>
-          ) : null}
-        </div>
-
-        {candidateCardIds.length > 0 ? (
-          <div
-            className="candidate-grid"
-            role="group"
-            aria-label={isEnglish ? "DIY component cards" : "DIY 组件卡牌"}
+      {!isSelecting ? (
+        <div className="diy-entry-section">
+          <button
+            className="secondary-button"
+            disabled={isAi}
+            onClick={() => setIsSelecting(true)}
+            type="button"
           >
-            {candidateCardIds.map((cardInstanceId) => {
-              const isSelected = selectedCardIds.includes(cardInstanceId);
-              const def = getCardDefinition(game, cardInstanceId);
-              const cardName = def
-                ? getCardDisplayName(def.id, def.name, locale)
-                : cardInstanceId;
-
-              return (
+            {isEnglish ? "Enter active DIY" : "进入主动 DIY"}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="diy-candidate-section">
+            <div className="diy-candidate-heading">
+              <span className="diy-candidate-label">
+                {isEnglish ? "Hand component cards" : "手牌组件卡"}
+              </span>
+              {selectedCardIds.length > 0 ? (
                 <button
-                  aria-pressed={isSelected}
-                  className={`debug-card candidate-card${isSelected ? " is-selected" : ""}`}
+                  className="secondary-button compact-button"
                   disabled={isAi}
-                  key={cardInstanceId}
-                  onClick={() => {
-                    setSelectedCardIds((prev) =>
-                      prev.includes(cardInstanceId)
-                        ? prev.filter((id) => id !== cardInstanceId)
-                        : [...prev, cardInstanceId],
-                    );
-                  }}
+                  onClick={() => setSelectedCardIds([])}
                   type="button"
                 >
-                  <span className="debug-card__name">{cardName}</span>
-                  <span className="debug-card__line">{cardInstanceId}</span>
+                  {isEnglish
+                    ? `Clear selection (${selectedCardIds.length})`
+                    : `清空选择 (${selectedCardIds.length})`}
                 </button>
-              );
-            })}
+              ) : null}
+            </div>
+
+            {candidateCardIds.length > 0 ? (
+              <div
+                className="candidate-grid"
+                role="group"
+                aria-label={isEnglish ? "DIY component cards" : "DIY 组件卡牌"}
+              >
+                {candidateCardIds.map((cardInstanceId) => {
+                  const isSelected = selectedCardIds.includes(cardInstanceId);
+                  const def = getCardDefinition(game, cardInstanceId);
+                  const cardName = def
+                    ? getCardDisplayName(def.id, def.name, locale)
+                    : cardInstanceId;
+
+                  return (
+                    <button
+                      aria-pressed={isSelected}
+                      className={`debug-card candidate-card${isSelected ? " is-selected" : ""}`}
+                      disabled={isAi}
+                      key={cardInstanceId}
+                      onClick={() => {
+                        setSelectedCardIds((prev) =>
+                          prev.includes(cardInstanceId)
+                            ? prev.filter((id) => id !== cardInstanceId)
+                            : [...prev, cardInstanceId],
+                        );
+                      }}
+                      type="button"
+                    >
+                      <span className="debug-card__name">{cardName}</span>
+                      <span className="debug-card__line">{cardInstanceId}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="empty-note">
+                {isEnglish ? "No DIY component cards in hand." : "手牌中暂无可用 DIY 组件牌。"}
+              </p>
+            )}
           </div>
-        ) : (
-          <p className="empty-note">
-            {isEnglish ? "No DIY component cards in hand." : "手牌中暂无可用 DIY 组件牌。"}
-          </p>
-        )}
-      </div>
 
-      {isTargetRequired ? (
-        <label className="field-row">
-          <span>{isEnglish ? "DIY target" : "DIY 目标"}</span>
-          <select
-            disabled={isAi}
-            onChange={(e) => setTargetPlayerId(e.target.value as PlayerId)}
-            value={effectiveTargetPlayerId ?? ""}
-          >
-            {targets.map((t) => (
-              <option key={t.id} value={t.id}>
-                {getPlayerDisplayName(t, locale)}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : isNoTargetRecipe ? (
-        <p className="empty-note">
-          {isEnglish ? "No target required." : "此配方不需要选择目标。"}
-        </p>
-      ) : null}
+          {isTargetRequired ? (
+            <label className="field-row">
+              <span>{isEnglish ? "DIY target" : "DIY 目标"}</span>
+              <select
+                disabled={isAi}
+                onChange={(e) => setTargetPlayerId(e.target.value as PlayerId)}
+                value={effectiveTargetPlayerId ?? ""}
+              >
+                {targets.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {getPlayerDisplayName(t, locale)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : isNoTargetRecipe ? (
+            <p className="empty-note">
+              {isEnglish ? "No target required." : "此配方不需要选择目标。"}
+            </p>
+          ) : null}
 
-      <div className="diy-preview-section">{renderPreview()}</div>
+          <div className="diy-preview-section">{renderPreview()}</div>
 
-      <button
-        className="primary-button"
-        disabled={!canSubmit}
-        onClick={handlePlayDiy}
-        type="button"
-      >
-        {isEnglish ? "Run active DIY" : "执行主动 DIY"}
-      </button>
+          <div className="diy-action-row">
+            <button
+              className="primary-button"
+              disabled={!canSubmit}
+              onClick={handlePlayDiy}
+              type="button"
+            >
+              {isEnglish ? "Run active DIY" : "执行主动 DIY"}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={isAi}
+              onClick={handleCancelDiy}
+              type="button"
+            >
+              {isEnglish ? "Cancel DIY" : "取消 DIY"}
+            </button>
+          </div>
+        </>
+      )}
     </section>
   );
 }

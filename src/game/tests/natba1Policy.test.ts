@@ -268,21 +268,32 @@ describe("Phase 19E — NATBA-1 Heuristic Policy", () => {
   });
 });
 
-describe("Phase 19G — NATBA-1.x Weights Decoupling & Tuned Policy", () => {
-  it("separates base NATBA-1 weights from tuned NATBA-1.x weights while preserving types", () => {
+describe("Phase 19G — NATBA-1.x Weight Decoupling & Default Policy", () => {
+  it("separates NATBA-1 base weights from NATBA-1.x overrides without sharing nested objects", () => {
     expect(NATBA1_BASE_WEIGHTS).toBeDefined();
     expect(NATBA1X_TUNED_WEIGHTS).toBeDefined();
 
-    // Verify base weights values remain frozen
     expect(NATBA1_BASE_WEIGHTS.finiteActions.playCard.opponentLowHp2Bonus).toBe(80);
     expect(NATBA1_BASE_WEIGHTS.finiteActions.playCard.opponentLowHp4Bonus).toBe(40);
     expect(NATBA1_BASE_WEIGHTS.finiteActions.playDiy.attackBase).toBe(135);
+    expect(NATBA1_BASE_WEIGHTS.finiteActions.skills.exhaustLeakLethalBonus).toBe(60);
 
-    // Verify tuned weights reflect self-play optimization
     expect(NATBA1X_TUNED_WEIGHTS.finiteActions.playCard.opponentLowHp2Bonus).toBe(95);
     expect(NATBA1X_TUNED_WEIGHTS.finiteActions.playCard.opponentHandEmptyBonus).toBe(45);
     expect(NATBA1X_TUNED_WEIGHTS.finiteActions.counterattack.pursuitLethalBonus).toBe(85);
     expect(NATBA1X_TUNED_WEIGHTS.finiteActions.skills.exothermicAccidentLethal).toBe(350);
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.skills.exhaustLeakLethalBonus).toBe(70);
+
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.response).not.toBe(
+      NATBA1_BASE_WEIGHTS.finiteActions.response,
+    );
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.handleStatus).not.toBe(
+      NATBA1_BASE_WEIGHTS.finiteActions.handleStatus,
+    );
+    expect(NATBA1X_TUNED_WEIGHTS.finiteActions.playDiy).not.toBe(
+      NATBA1_BASE_WEIGHTS.finiteActions.playDiy,
+    );
+    expect(NATBA1X_TUNED_WEIGHTS.prep).not.toBe(NATBA1_BASE_WEIGHTS.prep);
   });
 
   it("supports createNATBA1Policy factory and generates fully legal actions for 1.x", () => {

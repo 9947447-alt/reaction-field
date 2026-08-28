@@ -154,7 +154,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
     }
   });
 
-  it("defaults to NATBA-1 heuristic policy when no policy prop is provided", async () => {
+  it("defaults to NATBA-1.x policy when no policy prop is provided", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
     document.body.append(container);
@@ -203,7 +203,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
         confirmPrepButton?.click();
       });
 
-      // Player A ends turn, Player B (NATBA-1 AI) executes automatically
+      // Player A ends turn, Player B (default NATBA-1.x AI) executes automatically
       const passActionButton = Array.from(container.querySelectorAll("button")).find(
         (b) => b.textContent?.includes("结束本次行动"),
       );
@@ -211,7 +211,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
         passActionButton?.click();
       });
 
-      // No error banner; game progressed cleanly under NATBA-1 default
+      // No error banner; game progressed cleanly under NATBA-1.x default
       expect(container.querySelector(".error-banner")).toBeNull();
       expect(container.textContent).toContain("本地人机公开对局");
     } finally {

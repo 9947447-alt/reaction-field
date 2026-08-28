@@ -216,23 +216,43 @@ export const NATBA1_BASE_WEIGHTS: NATBA1Weights = {
   },
 };
 
+function cloneNATBA1Weights(weights: NATBA1Weights): NATBA1Weights {
+  return {
+    finiteActions: {
+      passAction: weights.finiteActions.passAction,
+      passResponse: weights.finiteActions.passResponse,
+      passStatusHandling: weights.finiteActions.passStatusHandling,
+      playReferenceCard: weights.finiteActions.playReferenceCard,
+      response: { ...weights.finiteActions.response },
+      handleStatus: { ...weights.finiteActions.handleStatus },
+      counterattack: { ...weights.finiteActions.counterattack },
+      playCard: { ...weights.finiteActions.playCard },
+      playDiy: { ...weights.finiteActions.playDiy },
+      skills: { ...weights.finiteActions.skills },
+    },
+    prep: { ...weights.prep },
+  };
+}
+
+const natba1xWeightDraft = cloneNATBA1Weights(NATBA1_BASE_WEIGHTS);
+
 export const NATBA1X_TUNED_WEIGHTS: NATBA1Weights = {
-  ...NATBA1_BASE_WEIGHTS,
   finiteActions: {
-    ...NATBA1_BASE_WEIGHTS.finiteActions,
+    ...natba1xWeightDraft.finiteActions,
     counterattack: {
-      ...NATBA1_BASE_WEIGHTS.finiteActions.counterattack,
+      ...natba1xWeightDraft.finiteActions.counterattack,
       pursuitLethalBonus: 85,
     },
     playCard: {
-      ...NATBA1_BASE_WEIGHTS.finiteActions.playCard,
+      ...natba1xWeightDraft.finiteActions.playCard,
       opponentLowHp2Bonus: 95,
       opponentHandEmptyBonus: 45,
     },
     skills: {
-      ...NATBA1_BASE_WEIGHTS.finiteActions.skills,
+      ...natba1xWeightDraft.finiteActions.skills,
       exothermicAccidentLethal: 350,
       exhaustLeakLethalBonus: 70,
     },
   },
+  prep: natba1xWeightDraft.prep,
 };

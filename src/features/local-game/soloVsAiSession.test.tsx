@@ -9,7 +9,9 @@ import { identityShuffle } from "../../shared/random";
 import type { LocalGameFactory } from "./localGameSession";
 import type { NATBAPolicy } from "../../game/natba/types";
 import type { AIObservation } from "../../game/engine/aiObservation";
+import { LocaleProvider } from "../../app/locale";
 import { natba0RandomLegalPolicy } from "../../game/natba/natba0Policy";
+import { natba1HeuristicPolicy } from "../../game/natba/natba1HeuristicPolicy";
 
 const deterministicGameFactory: LocalGameFactory = (characterIds) =>
   createInitialGame({
@@ -17,8 +19,8 @@ const deterministicGameFactory: LocalGameFactory = (characterIds) =>
     shuffle: identityShuffle,
   });
 
-describe("Phase 19D — Solo vs AI Session Integration", () => {
-  it("allows selecting Human vs NATBA-0 AI in configuration and renders lineup summary", async () => {
+describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
+  it("allows selecting Human vs NATBA AI in configuration and renders lineup summary", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
     document.body.append(container);
@@ -68,7 +70,7 @@ describe("Phase 19D — Solo vs AI Session Integration", () => {
     const receivedObservations: AIObservation[] = [];
     const spyPolicy: NATBAPolicy = (observation, context, random) => {
       receivedObservations.push(observation);
-      return natba0RandomLegalPolicy(observation, context, random);
+      return natba1HeuristicPolicy(observation, context, random);
     };
 
     try {
@@ -144,6 +146,145 @@ describe("Phase 19D — Solo vs AI Session Integration", () => {
           expect((opp as any).handCards).toBeUndefined();
         }
       }
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("defaults to NATBA-1 heuristic policy when no policy prop is provided", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(
+          <StrictMode>
+            <LocalGamePage
+              createGame={deterministicGameFactory}
+              aiDelayMs={0}
+            />
+          </StrictMode>,
+        );
+      });
+
+      const controllerSelects = container.querySelectorAll(
+        "select[aria-label*='controller'], select[aria-label*='控制方']",
+      );
+      const playerBControllerSelect = controllerSelects[1] as HTMLSelectElement;
+      await act(async () => {
+        playerBControllerSelect.value = "ai";
+        playerBControllerSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      const startButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("开始游戏"),
+      );
+
+      await act(async () => {
+        startButton?.click();
+      });
+
+      const candidateButtons = container.querySelectorAll(".preparation-candidate-grid button.debug-card__select");
+      await act(async () => {
+        for (let i = 0; i < 10; i += 1) {
+          (candidateButtons[i] as HTMLButtonElement).click();
+        }
+      });
+
+      const confirmPrepButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("确认备课选择"),
+      );
+      await act(async () => {
+        confirmPrepButton?.click();
+      });
+
+      // Player A ends turn, Player B (NATBA-1 AI) executes automatically
+      const passActionButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("结束本次行动"),
+      );
+      await act(async () => {
+        passActionButton?.click();
+      });
+
+      // No error banner; game progressed cleanly under NATBA-1 default
+      expect(container.querySelector(".error-banner")).toBeNull();
+      expect(container.textContent).toContain("本地人机公开对局");
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("preserves baseline NATBA-0 random legal policy when explicitly injected", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    let natba0Invoked = 0;
+    const injectedNatba0: NATBAPolicy = (observation, context, random) => {
+      natba0Invoked += 1;
+      return natba0RandomLegalPolicy(observation, context, random);
+    };
+
+    try {
+      await act(async () => {
+        root.render(
+          <StrictMode>
+            <LocalGamePage
+              createGame={deterministicGameFactory}
+              policy={injectedNatba0}
+              aiDelayMs={0}
+            />
+          </StrictMode>,
+        );
+      });
+
+      const controllerSelects = container.querySelectorAll(
+        "select[aria-label*='controller'], select[aria-label*='控制方']",
+      );
+      const playerBControllerSelect = controllerSelects[1] as HTMLSelectElement;
+      await act(async () => {
+        playerBControllerSelect.value = "ai";
+        playerBControllerSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      const startButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("开始游戏"),
+      );
+      await act(async () => {
+        startButton?.click();
+      });
+
+      const candidateButtons = container.querySelectorAll(".preparation-candidate-grid button.debug-card__select");
+      await act(async () => {
+        for (let i = 0; i < 10; i += 1) {
+          (candidateButtons[i] as HTMLButtonElement).click();
+        }
+      });
+      const confirmPrepButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("确认备课选择"),
+      );
+      await act(async () => {
+        confirmPrepButton?.click();
+      });
+
+      const passActionButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("结束本次行动"),
+      );
+      await act(async () => {
+        passActionButton?.click();
+      });
+
+      expect(natba0Invoked).toBeGreaterThan(0);
+      expect(container.querySelector(".error-banner")).toBeNull();
     } finally {
       await act(async () => {
         root.unmount();
@@ -278,6 +419,70 @@ describe("Phase 19D — Solo vs AI Session Integration", () => {
 
       expect(container.querySelector(".error-banner")).toBeNull();
       expect(container.textContent).not.toContain("操作不合法");
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("renders bilingual NATBA-1 titles and status notices in Solo vs AI mode", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    try {
+      await act(async () => {
+        root.render(
+          <StrictMode>
+            <LocaleProvider>
+              <LocalGamePage
+                createGame={deterministicGameFactory}
+                aiDelayMs={10000}
+              />
+            </LocaleProvider>
+          </StrictMode>,
+        );
+      });
+
+      // Explicitly switch to Chinese first
+      const zhButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "中文",
+      );
+      await act(async () => {
+        zhButton?.click();
+      });
+
+      const controllerSelects = container.querySelectorAll(
+        "select[aria-label*='controller'], select[aria-label*='控制方']",
+      );
+      const playerBControllerSelect = controllerSelects[1] as HTMLSelectElement;
+      await act(async () => {
+        playerBControllerSelect.value = "ai";
+        playerBControllerSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
+      const startButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent?.includes("开始游戏") || b.textContent?.includes("Start game"),
+      );
+      await act(async () => {
+        startButton?.click();
+      });
+
+      // In Chinese mode: check title
+      expect(container.querySelector("h1")?.textContent).toBe("本地人机公开对局");
+
+      // Switch to English: check title is Solo vs NATBA-1
+      const enButton = Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "English",
+      );
+      await act(async () => {
+        enButton?.click();
+      });
+
+      expect(container.querySelector("h1")?.textContent).toBe("Solo vs NATBA-1");
     } finally {
       await act(async () => {
         root.unmount();

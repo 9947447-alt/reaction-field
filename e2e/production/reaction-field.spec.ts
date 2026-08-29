@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, test as base, type Page } from "@playwright/test";
+import { expectLandscapePlayShell, expectPortraitPlayShell } from "../playShellLayout";
 
 function readExpectedBuildCommit(): string {
   const commit = execFileSync("git", ["rev-parse", "--short=12", "HEAD"], {
@@ -424,4 +425,39 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   expect(await logItems.count()).toBe(logCountAfterReaction);
 
   await page.getByRole("button", { name: "中文" }).click();
+});
+
+test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await page.goto("/");
+  await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
+  await page.getByLabel("player_2 角色").selectOption("acid_king");
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(page.locator(".play-shell-layout")).toBeVisible();
+  await expect(page.locator(".play-surface")).toBeVisible();
+  await expect(page.locator(".play-sidebar")).toBeVisible();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expectLandscapePlayShell(page);
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expectLandscapePlayShell(page);
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expectLandscapePlayShell(page);
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectPortraitPlayShell(page);
+  await expectNoHorizontalOverflow(page);
 });

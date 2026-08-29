@@ -26,6 +26,7 @@ import { PreparationPanel } from "./components/PreparationPanel";
 import { ResponsePanel } from "./components/ResponsePanel";
 import { StatusPanel } from "./components/StatusPanel";
 import { SuccessfulReactionNotice } from "./components/SuccessfulReactionNotice";
+import { TableReferenceBoard } from "./components/TableReferenceBoard";
 import { useLocalGameDebug } from "./hooks/useLocalGameDebug";
 import type {
   LocalGameEngineReducer,
@@ -82,8 +83,8 @@ function PlayingGame({
         onReturnToCharacterSelection={(trigger) => onRequestSessionExit("return", trigger)}
       />
       <SuccessfulReactionNotice game={game} />
-      <div className="debug-layout">
-        <div className="debug-main">
+      <div className="debug-layout play-shell-layout">
+        <div className="debug-main play-surface">
           <div className="players-grid">
             {game.players.map((player, index) => (
               <PlayerPanel
@@ -98,9 +99,10 @@ function PlayingGame({
               />
             ))}
           </div>
+          <TableReferenceBoard game={game} />
           <GameLog game={game} />
         </div>
-        <aside className="debug-sidebar" aria-label={isEnglish ? "Action panels" : "操作面板"}>
+        <aside className="debug-sidebar play-sidebar" aria-label={isEnglish ? "Action panels" : "操作面板"}>
           <NewPlayerGuidance
             collapsed={guidanceCollapsed}
             game={game}

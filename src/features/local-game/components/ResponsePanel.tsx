@@ -26,7 +26,7 @@ export function ResponsePanel({ game, playerControllers, dispatchGameAction }: R
       playerControllers &&
       playerControllers[responder.id === "player_1" ? 0 : 1] === "ai",
   );
-  const responseCards = responder ? getResponseCards(game, responder) : [];
+  const responseCards = !isAi && responder ? getResponseCards(game, responder) : [];
 
   if (game.phase !== "responseWindow" || !pendingResponse || !responder) {
     return null;

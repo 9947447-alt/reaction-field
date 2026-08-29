@@ -251,7 +251,9 @@ export function ActionPanel({
       />
       <p className="empty-note">{isEnglish ? "Play updates table reference." : "普通出牌只更新场面基准。"}</p>
       <div className="action-card-list">
-        {activePlayer.hand.map((cardInstanceId) => {
+        {isAi ? (
+          <p className="empty-note">{getAiAutoActionNote(locale)}</p>
+        ) : activePlayer.hand.filter((cardInstanceId) => getCardDefinition(game, cardInstanceId)).map((cardInstanceId) => {
           const definition = getCardDefinition(game, cardInstanceId);
           const canAssociate = canPlayAgainstCurrentTableReference(
             game,

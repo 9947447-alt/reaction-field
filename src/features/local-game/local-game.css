@@ -1012,6 +1012,35 @@ dd {
   box-shadow: 0 0 0 2px #059669, 0 4px 12px rgb(5 150 105 / 15%);
 }
 
+.card-back {
+  align-items: center;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      #1f3b4d 0 8px,
+      #163040 8px 16px
+    );
+  border-color: #0f2740;
+  color: #e8eef2;
+  justify-items: center;
+  min-height: 88px;
+  place-content: center;
+  text-align: center;
+}
+
+.card-back__mark {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.card-back__caption {
+  color: #d5e2ea;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .card-face__badge-row {
   align-items: center;
   display: flex;

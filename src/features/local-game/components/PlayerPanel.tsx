@@ -22,6 +22,7 @@ type PlayerPanelProps = {
   controller?: PlayerController;
   selectedCardId?: CardInstanceId;
   onSelectCard: (cardInstanceId: CardInstanceId) => void;
+  handReveal?: "contents" | "backs";
   handSelectionDisabled?: boolean;
   showActivePlayerIndicator?: boolean;
 };
@@ -32,6 +33,7 @@ export function PlayerPanel({
   controller,
   selectedCardId,
   onSelectCard,
+  handReveal = "contents",
   handSelectionDisabled = false,
   showActivePlayerIndicator = true,
 }: PlayerPanelProps) {
@@ -136,16 +138,31 @@ export function PlayerPanel({
         </details>
       </div>
       <div className="hand-grid" aria-label={isEnglish ? `${getPlayerDisplayName(player, locale)}'s hand` : `${getPlayerDisplayName(player, locale)}的手牌`}>
-        {player.hand.map((cardInstanceId) => (
-          <CardDebugCard
-            cardInstanceId={cardInstanceId}
-            disabled={effectiveHandDisabled}
-            game={game}
-            key={cardInstanceId}
-            onSelect={effectiveHandDisabled ? undefined : onSelectCard}
-            selected={!effectiveHandDisabled && selectedCardId === cardInstanceId}
-          />
-        ))}
+        {handReveal === "backs"
+          ? player.hand.map((_, index) => (
+              <article
+                aria-label={
+                  isEnglish
+                    ? `Face-down card ${index + 1} of ${player.hand.length}`
+                    : `牌背 ${index + 1}/${player.hand.length}`
+                }
+                className="debug-card card-back"
+                key={`${player.id}-back-${index}`}
+              >
+                <span aria-hidden="true" className="card-back__mark">RF</span>
+                <span className="card-back__caption">{isEnglish ? "Face down" : "牌背"}</span>
+              </article>
+            ))
+          : player.hand.map((cardInstanceId) => (
+              <CardDebugCard
+                cardInstanceId={cardInstanceId}
+                disabled={effectiveHandDisabled}
+                game={game}
+                key={cardInstanceId}
+                onSelect={effectiveHandDisabled ? undefined : onSelectCard}
+                selected={!effectiveHandDisabled && selectedCardId === cardInstanceId}
+              />
+            ))}
       </div>
     </section>
   );

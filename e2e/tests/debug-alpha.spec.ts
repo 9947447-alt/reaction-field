@@ -310,6 +310,35 @@ test("默认配置、正式元数据与 configuring 帮助界面", async ({ page
   await expect(aboutTrigger).toBeFocused();
 });
 
+test("人机私密视角只显示对手牌背与张数，双人仍公开手牌", async ({ page, runtimeErrors }) => {
+  void runtimeErrors;
+  await page.goto("/");
+  await expect(page.getByText("选择角色与模式后开始；只显示自己的手牌，对手为牌背。")).toBeVisible();
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(page.getByRole("heading", { name: "本地人机对局" })).toBeVisible();
+  await expect(page.getByText("己方手牌；对手背面")).toBeVisible();
+
+  const opponent = page.locator('[aria-labelledby="player_2-title"]');
+  const opponentCountText = await opponent.locator(".hand-count-pill").textContent();
+  const opponentCount = Number(opponentCountText?.match(/(\d+)/)?.[1]);
+  expect(opponentCount).toBe(14);
+  await expect(opponent.locator(".card-back")).toHaveCount(opponentCount);
+  await expect(opponent.locator(".card-face")).toHaveCount(0);
+  await expect(opponent.locator(".debug-card__select")).toHaveCount(0);
+  await expect(opponent.getByText("牌背").first()).toBeVisible();
+
+  const own = page.locator('[aria-labelledby="player_1-title"]');
+  await expect(own.locator(".card-face")).toHaveCount(20);
+  await expect(own.locator(".card-back")).toHaveCount(0);
+
+  await startNoTeacherGame(page);
+  await expect(page.getByRole("heading", { name: "本地双人公开对局" })).toBeVisible();
+  const twoPlayerOpponent = page.locator('[aria-labelledby="player_2-title"]');
+  await expect(twoPlayerOpponent.locator(".card-face")).toHaveCount(10);
+  await expect(twoPlayerOpponent.locator(".card-back")).toHaveCount(0);
+  await expect(twoPlayerOpponent.locator(".debug-card__select")).toHaveCount(10);
+});
+
 test("新手引导覆盖真实流程和 fixture 窗口，并保持可键盘恢复", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
   await page.goto("/");

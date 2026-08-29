@@ -57,7 +57,7 @@ export function AboutDialog({ onClose }: AboutDialogProps) {
           <h3>{isEnglish ? "Controls" : "当前能力与基本操作"}</h3>
           <ul>
             {[
-              ["默认人机公开对局，亦支持本地双人；手牌、牌堆、状态与日志公开。", "Default Solo vs AI, with local two-player option; public hands, deck, status, and log."],
+              ["默认人机私密视角，亦支持本地双人公开手牌；正式日志可展示已发生事件。", "Default Solo vs AI uses a private hand view; local two-player still shows public hands. The official log may show events that already happened."],
               ["按阶段完成备课、主行动、响应、状态处理与角色技能。", "Follow phase panels."],
               ["酸碱中和产生虚拟 H2O；酸与碳酸盐产生虚拟 CO2；两者只记录结果，不创建 CardInstance。", "Virtual H2O/CO2; no CardInstance."],
               ["主动 DIY 每周期一次；角色技能按定义展示。", "DIY once per cycle."],
@@ -72,7 +72,7 @@ export function AboutDialog({ onClose }: AboutDialogProps) {
           <h3>{isEnglish ? "Quick guide" : "首局速查"}</h3>
           <ul>
             {[
-              ["在配置页确认阵容与模式；双方手牌公开。", "Confirm lineup and mode; hands are public."],
+              ["在配置页确认阵容与模式；人机只看自己的手牌，双人仍公开。", "Confirm lineup and mode; Solo vs AI hides the opponent hand, two-player stays public."],
               ["按当前面板完成各阶段操作或实验反击。", "Follow the active panel."],
               ["响应 DIY 关闭。中和产出虚拟 H2O，酸+碳酸盐产出虚拟 CO2。", "Virtual H2O/CO2 only."],
               ["卡池固定 68 张；真实金属、方程式与反应链延期。", "68-card pool; metals deferred."],

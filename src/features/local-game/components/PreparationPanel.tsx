@@ -56,13 +56,15 @@ export function PreparationPanel({ game, playerControllers, dispatchGameAction }
       </p>
       <details className="debug-details"><summary>{isEnglish ? "Debug details" : "调试详情"}</summary><p>LABORATORY_PREPARATION</p></details>
       <div className="preparation-candidate-grid">
-        {validCandidateIds.map((cardInstanceId) => (
+        {isAi ? (
+          <p className="empty-note">{getAiAutoActionNote(locale)}</p>
+        ) : validCandidateIds.map((cardInstanceId) => (
           <CardDebugCard
             cardInstanceId={cardInstanceId}
-            disabled={isAi}
+            disabled={false}
             game={game}
             key={cardInstanceId}
-            onSelect={isAi ? undefined : toggleCard}
+            onSelect={toggleCard}
             selected={validSelectedIds.includes(cardInstanceId)}
           />
         ))}

@@ -41,8 +41,8 @@ export function ExperimentCounterattackPanel({
     return null;
   }
 
-  const pursuitCards = getExperimentCounterattackPursuitCards(game, responder);
-  const metalCards = getExperimentCounterattackMetalCards(game, responder);
+  const pursuitCards = isAi ? [] : getExperimentCounterattackPursuitCards(game, responder);
+  const metalCards = isAi ? [] : getExperimentCounterattackMetalCards(game, responder);
   const canRecover = pending.legalOptions.includes("recover");
   const used = Boolean(
     responder.characterUsage.perCycle.chemistry_enthusiast_counterattack,

@@ -28,7 +28,13 @@ export function GameSummary({
   const isSoloVsAi = Boolean(playerControllers && playerControllers.some((c) => c === "ai"));
   const summaryTitle = isEnglish
     ? (isSoloVsAi ? "Solo vs AI" : "Local public two-player game")
-    : (isSoloVsAi ? "本地人机公开对局" : "本地双人公开对局");
+    : (isSoloVsAi ? "本地人机对局" : "本地双人公开对局");
+  const visibilityLabel = isEnglish
+    ? (isSoloVsAi ? "Private view" : "Public game")
+    : (isSoloVsAi ? "私密视角" : "公开对局");
+  const visibilityValue = isEnglish
+    ? (isSoloVsAi ? "Own hand; opponent backs" : "Public hands")
+    : (isSoloVsAi ? "己方手牌；对手背面" : "手牌可见");
   const winnerText = game.phase === "gameOver"
     ? game.isDraw
       ? (isEnglish ? "Draw" : "平局")
@@ -64,7 +70,7 @@ export function GameSummary({
           [isEnglish ? "Active player" : "当前行动玩家", getPlayerDisplayName(game.players.find((p) => p.id === game.activePlayerId), locale)],
           [isEnglish ? "Deck" : "牌堆", game.deck.length],
           [isEnglish ? "Discard pile" : "弃牌堆", game.discardPile.length],
-          [isEnglish ? "Public game" : "公开对局", isEnglish ? "Public hands" : "手牌可见"],
+          [visibilityLabel, visibilityValue],
           [isEnglish ? "Outcome" : "胜负", winnerText],
         ] as const).map(([l, v]) => (
           <div key={l}><dt>{l}</dt><dd>{v}</dd></div>

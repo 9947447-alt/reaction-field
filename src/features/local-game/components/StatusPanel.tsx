@@ -27,7 +27,7 @@ export function StatusPanel({ game, playerControllers, dispatchGameAction }: Sta
       playerControllers[player.id === "player_1" ? 0 : 1] === "ai",
   );
   const status = getPlayerStatusById(player, pendingStatusHandling?.statusInstanceId);
-  const handlingCards = player ? getStatusHandlingCards(game, player, status) : [];
+  const handlingCards = !isAi && player ? getStatusHandlingCards(game, player, status) : [];
 
   if (game.phase !== "statusWindow" || !pendingStatusHandling || !player || !status) {
     return null;

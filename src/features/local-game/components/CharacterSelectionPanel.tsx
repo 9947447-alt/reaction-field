@@ -103,8 +103,12 @@ export function CharacterSelectionPanel({
         </div>
         <p className="panel-note">
           {isEnglish
-            ? (isSoloVsAi ? "Choose characters and mode; hands are public." : "Choose characters and controllers; hands are public.")
-            : (isSoloVsAi ? "选择角色与模式后开始；双方手牌公开。" : "选择角色与控制方后开始；双方手牌公开。")}
+            ? (isSoloVsAi
+              ? "Choose characters and mode; you see only your own hand, and the opponent hand is face down."
+              : "Choose characters and controllers; hands are public.")
+            : (isSoloVsAi
+              ? "选择角色与模式后开始；只显示自己的手牌，对手为牌背。"
+              : "选择角色与控制方后开始；双方手牌公开。")}
         </p>
         <p className="mirror-note">{isEnglish ? "Mirrored characters are allowed." : "试玩版允许镜像角色。"}</p>
       </section>

@@ -61,6 +61,25 @@ export function CharacterSelectionPanel({
     getCharacterDefinition(characterId),
   );
 
+  const isSoloVsAi = session.playerControllers.some((c) => c === "ai");
+  const isTwoPlayer = session.playerControllers[0] === "human" && session.playerControllers[1] === "human";
+  const currentModeValue: "solo_ai" | "two_player" | "custom" =
+    session.playerControllers[0] === "human" && session.playerControllers[1] === "ai"
+      ? "solo_ai"
+      : isTwoPlayer
+        ? "two_player"
+        : "custom";
+
+  const handleModeChange = (mode: "solo_ai" | "two_player") => {
+    if (mode === "solo_ai") {
+      dispatch({ type: "SELECT_PLAYER_CONTROLLER", playerIndex: 0, controller: "human" });
+      dispatch({ type: "SELECT_PLAYER_CONTROLLER", playerIndex: 1, controller: "ai" });
+    } else {
+      dispatch({ type: "SELECT_PLAYER_CONTROLLER", playerIndex: 0, controller: "human" });
+      dispatch({ type: "SELECT_PLAYER_CONTROLLER", playerIndex: 1, controller: "human" });
+    }
+  };
+
   return (
     <main className="local-game-page character-selection-page">
       <section className="debug-section character-selection-hero" aria-labelledby="character-selection-title">
@@ -75,11 +94,17 @@ export function CharacterSelectionPanel({
           />
           <div>
             <p className="debug-kicker">{isEnglish ? "REACTION FIELD · Web Playtest Alpha · MVP0-P10" : "反应域 · Web Playtest Alpha · MVP0-P10"}</p>
-            <h1 id="character-selection-title">{isEnglish ? "REACTION FIELD · Local two-player character selection" : "反应域 · 本地双人角色选择"}</h1>
+            <h1 id="character-selection-title">
+              {isEnglish
+                ? (isSoloVsAi ? "REACTION FIELD · Solo vs AI character selection" : "REACTION FIELD · Local two-player character selection")
+                : (isSoloVsAi ? "反应域 · 本地人机角色选择" : "反应域 · 本地双人角色选择")}
+            </h1>
           </div>
         </div>
         <p className="panel-note">
-          {isEnglish ? "Choose characters and controllers; hands are public." : "选择角色与控制方后开始；双方手牌公开。"}
+          {isEnglish
+            ? (isSoloVsAi ? "Choose characters and mode; hands are public." : "Choose characters and controllers; hands are public.")
+            : (isSoloVsAi ? "选择角色与模式后开始；双方手牌公开。" : "选择角色与控制方后开始；双方手牌公开。")}
         </p>
         <p className="mirror-note">{isEnglish ? "Mirrored characters are allowed." : "试玩版允许镜像角色。"}</p>
       </section>
@@ -87,9 +112,34 @@ export function CharacterSelectionPanel({
       <section className="debug-section character-config" aria-labelledby="lineup-title">
         <div className="panel-heading">
           <div>
-            <p className="debug-kicker">{isEnglish ? "Local shared screen · 2 players · 7 characters" : "本地同屏 · 2 名玩家 · 7 个角色"}</p>
+            <p className="debug-kicker">
+              {isEnglish
+                ? (isSoloVsAi ? "Solo vs AI · 7 characters" : "Local shared screen · 2 players · 7 characters")
+                : (isSoloVsAi ? "本地人机 · 7 个角色" : "本地同屏 · 2 名玩家 · 7 个角色")}
+            </p>
             <h2 id="lineup-title">{isEnglish ? "Current lineup" : "当前阵容"}</h2>
           </div>
+        </div>
+        <div className="game-mode-selection">
+          <label className="field-row game-mode-field">
+            <span>{isEnglish ? "Game mode" : "对局模式"}</span>
+            <select
+              aria-label={isEnglish ? "Game mode" : "对局模式"}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === "solo_ai" || value === "two_player") {
+                  handleModeChange(value);
+                }
+              }}
+              value={currentModeValue}
+            >
+              <option value="solo_ai">{isEnglish ? "Solo vs AI (Default)" : "人机对局 (默认)"}</option>
+              <option value="two_player">{isEnglish ? "Local two-player" : "本地双人"}</option>
+              {currentModeValue === "custom" ? (
+                <option value="custom">{isEnglish ? "Custom controllers" : "自定义控制方"}</option>
+              ) : null}
+            </select>
+          </label>
         </div>
         <div className="character-select-grid">
           {([0, 1] as const).map((playerIndex) => (

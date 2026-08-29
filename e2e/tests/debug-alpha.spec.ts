@@ -26,6 +26,7 @@ test.use({ locale: "zh-CN" });
 
 async function startNoTeacherGame(page: Page) {
   await page.goto("/");
+  await page.getByLabel("对局模式").selectOption("two_player");
   await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
   await page.getByLabel("player_2 角色").selectOption("acid_king");
   await page.getByRole("button", { name: "开始游戏" }).click();
@@ -180,7 +181,7 @@ test("Alpha 4 language layer changes only presentation and keeps feedback static
   await page.getByRole("button", { name: "English" }).click();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
-  await expect(page.getByRole("heading", { name: "反应域 · 本地双人角色选择" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "反应域 · 本地人机角色选择" })).toBeVisible();
 });
 
 test.describe("English browser preference", () => {
@@ -196,7 +197,7 @@ test.describe("English browser preference", () => {
     }))).toEqual({ language: "en-US", languages: ["en-US"] });
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.getByRole("heading", {
-      name: "REACTION FIELD · Local two-player character selection",
+      name: "REACTION FIELD · Solo vs AI character selection",
     })).toBeVisible();
     await expect(page.getByLabel("player_1 character")).toHaveValue("laboratory_teacher");
   });
@@ -211,7 +212,7 @@ test("Alpha 4 English display covers setup, all public phases, dialogs, and fata
   };
 
   await switchToEnglish("/");
-  await expect(page.getByRole("heading", { name: "REACTION FIELD · Local two-player character selection" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "REACTION FIELD · Solo vs AI character selection" })).toBeVisible();
   await expect(page.getByText(
     "Current goal: Confirm the local shared-screen two-player lineup before starting this public game.",
     { exact: true },
@@ -285,10 +286,13 @@ test("默认配置、正式元数据与 configuring 帮助界面", async ({ page
   await page.goto("/");
 
   await expect(page.getByRole("heading", {
-    name: "反应域 · 本地双人角色选择",
+    name: "反应域 · 本地人机角色选择",
   })).toBeVisible();
+  await expect(page.getByLabel("对局模式")).toHaveValue("solo_ai");
   await expect(page.getByLabel("player_1 角色")).toHaveValue("laboratory_teacher");
   await expect(page.getByLabel("player_2 角色")).toHaveValue("chemical_factory_ceo");
+  await expect(page.getByLabel("player_1 控制方")).toHaveValue("human");
+  await expect(page.getByLabel("player_2 控制方")).toHaveValue("ai");
   await expect(page.getByText("Web Playtest Alpha · v0.16.0-alpha.2 · MVP0-P10", {
     exact: false,
   })).toBeVisible();
@@ -525,6 +529,7 @@ test("默认老师/CEO、双老师备课与无老师 mainAction", async ({ page,
   await page.getByRole("button", { name: "返回角色选择" }).click();
   await expect(page.getByRole("alertdialog")).toBeVisible();
   await page.getByRole("button", { name: "确认返回" }).click();
+  await page.getByLabel("对局模式").selectOption("two_player");
   await page.getByLabel("player_2 角色").selectOption("laboratory_teacher");
   await page.getByRole("button", { name: "开始游戏" }).click();
   await expect(page.getByText("当前选择玩家：玩家 A")).toBeVisible();
@@ -652,7 +657,7 @@ test("fatal 会话只允许全新恢复或返回配置", async ({ page, runtimeE
   await page.goto("/?scenario=fatal");
   await page.getByRole("button", { name: "返回角色选择" }).click();
   await expect(page.getByRole("heading", {
-    name: "反应域 · 本地双人角色选择",
+    name: "反应域 · 本地人机角色选择",
   })).toBeVisible();
 });
 

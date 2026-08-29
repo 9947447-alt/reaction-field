@@ -274,7 +274,7 @@ export const getPlayerControllerDisplayName = (controller: PlayerController, loc
   controller === "human" ? (locale === "en" ? "Human" : "人类") : "NATBA AI";
 
 export const getAiAutoActionNote = (locale: DisplayLocale): string =>
-  locale === "en" ? "NATBA-1 AI is taking action..." : "NATBA-1 AI 正在自动行动...";
+  locale === "en" ? "NATBA AI is taking action..." : "NATBA AI 正在自动行动...";
 
 const diyBlockerNames: Readonly<Record<string, LocalizedLabel>> = {
   NOT_ACTIVE_PLAYER: ["非当前行动玩家", "Not active player"],

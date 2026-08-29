@@ -140,7 +140,7 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
       expect(asset.status, relativeAssetPath).toBe(200);
       expect(asset.contentType, relativeAssetPath).toBe(contentType);
     }
-    await expect(page.getByRole("heading", { name: "反应域 · 本地双人角色选择" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "反应域 · 本地人机角色选择" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "新手引导：配置" })).toBeVisible();
     await expect(page.getByText(
       "当前目标：确认本地同屏双人阵容后，再开始本局公开对局。",
@@ -159,6 +159,7 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
     await expect(page.locator(".character-selection-hero__icon")).toBeVisible();
     await expect(page.locator(".character-selection-hero__icon")).toHaveAttribute("alt", "");
     await expect(page.locator(".character-selection-hero__icon")).toHaveAttribute("aria-hidden", "true");
+    await expect(page.getByLabel("对局模式")).toHaveValue("solo_ai");
     await expect(page.getByLabel("player_1 角色")).toHaveValue("laboratory_teacher");
     await expect(page.getByLabel("player_2 角色")).toHaveValue("chemical_factory_ceo");
     await page.getByRole("button", { name: "关于与帮助" }).click();
@@ -175,6 +176,8 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
     await expect(repository).toHaveAttribute("target", "_blank");
     await expect(repository).toHaveAttribute("rel", "noopener noreferrer");
     await page.keyboard.press("Escape");
+    await page.getByLabel("对局模式").selectOption("two_player");
+    await expect(page.getByRole("heading", { name: "反应域 · 本地双人角色选择" })).toBeVisible();
     await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
     await page.getByLabel("player_2 角色").selectOption("acid_king");
     await page.getByRole("button", { name: "开始游戏" }).click();
@@ -240,6 +243,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   void networkFailures;
 
   await page.goto("/");
+  await page.getByLabel("对局模式").selectOption("two_player");
   await page.getByLabel("player_1 角色").selectOption("laboratory_teacher");
   await page.getByLabel("player_2 角色").selectOption("laboratory_teacher");
   await page.getByRole("button", { name: "开始游戏" }).click();

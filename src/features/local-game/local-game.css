@@ -286,7 +286,8 @@
 }
 
 .character-select-field,
-.character-controller-field {
+.character-controller-field,
+.game-mode-field {
   background: #f7f9fb;
   border: 1px solid #e1e7ec;
   border-radius: 8px;

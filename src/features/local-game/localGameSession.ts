@@ -20,7 +20,7 @@ export const defaultCharacterSelection: CharacterSelection = [
 
 export const defaultPlayerControllers: PlayerControllerSelection = [
   "human",
-  "human",
+  "ai",
 ];
 
 export type ConfiguringLocalGameSession = Readonly<{

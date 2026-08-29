@@ -81,29 +81,36 @@ const orderedCharacterLineups = characterDefinitions.flatMap((playerOne) =>
 );
 
 describe("Phase 9 local Debug Alpha configuration", () => {
-  it("starts in configuring mode with the frozen teacher and CEO defaults", () => {
+  it("starts in configuring mode with the frozen teacher and CEO defaults and solo vs AI controllers", () => {
     const state = createConfiguringLocalGameSession();
 
     expect(state).toEqual({
       mode: "configuring",
       characterIds: defaultCharacterSelection,
-      playerControllers: ["human", "human"],
+      playerControllers: ["human", "ai"],
       revision: 0,
       error: null,
     });
     expect("game" in state).toBe(false);
   });
 
-  it("supports selecting player controller for human vs ai configuration", () => {
+  it("supports selecting player controller for human vs human and human vs ai configuration", () => {
     let state: LocalGameSessionState = createConfiguringLocalGameSession();
+    state = localGameSessionReducer(state, {
+      type: "SELECT_PLAYER_CONTROLLER",
+      playerIndex: 1,
+      controller: "human",
+    });
+
+    expect(state.playerControllers).toEqual(["human", "human"]);
+    expect(state.error).toBeNull();
+
     state = localGameSessionReducer(state, {
       type: "SELECT_PLAYER_CONTROLLER",
       playerIndex: 1,
       controller: "ai",
     });
-
     expect(state.playerControllers).toEqual(["human", "ai"]);
-    expect(state.error).toBeNull();
 
     const invalidState = localGameSessionReducer(state, {
       type: "SELECT_PLAYER_CONTROLLER",

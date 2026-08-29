@@ -20,7 +20,7 @@ const deterministicGameFactory: LocalGameFactory = (characterIds) =>
   });
 
 describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
-  it("allows selecting Human vs NATBA AI in configuration and renders lineup summary", async () => {
+  it("defaults to Human vs NATBA AI in configuration, allows switching to local two-player, and renders lineup summary", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const container = document.createElement("div");
     document.body.append(container);
@@ -43,16 +43,34 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
       );
       expect(controllerSelects).toHaveLength(2);
 
+      // Default is Solo vs AI
+      expect(container.textContent).toContain("玩家 A (人类)");
+      expect(container.textContent).toContain("玩家 B (NATBA AI)");
+      expect(container.querySelector("h1")?.textContent).toBe("反应域 · 本地人机角色选择");
+
+      // Switch to local two-player via mode selector
+      const modeSelect = container.querySelector(
+        "select[aria-label*='mode'], select[aria-label*='模式']",
+      ) as HTMLSelectElement;
+      expect(modeSelect).toBeDefined();
+
+      await act(async () => {
+        modeSelect.value = "two_player";
+        modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+
       expect(container.textContent).toContain("玩家 A (人类)");
       expect(container.textContent).toContain("玩家 B (人类)");
+      expect(container.querySelector("h1")?.textContent).toBe("反应域 · 本地双人角色选择");
 
-      const playerBControllerSelect = controllerSelects[1] as HTMLSelectElement;
+      // Switch back to Solo vs AI
       await act(async () => {
-        playerBControllerSelect.value = "ai";
-        playerBControllerSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        modeSelect.value = "solo_ai";
+        modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
       });
 
       expect(container.textContent).toContain("玩家 B (NATBA AI)");
+      expect(container.querySelector("h1")?.textContent).toBe("反应域 · 本地人机角色选择");
     } finally {
       await act(async () => {
         root.unmount();
@@ -285,6 +303,8 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
 
       expect(natba0Invoked).toBeGreaterThan(0);
       expect(container.querySelector(".error-banner")).toBeNull();
+      expect(container.querySelector("h1")?.textContent).toBe("本地人机公开对局");
+      expect(container.querySelector("h1")?.textContent).not.toContain("NATBA-1");
     } finally {
       await act(async () => {
         root.unmount();
@@ -474,7 +494,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
       // In Chinese mode: check title
       expect(container.querySelector("h1")?.textContent).toBe("本地人机公开对局");
 
-      // Switch to English: check title is Solo vs NATBA-1
+      // Switch to English: check title is Solo vs AI
       const enButton = Array.from(container.querySelectorAll("button")).find(
         (b) => b.textContent === "English",
       );
@@ -482,7 +502,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
         enButton?.click();
       });
 
-      expect(container.querySelector("h1")?.textContent).toBe("Solo vs NATBA-1");
+      expect(container.querySelector("h1")?.textContent).toBe("Solo vs AI");
     } finally {
       await act(async () => {
         root.unmount();

@@ -565,6 +565,15 @@ dd {
   width: 100%;
 }
 
+.debug-layout.play-shell-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 390px);
+}
+
+.play-surface,
+.play-sidebar {
+  min-width: 0;
+}
+
 .debug-main,
 .debug-sidebar {
   display: grid;
@@ -1576,6 +1585,14 @@ select {
     padding: 10px;
   }
 
+  .debug-layout.play-shell-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .debug-layout.play-shell-layout > .play-sidebar {
+    grid-row: 1;
+  }
+
   .players-grid {
     grid-template-columns: 1fr;
   }
@@ -1661,5 +1678,37 @@ select {
   .failure-diagnostics,
   .fatal-actions {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (orientation: landscape) and (min-width: 761px) {
+  .debug-layout.play-shell-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 390px);
+  }
+
+  .debug-layout.play-shell-layout > .play-sidebar {
+    grid-row: auto;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .local-game-page {
+    padding: 8px 12px;
+  }
+
+  .table-summary-bar {
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+  }
+
+  .table-summary-bar .summary-grid,
+  .table-summary-bar .debug-details,
+  .table-summary-bar .quiet-banner {
+    display: none;
+  }
+
+  .debug-section.debug-summary h1 {
+    font-size: 1.05rem;
   }
 }

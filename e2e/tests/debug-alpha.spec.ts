@@ -3,6 +3,7 @@ import {
   test as base,
   type Page,
 } from "@playwright/test";
+import { expectLandscapePlayShell, expectPortraitPlayShell } from "../playShellLayout";
 
 const test = base.extend<{ runtimeErrors: string[] }>({
   runtimeErrors: async ({ page }, use) => {
@@ -828,4 +829,26 @@ test("390×844 覆盖 configuring、playing、reaction、About、fatal 与 gameO
   await expectFactoryCount(page, Number(gameOverFactoryCount));
 
   await openAndCloseAbout(page);
+});
+
+test("390 竖屏单列，横屏 844 与 1024 为 play-shell 双栏同屏", async ({ page, runtimeErrors }) => {
+  void runtimeErrors;
+  await startNoTeacherGame(page);
+  await expect(page.locator(".play-shell-layout")).toBeVisible();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expectLandscapePlayShell(page);
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expectLandscapePlayShell(page);
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expectLandscapePlayShell(page);
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectPortraitPlayShell(page);
+  await expectNoHorizontalOverflow(page);
 });

@@ -38,11 +38,24 @@ export function GameSummary({
     : (isEnglish ? "Not finished" : "未结束");
 
   return (
-    <section className="debug-section debug-summary" aria-labelledby="summary-title">
-      <div>
-        <p className="debug-kicker">{releaseMetadata.displayName}</p>
-        <h1 id="summary-title">{summaryTitle}</h1>
+    <section className="debug-section debug-summary table-summary-bar" aria-labelledby="summary-title">
+      <div className="table-summary-bar__header">
+        <div className="table-summary-bar__titles">
+          <p className="debug-kicker">{releaseMetadata.displayName}</p>
+          <h1 id="summary-title">{summaryTitle}</h1>
+        </div>
+        <div className="table-summary-bar__status-chip">
+          <span className="round-badge">
+            {isEnglish
+              ? `Cycle ${game.cycleNumber} · Round ${game.roundInCycle}`
+              : `第 ${game.cycleNumber} 周期 · 第 ${game.roundInCycle} 轮`}
+          </span>
+          {game.phase === "gameOver" ? (
+            <span className="outcome-badge is-game-over">{winnerText}</span>
+          ) : null}
+        </div>
       </div>
+
       <dl className="summary-grid">
         {([
           [isEnglish ? "Experiment cycle" : "实验周期", game.cycleNumber],
@@ -57,10 +70,12 @@ export function GameSummary({
           <div key={l}><dt>{l}</dt><dd>{v}</dd></div>
         ))}
       </dl>
+
       <details className="debug-details">
         <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
         <p>{game.phase} · {getTotalCardCount(game)} cards · {describeTableReference(game)}</p>
       </details>
+
       <div className="summary-actions">
         {error ? <p className="error-banner">{error}</p> : <p className="quiet-banner">{isEnglish ? "Awaiting action" : "等待操作"}</p>}
         <div className="session-actions">

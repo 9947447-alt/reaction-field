@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { LocaleProvider } from "../../app/locale";
 import { createInitialGame } from "../../game/engine/createInitialGame";
+import { engineReducer } from "../../game/engine/reducer";
 import type { CardInstanceId, GameState, PlayerId } from "../../game/engine/types";
 import { identityShuffle } from "../../shared/random";
 import { LocalGamePage } from "./LocalGamePage";
@@ -54,15 +55,50 @@ function moveAllCopiesToHand(
   );
 }
 
-const privateViewFactory: LocalGameFactory = (characterIds) => {
-  let state = createInitialGame({
-    characterIds: [characterIds[0], characterIds[1]],
-    shuffle: identityShuffle,
-  });
-  state = moveAllCopiesToHand(state, "player_1", "substance_h2so4_dilute");
-  state = moveAllCopiesToHand(state, "player_2", "substance_caoh2_limewater");
-  state = moveAllCopiesToHand(state, "player_2", "ion_ca");
-  return state;
+function dealPrivateHands(state: GameState): GameState {
+  let next = moveAllCopiesToHand(state, "player_1", "substance_h2so4_dilute");
+  next = moveAllCopiesToHand(next, "player_2", "substance_caoh2_limewater");
+  return moveAllCopiesToHand(next, "player_2", "ion_ca");
+}
+
+const privateViewFactory: LocalGameFactory = (characterIds) =>
+  dealPrivateHands(
+    createInitialGame({
+      characterIds: [characterIds[0], characterIds[1]],
+      shuffle: identityShuffle,
+    }),
+  );
+
+const aiAttackViewFactory: LocalGameFactory = (characterIds) => {
+  let state = dealPrivateHands(
+    createInitialGame({
+      characterIds: [characterIds[0], characterIds[1]],
+      shuffle: identityShuffle,
+    }),
+  );
+  while (state.phase === "mainAction" && state.activePlayerId !== "player_2") {
+    state = engineReducer(
+      state,
+      { type: "PASS_ACTION", playerId: state.activePlayerId },
+      identityShuffle,
+    );
+  }
+  const playedId = state.players[1].hand.find(
+    (id) => state.cardInstances[id]?.definitionId === "substance_caoh2_limewater",
+  );
+  if (!playedId) {
+    throw new Error("Expected limewater in the opponent hand");
+  }
+  return engineReducer(
+    state,
+    {
+      type: "PLAY_CARD",
+      playerId: "player_2",
+      cardInstanceId: playedId,
+      targetPlayerId: "player_1",
+    },
+    identityShuffle,
+  );
 };
 
 function playerPanel(container: HTMLElement, playerId: "player_1" | "player_2"): HTMLElement {
@@ -73,7 +109,7 @@ function playerPanel(container: HTMLElement, playerId: "player_1" | "player_2"):
   return panel;
 }
 
-async function renderPage() {
+async function renderPage(createGame: LocalGameFactory = privateViewFactory) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement("div");
   document.body.append(container);
@@ -83,7 +119,7 @@ async function renderPage() {
       <StrictMode>
         <LocaleProvider>
           <LocalGamePage
-            createGame={privateViewFactory}
+            createGame={createGame}
             aiDelayMs={10000}
           />
         </LocaleProvider>
@@ -232,6 +268,79 @@ describe("Phase 20C — Solo private human play view", () => {
       expect(opponent.textContent).toContain("Face down");
       assertNoOpponentCardLeak(opponent);
       expect(playerPanel(container, "player_1").textContent).toContain("Dilute H2SO4");
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("shows the AI's publicly played card name and type on the table and in the response window", async () => {
+    const { container, root } = await renderPage(aiAttackViewFactory);
+    try {
+      await selectCharacters(container);
+      await startGame(container);
+
+      const opponent = playerPanel(container, "player_2");
+      const recentAction = container.querySelector(".recent-public-action");
+      const responsePanel = container.querySelector(".response-panel");
+      const tableReference = container.querySelector(".table-reference-card");
+      const latestLog = container.querySelector(".game-log li.is-latest");
+
+      expect(recentAction?.textContent).toContain("石灰水 Ca(OH)2");
+      expect(recentAction?.textContent).toContain("实体");
+      expect(tableReference?.textContent).toContain("石灰水 Ca(OH)2");
+      expect(tableReference?.textContent).toContain("实体");
+      expect(responsePanel?.textContent).toContain("对方打出 石灰水 Ca(OH)2（实体）");
+      expect(latestLog?.textContent).toContain("石灰水 Ca(OH)2");
+      expect(opponent.querySelectorAll(".card-back").length).toBeGreaterThan(0);
+      expect(opponent.querySelectorAll(".card-face")).toHaveLength(0);
+      expect(opponent.textContent).not.toContain("石灰水");
+      expect(opponent.textContent).not.toContain("Ca2+");
+      expect(container.textContent).not.toContain("Ca2+");
+      expect(container.textContent).not.toContain(
+        "MVP 0 中造成 1 点碱性伤害，或响应酸性伤害，或处理 SO2 泄漏。",
+      );
+
+      const englishButton = Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent === "English",
+      );
+      await act(async () => {
+        englishButton?.click();
+      });
+      expect(container.querySelector(".response-panel")?.textContent).toContain(
+        "Opponent played Limewater Ca(OH)2 (Substance)",
+      );
+      expect(container.querySelector(".recent-public-action")?.textContent).toContain("Substance");
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("still shows both hands after an AI-style public play in two-player mode", async () => {
+    const { container, root } = await renderPage(aiAttackViewFactory);
+    try {
+      const modeSelect = container.querySelector(
+        "select[aria-label*='mode'], select[aria-label*='模式']",
+      ) as HTMLSelectElement;
+      await act(async () => {
+        modeSelect.value = "two_player";
+        modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await selectCharacters(container);
+      await startGame(container);
+
+      const opponent = playerPanel(container, "player_2");
+      expect(container.querySelector("h1")?.textContent).toBe("本地双人公开对局");
+      expect(opponent.textContent).toContain("石灰水 Ca(OH)2");
+      expect(opponent.textContent).toContain("Ca2+");
+      expect(opponent.querySelectorAll(".card-back")).toHaveLength(0);
+      expect(opponent.querySelectorAll(".debug-card__select").length).toBeGreaterThan(0);
+      expect(container.querySelector(".recent-public-action")?.textContent).toContain("石灰水 Ca(OH)2");
     } finally {
       await act(async () => {
         root.unmount();

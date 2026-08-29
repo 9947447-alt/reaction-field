@@ -8,6 +8,8 @@ import {
   getResponseCards,
 } from "../localGameView";
 import { CardDebugCard } from "./CardDebugCard";
+import { getOfficialHumanViewerPlayerId } from "../officialPlayView";
+import { describeIncomingResponseAnnouncement } from "../publicRecentAction";
 import { getAiAutoActionNote, getPlayerDisplayName } from "../presentationLocale";
 
 type ResponsePanelProps = {
@@ -27,6 +29,11 @@ export function ResponsePanel({ game, playerControllers, dispatchGameAction }: R
       playerControllers[responder.id === "player_1" ? 0 : 1] === "ai",
   );
   const responseCards = !isAi && responder ? getResponseCards(game, responder) : [];
+  const incomingPlay = describeIncomingResponseAnnouncement(
+    game,
+    locale,
+    playerControllers ? getOfficialHumanViewerPlayerId(playerControllers) : undefined,
+  );
 
   if (game.phase !== "responseWindow" || !pendingResponse || !responder) {
     return null;
@@ -48,6 +55,7 @@ export function ResponsePanel({ game, playerControllers, dispatchGameAction }: R
           {isEnglish ? "Pass response" : "放弃响应"}
         </button>
       </div>
+      {incomingPlay ? <p className="panel-note response-incoming-play">{incomingPlay}</p> : null}
       <p className="panel-note">
         {isEnglish ? `${getPlayerDisplayName(responder, locale)} may respond.` : `轮到 ${responder.name} 决定是否响应当前效果。`}
         {isAi ? ` · ${getAiAutoActionNote(locale)}` : ""}

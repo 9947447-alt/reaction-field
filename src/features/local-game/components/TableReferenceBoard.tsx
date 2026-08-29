@@ -1,15 +1,39 @@
+import { cardDefinitionsById } from "../../../game/data/cardDefinitions";
 import { useLocale } from "../../../app/locale";
 import type { GameState } from "../../../game/engine/types";
-import { getPlayerDisplayNameById } from "../presentationLocale";
+import {
+  formatPublicRecentAction,
+  getPublicRecentAction,
+} from "../publicRecentAction";
+import {
+  getCardDisplayName,
+  getCardTypeDisplayName,
+  getPlayerDisplayNameById,
+} from "../presentationLocale";
+import { PublicPlayedCard } from "./PublicPlayedCard";
 
 type TableReferenceBoardProps = Readonly<{
   game: GameState;
 }>;
 
+const recentKindLabels = {
+  "card-play": ["打出", "Played"],
+  response: ["响应", "Responded with"],
+  "status-handling": ["处理状态", "Handled status with"],
+  diy: ["主动 DIY", "Active DIY"],
+} as const;
+
 export function TableReferenceBoard({ game }: TableReferenceBoardProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
   const ref = game.tableReference;
+  const refDefinition = ref ? cardDefinitionsById.get(ref.definitionId) : undefined;
+  const refName = ref
+    ? getCardDisplayName(ref.definitionId, ref.displayName, locale)
+    : undefined;
+  const refType = refDefinition ? getCardTypeDisplayName(refDefinition.type, locale) : undefined;
+  const recent = getPublicRecentAction(game);
+  const recentView = recent ? formatPublicRecentAction(recent, locale) : undefined;
 
   return (
     <section
@@ -27,9 +51,14 @@ export function TableReferenceBoard({ game }: TableReferenceBoardProps) {
             </span>
           ) : null}
         </div>
-        {ref ? (
+        {ref && refName ? (
           <div className="table-reference-card">
-            <strong className="table-reference-card__name">{ref.displayName}</strong>
+            {refType ? (
+              <span className={`card-face__type-badge ${refDefinition?.type === "ion" ? "is-ion" : "is-substance"}`}>
+                {refType}
+              </span>
+            ) : null}
+            <strong className="table-reference-card__name">{refName}</strong>
             <span className="table-reference-card__author">
               {isEnglish ? "Played by " : "由 "}{getPlayerDisplayNameById(ref.playedBy, locale, game.logPresentationContext)}{isEnglish ? "" : " 打出"}
             </span>
@@ -45,6 +74,32 @@ export function TableReferenceBoard({ game }: TableReferenceBoardProps) {
           </div>
         )}
       </div>
+
+      {recentView ? (
+        <div
+          aria-label={isEnglish ? "Most recent public play" : "最近公开行动"}
+          className="recent-public-action"
+        >
+          <div className="table-center-reference__header">
+            <span className="table-center-label">
+              {isEnglish ? "Latest play" : "最近行动"}
+            </span>
+            <span className="table-center-turn">
+              {getPlayerDisplayNameById(recentView.actorId, locale, game.logPresentationContext)}
+              {" · "}
+              {recentKindLabels[recentView.kind][isEnglish ? 1 : 0]}
+            </span>
+          </div>
+          {recent?.definitionId ? (
+            <PublicPlayedCard definitionId={recent.definitionId} />
+          ) : (
+            <div className="table-reference-card">
+              <span className="card-face__type-badge is-substance">{recentView.typeLabel}</span>
+              <strong className="table-reference-card__name">{recentView.name}</strong>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="table-center-piles">
         <div className="pile-stat-chip">

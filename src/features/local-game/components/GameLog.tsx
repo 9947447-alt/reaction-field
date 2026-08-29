@@ -16,11 +16,12 @@ export function GameLog({ game }: GameLogProps) {
     <section className="debug-section game-log" aria-labelledby="game-log-title">
       <h2 id="game-log-title">{isEnglish ? "Full game log" : "完整游戏日志"}</h2>
       <ol>
-        {game.log.map((entry) => {
+        {game.log.map((entry, index) => {
           const reaction = getPublicReactionLogView(game, entry, locale, context);
+          const isLatest = index === game.log.length - 1;
 
           return (
-            <li key={entry.id}>
+            <li className={isLatest ? "is-latest" : undefined} key={entry.id}>
               <div className="game-log__message">
                 {renderGameLogEntry(entry, locale, context)}
                 <details className="debug-details game-log__details">

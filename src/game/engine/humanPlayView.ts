@@ -20,6 +20,22 @@ function hiddenDeckId(index: number): CardInstanceId {
   return `${HIDDEN_DECK_PREFIX}${index}`;
 }
 
+function collectPublicCardInstanceIds(state: GameState): ReadonlySet<CardInstanceId> {
+  const ids = new Set<CardInstanceId>();
+  if (state.tableReference) {
+    ids.add(state.tableReference.cardInstanceId);
+  }
+  const pendingSource = state.pendingResponse?.sourceEffect.context.source;
+  if (pendingSource?.kind === "card") {
+    ids.add(pendingSource.cardInstanceId);
+  }
+  const counterSource = state.pendingExperimentCounterattack?.originalDamageContext.source;
+  if (counterSource?.kind === "card") {
+    ids.add(counterSource.cardInstanceId);
+  }
+  return ids;
+}
+
 function redactPreparationSelection(
   selection: LaboratoryPreparationSelection,
   hiddenPlayerIds: ReadonlySet<PlayerId>,
@@ -46,9 +62,12 @@ export function projectHumanPlayState(state: GameState, viewerPlayerId: PlayerId
     }
   }
 
+  const publicCardIds = collectPublicCardInstanceIds(state);
   const cardInstances = { ...state.cardInstances };
   for (const id of hiddenHandIds) {
-    delete cardInstances[id];
+    if (!publicCardIds.has(id)) {
+      delete cardInstances[id];
+    }
   }
   for (const id of state.deck) {
     delete cardInstances[id];

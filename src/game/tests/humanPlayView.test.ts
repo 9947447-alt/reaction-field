@@ -118,6 +118,49 @@ describe("Phase 20C — Human Play View projection", () => {
     expect(state.cardInstances[opponentCardId]?.definitionId).toBe("substance_caoh2_limewater");
   });
 
+  it("keeps a publicly played opponent card while still hiding remaining hand cards", () => {
+    let state = createReadyMainGameState();
+    state = moveAllCopiesToHand(state, "player_1", "substance_h2so4_dilute");
+    state = moveAllCopiesToHand(state, "player_2", "substance_caoh2_limewater");
+    state = moveAllCopiesToHand(state, "player_2", "ion_ca");
+    if (state.activePlayerId !== "player_2") {
+      state = engineReducer(state, { type: "PASS_ACTION", playerId: state.activePlayerId }, identityShuffle);
+    }
+    const playedId = state.players[1].hand.find(
+      (id) => state.cardInstances[id]?.definitionId === "substance_caoh2_limewater",
+    );
+    const hiddenIonId = state.players[1].hand.find(
+      (id) => state.cardInstances[id]?.definitionId === "ion_ca",
+    );
+    if (!playedId || !hiddenIonId) {
+      throw new Error("Expected limewater and Ca2+ in the opponent hand");
+    }
+
+    state = engineReducer(
+      state,
+      {
+        type: "PLAY_CARD",
+        playerId: "player_2",
+        cardInstanceId: playedId,
+        targetPlayerId: "player_1",
+      },
+      identityShuffle,
+    );
+
+    const view = projectHumanPlayState(state, "player_1");
+    const viewSerialized = JSON.stringify(view);
+
+    expect(state.phase).toBe("responseWindow");
+    expect(state.players[1].hand).toContain(playedId);
+    expect(view.tableReference?.definitionId).toBe("substance_caoh2_limewater");
+    expect(view.cardInstances[playedId]?.definitionId).toBe("substance_caoh2_limewater");
+    expect(viewSerialized).toContain("substance_caoh2_limewater");
+    expect(view.cardInstances[hiddenIonId]).toBeUndefined();
+    expect(viewSerialized).not.toContain("ion_ca");
+    expect(viewSerialized).not.toContain(hiddenIonId);
+    expect(view.players[1].hand.every(isHiddenPlayCardId)).toBe(true);
+  });
+
   it("preserves public discard definitions and already-recorded log events", () => {
     let state = createReadyMainGameState();
     const discardedId = findCards(state, "substance_na2co3")[0];

@@ -1,4 +1,5 @@
 import type {
+  CardType,
   CharacterId,
   CharacterSkillImplementationStatus,
   CharacterSkillType,
@@ -113,6 +114,13 @@ const damageKindNames: Record<string, LocalizedLabel> = {
   base: ["碱性", "alkaline"],
 };
 
+const cardTypeNames: Record<CardType, LocalizedLabel> = {
+  element: ["元素", "Element"],
+  ion: ["离子", "Ion"],
+  substance: ["实体", "Substance"],
+  event: ["事件", "Event"],
+};
+
 const reactionNames: Record<string, LocalizedLabel> = {
   acid_base_neutralization: ["酸碱中和", "Acid-base neutralization"],
   acid_carbonate_co2: ["酸与碳酸盐", "Acid and carbonate"],
@@ -183,6 +191,8 @@ export const getStatusDisplayName = (statusId: string, locale: DisplayLocale): s
 export const getStrictStatusDisplayName = (statusId: string, locale: DisplayLocale): string => lookup(statusNames, statusId, locale, "statusId");
 export const getReactionDisplayName = (reactionId: string, locale: DisplayLocale): string => lookup(reactionNames, reactionId, locale);
 export const getStrictReactionDisplayName = (reactionId: string, locale: DisplayLocale): string => lookup(reactionNames, reactionId, locale, "reactionId");
+export const getCardTypeDisplayName = (type: CardType, locale: DisplayLocale): string =>
+  cardTypeNames[type][locale === "en" ? 1 : 0];
 export const getDamageKindDisplayName = (damageKind: string, locale: DisplayLocale): string => lookup(damageKindNames, damageKind, locale);
 export const getStrictDamageKindDisplayName = (damageKind: string, locale: DisplayLocale): string => lookup(damageKindNames, damageKind, locale, "damageKind");
 export const getSkillTypeDisplayName = (type: CharacterSkillType, locale: DisplayLocale): string => skillTypeNames[type][locale === "en" ? 1 : 0];

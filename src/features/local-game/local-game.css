@@ -774,6 +774,31 @@ dd {
   line-height: 1.35;
 }
 
+.recent-public-action {
+  display: grid;
+  flex: 1 1 200px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.recent-public-action .card-face {
+  min-height: 0;
+  padding: 8px 10px;
+}
+
+.recent-public-action .card-face__name {
+  font-size: 0.95rem;
+}
+
+.response-incoming-play {
+  background: #eef6fb;
+  border: 1px solid #b7c9d6;
+  border-radius: 6px;
+  color: #17324a;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
 .table-center-piles {
   align-items: center;
   display: flex;
@@ -1540,6 +1565,13 @@ select {
   line-height: 1.45;
   overflow-wrap: anywhere;
   padding: 8px;
+}
+
+.game-log li.is-latest {
+  background: #eef6fb;
+  border-color: #244b64;
+  box-shadow: 0 0 0 1px #244b64 inset;
+  font-weight: 700;
 }
 
 .game-log__entry-id {

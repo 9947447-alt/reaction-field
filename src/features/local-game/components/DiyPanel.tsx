@@ -41,12 +41,12 @@ export function DiyPanel({ game, playerControllers, dispatchGameAction }: DiyPan
   );
 
   const candidateCardIds = useMemo(() => {
-    if (!activePlayer) return [];
+    if (!activePlayer || isAi) return [];
     return activePlayer.hand.filter((cardId) => {
       const def = getCardDefinition(game, cardId);
       return def?.allowedTimings.includes("diy-component");
     });
-  }, [activePlayer, game]);
+  }, [activePlayer, game, isAi]);
 
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
   const [selectedCardIds, setSelectedCardIds] = useState<CardInstanceId[]>([]);

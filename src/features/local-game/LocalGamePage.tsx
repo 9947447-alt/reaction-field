@@ -35,6 +35,10 @@ import type {
   LocalGameSessionInitializer,
   PlayingLocalGameSession,
 } from "./localGameSession";
+import {
+  getOfficialHumanViewerPlayerId,
+  getOfficialPlayState,
+} from "./officialPlayView";
 import { requiresSessionExitConfirmation } from "./sessionConfirmation";
 
 type PlayingGameProps = Readonly<{
@@ -62,6 +66,8 @@ function PlayingGame({
   const { game, error, playerControllers } = session;
   const { locale } = useLocale();
   const isEnglish = locale === "en";
+  const playGame = getOfficialPlayState(game, playerControllers);
+  const viewerPlayerId = getOfficialHumanViewerPlayerId(playerControllers);
   const [selectedCardId, setSelectedCardId] = useState<CardInstanceId | undefined>();
 
   useEffect(() => {
@@ -77,79 +83,80 @@ function PlayingGame({
     <main className="local-game-page">
       <GameSummary
         error={error ?? undefined}
-        game={game}
+        game={playGame}
         playerControllers={playerControllers}
         onRestart={(trigger) => onRequestSessionExit("restart", trigger)}
         onReturnToCharacterSelection={(trigger) => onRequestSessionExit("return", trigger)}
       />
-      <SuccessfulReactionNotice game={game} />
+      <SuccessfulReactionNotice game={playGame} />
       <div className="debug-layout play-shell-layout">
         <div className="debug-main play-surface">
           <div className="players-grid">
-            {game.players.map((player, index) => (
+            {playGame.players.map((player, index) => (
               <PlayerPanel
                 controller={playerControllers[index as 0 | 1]}
-                game={game}
-                handSelectionDisabled={game.phase !== "mainAction"}
+                game={playGame}
+                handReveal={viewerPlayerId !== undefined && player.id !== viewerPlayerId ? "backs" : "contents"}
+                handSelectionDisabled={playGame.phase !== "mainAction"}
                 key={player.id}
                 onSelectCard={setSelectedCardId}
                 player={player}
                 selectedCardId={selectedCardId}
-                showActivePlayerIndicator={game.phase !== "preparationSelection"}
+                showActivePlayerIndicator={playGame.phase !== "preparationSelection"}
               />
             ))}
           </div>
-          <TableReferenceBoard game={game} />
-          <GameLog game={game} />
+          <TableReferenceBoard game={playGame} />
+          <GameLog game={playGame} />
         </div>
         <aside className="debug-sidebar play-sidebar" aria-label={isEnglish ? "Action panels" : "操作面板"}>
           <NewPlayerGuidance
             collapsed={guidanceCollapsed}
-            game={game}
+            game={playGame}
             mode="playing"
             onCollapsedChange={onGuidanceCollapsedChange}
             onVisibleChange={onGuidanceVisibleChange}
             visible={guidanceVisible}
           />
-          {game.phase === "preparationSelection" ? (
+          {playGame.phase === "preparationSelection" ? (
             <PreparationPanel
               dispatchGameAction={dispatchGameAction}
-              game={game}
+              game={playGame}
               playerControllers={playerControllers}
             />
-          ) : game.phase === "experimentCounterattackWindow" ? (
+          ) : playGame.phase === "experimentCounterattackWindow" ? (
             <ExperimentCounterattackPanel
               dispatchGameAction={dispatchGameAction}
-              game={game}
+              game={playGame}
               playerControllers={playerControllers}
             />
           ) : (
             <>
               <ActionPanel
                 dispatchGameAction={dispatchGameAction}
-                game={game}
+                game={playGame}
                 onSelectCard={setSelectedCardId}
                 playerControllers={playerControllers}
                 selectedCardId={selectedCardId}
               />
               <DiyPanel
                 dispatchGameAction={dispatchGameAction}
-                game={game}
+                game={playGame}
                 playerControllers={playerControllers}
               />
               <ResponsePanel
                 dispatchGameAction={dispatchGameAction}
-                game={game}
+                game={playGame}
                 playerControllers={playerControllers}
               />
               <StatusPanel
                 dispatchGameAction={dispatchGameAction}
-                game={game}
+                game={playGame}
                 playerControllers={playerControllers}
               />
             </>
           )}
-          {game.phase === "gameOver" ? (
+          {playGame.phase === "gameOver" ? (
             <section className="debug-section">
               <h2>{isEnglish ? "Game over" : "对局结束"}</h2>
               <p className="panel-note">

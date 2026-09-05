@@ -431,6 +431,43 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   await page.getByRole("button", { name: "中文" }).click();
 });
 
+test("正式构建人机只显示对手牌背与张数，双人仍公开手牌", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await page.goto("/");
+  await expect(page.getByText("选择角色与模式后开始；只显示自己的手牌，对手为牌背。")).toBeVisible();
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(page.getByRole("heading", { name: "本地人机对局" })).toBeVisible();
+  await expect(page.getByText("己方手牌；对手背面")).toBeVisible();
+
+  const opponent = page.locator('[aria-labelledby="player_2-title"]');
+  const opponentCountText = await opponent.locator(".hand-count-pill").textContent();
+  const opponentCount = Number(opponentCountText?.match(/(\d+)/)?.[1]);
+  expect(opponentCount).toBe(14);
+  await expect(opponent.locator(".card-back")).toHaveCount(opponentCount);
+  await expect(opponent.locator(".card-face")).toHaveCount(0);
+  await expect(opponent.locator(".debug-card__select")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "返回角色选择" }).click();
+  await page.getByRole("button", { name: "确认返回" }).click();
+  await page.getByLabel("对局模式").selectOption("two_player");
+  await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
+  await page.getByLabel("player_2 角色").selectOption("acid_king");
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(page.getByRole("heading", { name: "本地双人公开对局" })).toBeVisible();
+  const twoPlayerOpponent = page.locator('[aria-labelledby="player_2-title"]');
+  await expect(twoPlayerOpponent.locator(".card-face")).toHaveCount(10);
+  await expect(twoPlayerOpponent.locator(".card-back")).toHaveCount(0);
+  await expect(twoPlayerOpponent.locator(".debug-card__select")).toHaveCount(10);
+});
+
 test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", async ({
   page,
   externalRequests,

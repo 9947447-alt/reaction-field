@@ -4,7 +4,8 @@ import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
 const limits = Object.freeze({
-  javascriptGzip: 108000,
+  // Phase 20C Human Play View + opponent card-back UI; Freeze §8 authorizes this raise.
+  javascriptGzip: 120000,
   cssGzip: 10 * 1024,
   total: 500 * 1024,
 });

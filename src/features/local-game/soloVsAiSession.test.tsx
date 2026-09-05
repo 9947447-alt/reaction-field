@@ -122,7 +122,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
       });
 
       expect(container.textContent).toContain("实验室老师 · 备课");
-      expect(container.textContent).toContain("本地人机公开对局");
+      expect(container.textContent).toContain("本地人机对局");
 
       const candidateButtons = container.querySelectorAll(".preparation-candidate-grid button.debug-card__select");
       expect(candidateButtons.length).toBe(20);
@@ -231,7 +231,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
 
       // No error banner; game progressed cleanly under NATBA-1.x default
       expect(container.querySelector(".error-banner")).toBeNull();
-      expect(container.textContent).toContain("本地人机公开对局");
+      expect(container.textContent).toContain("本地人机对局");
     } finally {
       await act(async () => {
         root.unmount();
@@ -303,7 +303,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
 
       expect(natba0Invoked).toBeGreaterThan(0);
       expect(container.querySelector(".error-banner")).toBeNull();
-      expect(container.querySelector("h1")?.textContent).toBe("本地人机公开对局");
+      expect(container.querySelector("h1")?.textContent).toBe("本地人机对局");
       expect(container.querySelector("h1")?.textContent).not.toContain("NATBA-1");
     } finally {
       await act(async () => {
@@ -492,7 +492,7 @@ describe("Phase 19F — Solo vs NATBA-1 Session Integration", () => {
       });
 
       // In Chinese mode: check title
-      expect(container.querySelector("h1")?.textContent).toBe("本地人机公开对局");
+      expect(container.querySelector("h1")?.textContent).toBe("本地人机对局");
 
       // Switch to English: check title is Solo vs AI
       const enButton = Array.from(container.querySelectorAll("button")).find(

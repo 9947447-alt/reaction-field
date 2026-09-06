@@ -504,7 +504,7 @@ test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", a
   await expectNoHorizontalOverflow(page);
 });
 
-test("生产构建在 /debug 保留调试实验室与控制方注入能力", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
+test("生产构建在 /debug 保留调试实验室且品牌图片正常加载无 404", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
   void externalRequests;
   void runtimeErrors;
   void networkFailures;
@@ -513,4 +513,40 @@ test("生产构建在 /debug 保留调试实验室与控制方注入能力", asy
   await expect(page.getByRole("heading", { name: /角色选择/u })).toBeVisible();
   const controllerSelects = page.locator("select[aria-label*='controller'], select[aria-label*='控制方']");
   await expect(controllerSelects).toHaveCount(2);
+
+  // Avatar images are visible and their src attribute contains brand/play/ and strictly avoids /debug/brand/
+  const teacherAvatar = page.locator('img[src*="char-lab-teacher.png"]').first();
+  await expect(teacherAvatar).toBeVisible();
+  const teacherSrc = await teacherAvatar.getAttribute("src");
+  expect(teacherSrc).toContain("brand/play/");
+  expect(teacherSrc).not.toContain("/debug/brand/");
+
+  // Switch to CEO and Acid King to enter mainAction directly without preparation step
+  await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
+  await page.getByLabel("player_2 角色").selectOption("acid_king");
+
+  // Start game in debug lab
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
+
+  // Opponent card-back images are visible and avoid /debug/brand/
+  const cardBack = page.locator('.card-back img.card-back__image').first();
+  await expect(cardBack).toBeVisible();
+  const cardBackSrc = await cardBack.getAttribute("src");
+  expect(cardBackSrc).toContain("brand/play/");
+  expect(cardBackSrc).not.toContain("/debug/brand/");
+});
+
+test("生产构建在 /playtest/debug 下品牌图片正常加载无 404", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await page.goto("/playtest/debug");
+  await expect(page.getByRole("heading", { name: /角色选择/u })).toBeVisible();
+  const teacherAvatar = page.locator('img[src*="char-lab-teacher.png"]').first();
+  await expect(teacherAvatar).toBeVisible();
+  const teacherSrc = await teacherAvatar.getAttribute("src");
+  expect(teacherSrc).toContain("brand/play/");
+  expect(teacherSrc).not.toContain("/debug/brand/");
 });

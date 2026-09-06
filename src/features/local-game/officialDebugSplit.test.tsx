@@ -8,6 +8,7 @@ import { isDebugRoute } from "../../app/routes";
 import { LocalGamePage } from "./LocalGamePage";
 import { deterministicFixtureFactory } from "../../../e2e/fixtureScenarios";
 import { LocaleProvider } from "../../app/locale";
+import { PLAY_BRAND_ASSETS, resolvePlayBrandAsset } from "./playBrandAssets";
 
 describe("Phase 20D — Official Play & Debug Lab Split", () => {
   beforeEach(() => {
@@ -122,5 +123,79 @@ describe("Phase 20D — Official Play & Debug Lab Split", () => {
       root.unmount();
     });
     container.remove();
+  });
+
+  it("resolves brand assets containing 'brand/play/' and strictly avoiding '/debug/brand/' when pathname is /debug", async () => {
+    const originalPathname = window.location.pathname;
+    try {
+      window.history.pushState({}, "", "/debug");
+      expect(window.location.pathname).toBe("/debug");
+
+      // Verify asset helper and object access directly
+      const ceoIcon = resolvePlayBrandAsset("char-ceo.png");
+      expect(ceoIcon).toContain("brand/play/");
+      expect(ceoIcon).not.toContain("/debug/brand/");
+
+      const cardBack = PLAY_BRAND_ASSETS.cardBack;
+      expect(cardBack).toContain("brand/play/");
+      expect(cardBack).not.toContain("/debug/brand/");
+
+      const tableFelt = PLAY_BRAND_ASSETS.tableFelt;
+      expect(tableFelt).toContain("brand/play/");
+      expect(tableFelt).not.toContain("/debug/brand/");
+
+      // Render debug lab UI and assert all rendered brand images in DOM
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(
+          <StrictMode>
+            <LocaleProvider>
+              <LocalGamePage
+                createGame={deterministicFixtureFactory}
+                aiDelayMs={0}
+                isDebug={true}
+              />
+            </LocaleProvider>
+          </StrictMode>,
+        );
+      });
+
+      const characterImages = container.querySelectorAll("img[src*='char-']");
+      expect(characterImages.length).toBeGreaterThan(0);
+      for (const img of characterImages) {
+        const srcAttr = img.getAttribute("src") ?? "";
+        expect(srcAttr).toContain("brand/play/");
+        expect(srcAttr).not.toContain("/debug/brand/");
+        const resolvedSrc = (img as HTMLImageElement).src;
+        expect(resolvedSrc).toContain("brand/play/");
+        expect(resolvedSrc).not.toContain("/debug/brand/");
+      }
+
+      // Start game and assert card backs if present
+      const startButton = container.querySelector("button.start-game-button") as HTMLButtonElement;
+      await act(async () => {
+        startButton.click();
+      });
+
+      const cardBackImages = container.querySelectorAll(".card-back img.card-back__image");
+      for (const img of cardBackImages) {
+        const srcAttr = img.getAttribute("src") ?? "";
+        expect(srcAttr).toContain("brand/play/");
+        expect(srcAttr).not.toContain("/debug/brand/");
+        const resolvedSrc = (img as HTMLImageElement).src;
+        expect(resolvedSrc).toContain("brand/play/");
+        expect(resolvedSrc).not.toContain("/debug/brand/");
+      }
+
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    } finally {
+      window.history.pushState({}, "", originalPathname);
+    }
   });
 });

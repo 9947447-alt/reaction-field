@@ -430,7 +430,7 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   await page.getByRole("button", { name: "中文" }).click();
 });
 
-test("正式构建人机只显示对手牌背与张数，双人仍公开手牌", async ({
+test("正式构建人机只显示对手牌背与张数，双人仍公开手牌，且手牌支持点选抬起与取消", async ({
   page,
   externalRequests,
   networkFailures,
@@ -446,16 +446,53 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌",
   await expect(page.getByRole("heading", { name: "本地人机对局" })).toBeVisible();
   await expect(page.getByText("己方手牌；对手背面")).toBeVisible();
 
+  // 1. Opponent hand in default Solo vs AI (CEO opponent has 14 cards)
   const opponent = page.locator('[aria-labelledby="player_2-title"]');
   const opponentCountText = await opponent.locator(".hand-count-pill").textContent();
   const opponentCount = Number(opponentCountText?.match(/(\d+)/)?.[1]);
   expect(opponentCount).toBe(14);
-  await expect(opponent.locator(".card-back")).toHaveCount(opponentCount);
+  await expect(opponent.locator(".hand-row-count-badge")).toHaveText("共 14 张");
+  await expect(opponent.locator(".official-hand-row.is-backs")).toBeVisible();
+  await expect(opponent.locator(".card-back.official-card--back")).toHaveCount(opponentCount);
   await expect(opponent.locator(".card-back img.card-back__image")).toHaveCount(opponentCount);
   await expect(opponent.locator('.card-back img[src*="card-back.png"]')).toHaveCount(opponentCount);
+  await expect(opponent.locator('.card-back img.card-frame__overlay[src*="card-frame.png"]')).toHaveCount(opponentCount);
   await expect(opponent.locator(".card-face")).toHaveCount(0);
   await expect(opponent.locator(".debug-card__select")).toHaveCount(0);
+  await expect(opponent.locator("button")).toHaveCount(0);
 
+  // 2. Return to setup, start CEO vs Acid King to test own hand selection in mainAction
+  await page.getByRole("button", { name: "返回角色选择" }).click();
+  await page.getByRole("button", { name: "确认返回" }).click();
+  await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
+  await page.getByLabel("player_2 角色").selectOption("acid_king");
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
+
+  const own = page.locator('[aria-labelledby="player_1-title"]');
+  await expect(own.locator(".official-hand-row")).toBeVisible();
+  const ownCards = own.locator(".official-card.card-face");
+  const ownCardCount = await ownCards.count();
+  expect(ownCardCount).toBe(14);
+  await expect(own.locator('.official-card img.card-frame__overlay[src*="card-frame.png"]')).toHaveCount(ownCardCount);
+
+  // First card interactive selection
+  const firstCard = ownCards.first();
+  const firstButton = firstCard.locator("button.debug-card__select");
+  await expect(firstCard).not.toHaveClass(/is-selected/);
+  await expect(firstButton).toHaveAttribute("aria-pressed", "false");
+
+  // Tap to select (lift up)
+  await firstButton.click();
+  await expect(firstCard).toHaveClass(/is-selected/);
+  await expect(firstButton).toHaveAttribute("aria-pressed", "true");
+
+  // Tap again to cancel selection (lift down)
+  await firstButton.click();
+  await expect(firstCard).not.toHaveClass(/is-selected/);
+  await expect(firstButton).toHaveAttribute("aria-pressed", "false");
+
+  // 3. Two-player mode: reveals card faces and names for both sides
   await page.getByRole("button", { name: "返回角色选择" }).click();
   await page.getByRole("button", { name: "确认返回" }).click();
   await page.getByLabel("对局模式").selectOption("two_player");
@@ -463,10 +500,18 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌",
   await page.getByLabel("player_2 角色").selectOption("acid_king");
   await page.getByRole("button", { name: "开始游戏" }).click();
   await expect(page.getByRole("heading", { name: "本地双人公开对局" })).toBeVisible();
+
   const twoPlayerOpponent = page.locator('[aria-labelledby="player_2-title"]');
-  await expect(twoPlayerOpponent.locator(".card-face")).toHaveCount(10);
+  await expect(twoPlayerOpponent.locator(".official-card.card-face")).toHaveCount(10);
   await expect(twoPlayerOpponent.locator(".card-back")).toHaveCount(0);
   await expect(twoPlayerOpponent.locator(".debug-card__select")).toHaveCount(10);
+  await expect(twoPlayerOpponent.locator(".official-card__name").first()).toBeVisible();
+
+  const twoPlayerOwn = page.locator('[aria-labelledby="player_1-title"]');
+  await expect(twoPlayerOwn.locator(".official-card.card-face")).toHaveCount(14);
+  await expect(twoPlayerOwn.locator(".card-back")).toHaveCount(0);
+  await expect(twoPlayerOwn.locator(".debug-card__select")).toHaveCount(14);
+  await expect(twoPlayerOwn.locator(".official-card__name").first()).toBeVisible();
 });
 
 test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", async ({

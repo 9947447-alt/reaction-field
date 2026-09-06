@@ -76,6 +76,10 @@ function PlayingGame({
     setSelectedCardId(undefined);
   }, [session.revision]);
 
+  const handleSelectCard = useCallback((cardId: CardInstanceId | undefined) => {
+    setSelectedCardId((current) => (current === cardId ? undefined : cardId));
+  }, []);
+
   function dispatchGameAction(action: GameAction) {
     dispatch({ type: "DISPATCH_GAME_ACTION", action });
     setSelectedCardId(undefined);
@@ -103,7 +107,7 @@ function PlayingGame({
                 handSelectionDisabled={playGame.phase !== "mainAction"}
                 isDebug={isDebug}
                 key={player.id}
-                onSelectCard={setSelectedCardId}
+                onSelectCard={handleSelectCard}
                 player={player}
                 selectedCardId={selectedCardId}
                 showActivePlayerIndicator={playGame.phase !== "preparationSelection"}
@@ -139,7 +143,7 @@ function PlayingGame({
               <ActionPanel
                 dispatchGameAction={dispatchGameAction}
                 game={playGame}
-                onSelectCard={setSelectedCardId}
+                onSelectCard={handleSelectCard}
                 playerControllers={playerControllers}
                 selectedCardId={selectedCardId}
               />

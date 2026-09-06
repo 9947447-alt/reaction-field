@@ -962,19 +962,87 @@ dd {
   color: #8a4b05;
 }
 
-.hand-grid,
+.hand-row-header {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: -4px;
+  padding: 0 2px;
+}
+
+.hand-row-title {
+  color: #17212b;
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.hand-row-count-badge {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 8px;
+}
+
 .candidate-grid {
   display: grid;
   gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   min-width: 0;
 }
 
 .hand-grid {
+  display: grid;
+  gap: 8px;
   grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  min-width: 0;
 }
 
-.candidate-grid {
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+.player-panel .hand-grid,
+.official-hand-row {
+  align-items: flex-end;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 24px 6px 10px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.player-panel .hand-grid.is-backs,
+.official-hand-row.is-backs {
+  gap: 6px;
+}
+
+.player-panel .hand-grid::-webkit-scrollbar,
+.official-hand-row::-webkit-scrollbar {
+  height: 6px;
+}
+
+.player-panel .hand-grid::-webkit-scrollbar-track,
+.official-hand-row::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 3px;
+}
+
+.player-panel .hand-grid::-webkit-scrollbar-thumb,
+.official-hand-row::-webkit-scrollbar-thumb {
+  background: rgba(15, 127, 120, 0.35);
+  border-radius: 3px;
+}
+
+.player-panel .hand-grid::-webkit-scrollbar-thumb:hover,
+.official-hand-row::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 127, 120, 0.6);
 }
 
 .action-card-list {
@@ -1197,6 +1265,166 @@ dd {
   font-size: 0.72rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.official-card {
+  background: #f7fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 108px;
+  flex-direction: column;
+  height: 160px;
+  min-width: 108px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms ease, border-color 160ms ease;
+  user-select: none;
+  width: 108px;
+}
+
+.official-card .card-frame__overlay {
+  border-radius: inherit;
+  height: 100%;
+  inset: 0;
+  object-fit: fill;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 4;
+}
+
+.official-card__button {
+  align-items: stretch;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+  padding: 9px 8px 7px;
+  position: relative;
+  text-align: center;
+  width: 100%;
+  z-index: 1;
+}
+
+.official-card__button:focus-visible {
+  border-radius: inherit;
+  outline: 2px solid #0f7f78;
+  outline-offset: -2px;
+}
+
+.official-card__top {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+  min-width: 0;
+  z-index: 2;
+}
+
+.official-card__name-container {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  padding: 4px 2px;
+  text-align: center;
+  z-index: 2;
+}
+
+.official-card .card-face__name {
+  color: #0b1b2b;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.official-card__bottom {
+  text-align: center;
+  z-index: 2;
+}
+
+.official-card .card-face__line {
+  color: #64748b;
+  display: block;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.official-card:not(.is-disabled):hover {
+  border-color: #0f7f78;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+.official-card.is-selected {
+  border-color: #0f7f78 !important;
+  box-shadow: 0 12px 24px rgba(15, 127, 120, 0.35), 0 0 0 2.5px #0f7f78 !important;
+  transform: translateY(-16px) !important;
+  z-index: 10;
+}
+
+.official-card.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.official-card.is-disabled .official-card__button {
+  cursor: not-allowed;
+}
+
+.official-card--back {
+  align-items: center;
+  background: #0f2740;
+  border: 1px solid #1a3c5a;
+  cursor: default;
+  flex: 0 0 94px;
+  height: 140px;
+  justify-content: center;
+  min-width: 94px;
+  padding: 0;
+  width: 94px;
+}
+
+.official-card--back .card-back__image {
+  border-radius: inherit;
+  height: 100%;
+  inset: 0;
+  margin: 0;
+  max-width: none;
+  object-fit: cover;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
+.official-card--back .card-back__caption {
+  background: rgba(11, 27, 43, 0.85);
+  border-radius: 4px;
+  bottom: 8px;
+  color: #f7fafc;
+  font-size: 0.65rem;
+  font-weight: 700;
+  left: 50%;
+  padding: 1px 6px;
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 5;
 }
 
 .field-row {

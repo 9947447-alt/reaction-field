@@ -8,7 +8,7 @@ import type {
 import type { PlayerController } from "../localGameSession";
 import { CharacterSkillList } from "./CharacterSelectionPanel";
 import { formatSkillDebugText } from "../characterPresentation";
-import { CardDebugCard } from "./CardDebugCard";
+import { OfficialCard } from "./OfficialCard";
 import {
   getCharacterDisplayName,
   getPlayerControllerDisplayName,
@@ -154,7 +154,18 @@ export function PlayerPanel({
           </details>
         ) : null}
       </div>
-      <div className="hand-grid" aria-label={isEnglish ? `${getPlayerDisplayName(player, locale)}'s hand` : `${getPlayerDisplayName(player, locale)}的手牌`}>
+      <div className="hand-row-header">
+        <span className="hand-row-title">
+          {isEnglish ? "Hand cards" : "手牌"}
+        </span>
+        <span className="hand-row-count-badge">
+          {isEnglish ? `${player.hand.length} cards` : `共 ${player.hand.length} 张`}
+        </span>
+      </div>
+      <div
+        aria-label={isEnglish ? `${getPlayerDisplayName(player, locale)}'s hand` : `${getPlayerDisplayName(player, locale)}的手牌`}
+        className={`hand-grid official-hand-row${handReveal === "backs" ? " is-backs" : ""}`}
+      >
         {handReveal === "backs"
           ? player.hand.map((_, index) => (
               <article
@@ -163,7 +174,7 @@ export function PlayerPanel({
                     ? `Face-down card ${index + 1} of ${player.hand.length}`
                     : `牌背 ${index + 1}/${player.hand.length}`
                 }
-                className="debug-card card-back"
+                className="debug-card card-back official-card official-card--back"
                 key={`${player.id}-back-${index}`}
               >
                 <img
@@ -172,11 +183,17 @@ export function PlayerPanel({
                   className="card-back__image"
                   src={PLAY_BRAND_ASSETS.cardBack}
                 />
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="card-frame__overlay"
+                  src={PLAY_BRAND_ASSETS.cardFrame}
+                />
                 <span className="card-back__caption">{isEnglish ? "Face down" : "牌背"}</span>
               </article>
             ))
           : player.hand.map((cardInstanceId) => (
-              <CardDebugCard
+              <OfficialCard
                 cardInstanceId={cardInstanceId}
                 disabled={effectiveHandDisabled}
                 game={game}

@@ -1,3 +1,4 @@
+import type { GameAction } from "../../../game/engine/actions";
 import type { CardInstanceId, GameState } from "../../../game/engine/types";
 
 export const TUTORIAL_SEED = 20260906;
@@ -160,4 +161,26 @@ export function deriveTutorialStep(
   }
 
   return "COMPLETED";
+}
+
+export function isAllowedTutorialGameAction(
+  action: GameAction,
+  stepKey: TutorialStepKey,
+): boolean {
+  switch (stepKey) {
+    case "PREPARATION":
+      return action.type === "CONFIRM_LABORATORY_PREPARATION";
+    case "PLAY_REFERENCE_CARD":
+      return (
+        action.type === "PLAY_REFERENCE_CARD" &&
+        action.cardInstanceId === TUTORIAL_TARGET_PLAY_CARD_ID
+      );
+    case "RESPOND_WITH_CARD":
+      return (
+        action.type === "RESPOND_WITH_CARD" &&
+        action.cardInstanceId === TUTORIAL_TARGET_RESPONSE_CARD_ID
+      );
+    default:
+      return false;
+  }
 }

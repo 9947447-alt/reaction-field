@@ -5,6 +5,12 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { LocalGamePage } from "./LocalGamePage";
 import { LocaleProvider } from "../../app/locale";
+import {
+  isAllowedTutorialGameAction,
+  TUTORIAL_TARGET_PLAY_CARD_ID,
+  TUTORIAL_TARGET_RESPONSE_CARD_ID,
+} from "./tutorial/tutorialScript";
+import type { GameAction } from "../../game/engine/actions";
 
 describe("Phase 20-Tut — Interactive Tutorial Integration", () => {
   it("renders Start tutorial button on configuration, enters seeded tutorial, guards clicks, progresses via engine, and completes acid-base neutralization", async () => {
@@ -71,6 +77,36 @@ describe("Phase 20-Tut — Interactive Tutorial Integration", () => {
       });
       expect(nonHighlightedCards?.[0].classList.contains("is-selected")).toBe(false);
       // Step still in step 2
+      expect(container.querySelector(".coach-banner")?.textContent).toContain("看手牌与选牌");
+
+      // Guard test: clicking DIY buttons or skill buttons in Step 2 -> phase and log remain unchanged!
+      const logBeforeGuardedAttempts = container.querySelector(".game-log")?.textContent;
+      const logItemsCountBefore = container.querySelectorAll(".game-log ol li").length;
+
+      const diyButtons = container.querySelectorAll(".diy-panel button");
+      for (const btn of diyButtons) {
+        await act(async () => {
+          (btn as HTMLButtonElement).click();
+        });
+      }
+
+      const skillButtons = container.querySelectorAll(".character-active-skill button");
+      for (const btn of skillButtons) {
+        await act(async () => {
+          (btn as HTMLButtonElement).click();
+        });
+      }
+
+      const passButton = container.querySelector(".action-panel button.secondary-button:not(.coach-highlight)") as HTMLButtonElement;
+      if (passButton) {
+        await act(async () => {
+          passButton.click();
+        });
+      }
+
+      expect(container.querySelector("h2#main-action-title")?.textContent).toBe("主行动");
+      expect(container.querySelector(".game-log")?.textContent).toBe(logBeforeGuardedAttempts);
+      expect(container.querySelectorAll(".game-log ol li").length).toBe(logItemsCountBefore);
       expect(container.querySelector(".coach-banner")?.textContent).toContain("看手牌与选牌");
 
       // Click the highlighted card (dilute NaOH)
@@ -241,5 +277,124 @@ describe("Phase 20-Tut — Interactive Tutorial Integration", () => {
       });
       container.remove();
     }
+  });
+
+  it("strictly enforces action whitelist per step: swallows unallowed DIY, skill, pass, and card actions", () => {
+    // 1. PREPARATION step: ONLY CONFIRM_LABORATORY_PREPARATION allowed
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "CONFIRM_LABORATORY_PREPARATION", playerId: "player_1", keptCardInstanceIds: [] },
+        "PREPARATION",
+      ),
+    ).toBe(true);
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "PASS_ACTION", playerId: "player_1" },
+        "PREPARATION",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "ACTIVATE_CHARACTER_SKILL", playerId: "player_1", skillId: "extra_lesson" },
+        "PREPARATION",
+      ),
+    ).toBe(false);
+
+    // 2. PLAY_REFERENCE_CARD step: ONLY dilute NaOH PLAY_REFERENCE_CARD allowed
+    expect(
+      isAllowedTutorialGameAction(
+        {
+          type: "PLAY_REFERENCE_CARD",
+          playerId: "player_1",
+          cardInstanceId: TUTORIAL_TARGET_PLAY_CARD_ID,
+        },
+        "PLAY_REFERENCE_CARD",
+      ),
+    ).toBe(true);
+    expect(
+      isAllowedTutorialGameAction(
+        {
+          type: "PLAY_REFERENCE_CARD",
+          playerId: "player_1",
+          cardInstanceId: "substance_other_card",
+        },
+        "PLAY_REFERENCE_CARD",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedTutorialGameAction(
+        {
+          type: "START_ACTIVE_DIY",
+          playerId: "player_1",
+          recipeId: "neutralization_basic",
+          componentCardInstanceIds: [],
+        },
+        "PLAY_REFERENCE_CARD",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "ACTIVATE_CHARACTER_SKILL", playerId: "player_1", skillId: "extra_lesson" },
+        "PLAY_REFERENCE_CARD",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "PASS_ACTION", playerId: "player_1" },
+        "PLAY_REFERENCE_CARD",
+      ),
+    ).toBe(false);
+
+    // 3. RESPOND_WITH_CARD step: ONLY dilute KOH RESPOND_WITH_CARD allowed
+    expect(
+      isAllowedTutorialGameAction(
+        {
+          type: "RESPOND_WITH_CARD",
+          playerId: "player_1",
+          cardInstanceId: TUTORIAL_TARGET_RESPONSE_CARD_ID,
+        },
+        "RESPOND_WITH_CARD",
+      ),
+    ).toBe(true);
+    expect(
+      isAllowedTutorialGameAction(
+        {
+          type: "RESPOND_WITH_CARD",
+          playerId: "player_1",
+          cardInstanceId: "substance_other_card",
+        },
+        "RESPOND_WITH_CARD",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "PASS_RESPONSE", playerId: "player_1" },
+        "RESPOND_WITH_CARD",
+      ),
+    ).toBe(false);
+
+    // 4. Other steps: All actions disallowed
+    expect(
+      isAllowedTutorialGameAction(
+        {
+          type: "PLAY_REFERENCE_CARD",
+          playerId: "player_1",
+          cardInstanceId: TUTORIAL_TARGET_PLAY_CARD_ID,
+        },
+        "SELECT_HAND_CARD",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "PASS_ACTION", playerId: "player_1" },
+        "AWAIT_AI_ATTACK",
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedTutorialGameAction(
+        { type: "PASS_ACTION", playerId: "player_1" },
+        "COMPLETED",
+      ),
+    ).toBe(false);
   });
 });

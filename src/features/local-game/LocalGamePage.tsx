@@ -46,6 +46,7 @@ import {
   TUTORIAL_TARGET_PLAY_CARD_ID,
   TUTORIAL_TARGET_RESPONSE_CARD_ID,
   deriveTutorialStep,
+  isAllowedTutorialGameAction,
 } from "./tutorial/tutorialScript";
 import { requiresSessionExitConfirmation } from "./sessionConfirmation";
 
@@ -92,12 +93,17 @@ function PlayingGame({
     setSelectedCardId((current) => (current === cardId ? undefined : cardId));
   }, []);
 
+  const tutorialStep = isTutorial ? deriveTutorialStep(playGame, selectedCardId) : undefined;
+
   function dispatchGameAction(action: GameAction) {
+    if (isTutorial) {
+      if (!tutorialStep || !isAllowedTutorialGameAction(action, tutorialStep)) {
+        return;
+      }
+    }
     dispatch({ type: "DISPATCH_GAME_ACTION", action });
     setSelectedCardId(undefined);
   }
-
-  const tutorialStep = isTutorial ? deriveTutorialStep(playGame, selectedCardId) : undefined;
   const highlightedCardId =
     isTutorial && tutorialStep === "SELECT_HAND_CARD"
       ? TUTORIAL_TARGET_PLAY_CARD_ID

@@ -15,6 +15,7 @@ import {
   getPlayerDisplayName,
   getStatusDisplayName,
 } from "../presentationLocale";
+import { PLAY_BRAND_ASSETS, getCharacterPlayIcon } from "../playBrandAssets";
 
 type PlayerPanelProps = {
   game: GameState;
@@ -25,6 +26,7 @@ type PlayerPanelProps = {
   handReveal?: "contents" | "backs";
   handSelectionDisabled?: boolean;
   showActivePlayerIndicator?: boolean;
+  isDebug?: boolean;
 };
 
 export function PlayerPanel({
@@ -36,6 +38,7 @@ export function PlayerPanel({
   handReveal = "contents",
   handSelectionDisabled = false,
   showActivePlayerIndicator = true,
+  isDebug = true,
 }: PlayerPanelProps) {
   const character = getCharacterDefinition(player.characterId);
   const { locale } = useLocale();
@@ -53,11 +56,21 @@ export function PlayerPanel({
     <section className="debug-section player-panel" aria-labelledby={`${player.id}-title`}>
       <div className="player-panel__header">
         <div className="player-panel__identity">
-          <h2 id={`${player.id}-title`}>{getPlayerDisplayName(player, locale)}</h2>
-          <p>
-            {getCharacterDisplayName(character.id, locale)}
-            {controller ? ` · ${getPlayerControllerDisplayName(controller, locale)}` : ""}
-          </p>
+          <img
+            alt=""
+            aria-hidden="true"
+            className="player-panel__avatar"
+            height="40"
+            src={getCharacterPlayIcon(character.id)}
+            width="40"
+          />
+          <div>
+            <h2 id={`${player.id}-title`}>{getPlayerDisplayName(player, locale)}</h2>
+            <p>
+              {getCharacterDisplayName(character.id, locale)}
+              {controller ? ` · ${getPlayerControllerDisplayName(controller, locale)}` : ""}
+            </p>
+          </div>
         </div>
         <div className="player-panel__badges">
           {showActivePlayerIndicator && game.activePlayerId === player.id ? (
@@ -120,22 +133,26 @@ export function PlayerPanel({
         ))}
       </dl>
       <p className="status-line">{isEnglish ? "Current status" : "当前状态"}：{player.statuses.length > 0 ? (isEnglish ? "Pending status" : "有待处理状态") : (isEnglish ? "Normal" : "正常")}</p>
-      <details className="debug-details">
-        <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-        <p>{player.id} · {statusText}</p>
-      </details>
+      {isDebug ? (
+        <details className="debug-details">
+          <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+          <p>{player.id} · {statusText}</p>
+        </details>
+      ) : null}
       <div className="character-readout">
         <div className="character-readout__heading">
           <h3>{isEnglish ? "Character skills" : "角色技能"}</h3>
           <span>{getCharacterDisplayName(character.id, locale)}</span>
         </div>
         <CharacterSkillList character={character} locale={locale} />
-        <details className="debug-details">
-          <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-          {character.skills.map((skill) => (
-            <p key={skill.id}>{formatSkillDebugText(skill, locale)}</p>
-          ))}
-        </details>
+        {isDebug ? (
+          <details className="debug-details">
+            <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+            {character.skills.map((skill) => (
+              <p key={skill.id}>{formatSkillDebugText(skill, locale)}</p>
+            ))}
+          </details>
+        ) : null}
       </div>
       <div className="hand-grid" aria-label={isEnglish ? `${getPlayerDisplayName(player, locale)}'s hand` : `${getPlayerDisplayName(player, locale)}的手牌`}>
         {handReveal === "backs"
@@ -149,7 +166,12 @@ export function PlayerPanel({
                 className="debug-card card-back"
                 key={`${player.id}-back-${index}`}
               >
-                <span aria-hidden="true" className="card-back__mark">RF</span>
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="card-back__image"
+                  src={PLAY_BRAND_ASSETS.cardBack}
+                />
                 <span className="card-back__caption">{isEnglish ? "Face down" : "牌背"}</span>
               </article>
             ))
@@ -158,6 +180,7 @@ export function PlayerPanel({
                 cardInstanceId={cardInstanceId}
                 disabled={effectiveHandDisabled}
                 game={game}
+                isDebug={isDebug}
                 key={cardInstanceId}
                 onSelect={effectiveHandDisabled ? undefined : onSelectCard}
                 selected={!effectiveHandDisabled && selectedCardId === cardInstanceId}

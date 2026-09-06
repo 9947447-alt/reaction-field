@@ -3,6 +3,7 @@ import { useLocale } from "../../../app/locale";
 import { formatList, getCardDefinition } from "../localGameView";
 import type { GameState } from "../../../game/engine/types";
 import { getCardDisplayName } from "../presentationLocale";
+import { PLAY_BRAND_ASSETS } from "../playBrandAssets";
 
 type CardDebugCardProps = {
   cardInstanceId: CardInstanceId;
@@ -10,6 +11,7 @@ type CardDebugCardProps = {
   selected?: boolean;
   disabled?: boolean;
   onSelect?: (cardInstanceId: CardInstanceId) => void;
+  isDebug?: boolean;
 };
 
 export function CardDebugCard({
@@ -18,6 +20,7 @@ export function CardDebugCard({
   selected = false,
   disabled = false,
   onSelect,
+  isDebug = true,
 }: CardDebugCardProps) {
   const definition = getCardDefinition(game, cardInstanceId);
   const { locale } = useLocale();
@@ -26,6 +29,12 @@ export function CardDebugCard({
   if (!definition) {
     return (
       <article className="debug-card card-back is-missing">
+        <img
+          alt=""
+          aria-hidden="true"
+          className="card-back__image"
+          src={PLAY_BRAND_ASSETS.cardBack}
+        />
         <span className="card-back__caption">{isEnglish ? "Face down" : "牌背"}</span>
       </article>
     );
@@ -63,12 +72,14 @@ export function CardDebugCard({
           {isEnglish ? "Selectable in this game" : "可在当前对局中选择"}
         </span>
       </button>
-      <details className="debug-details debug-card__details">
-        <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-        <span className="debug-card__meta">
-          {cardInstanceId} · {formatList(definition.tags)} · {formatList(definition.allowedTimings)}
-        </span>
-      </details>
+      {isDebug ? (
+        <details className="debug-details debug-card__details">
+          <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+          <span className="debug-card__meta">
+            {cardInstanceId} · {formatList(definition.tags)} · {formatList(definition.allowedTimings)}
+          </span>
+        </details>
+      ) : null}
     </article>
   );
 }

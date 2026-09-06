@@ -285,6 +285,31 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.character-select-card {
+  align-items: center;
+  background: #f7f9fb;
+  border: 1px solid #e1e7ec;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+}
+
+.character-select-card .character-select-field {
+  background: transparent;
+  border: none;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.character-select-field__avatar {
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
 .character-select-field,
 .character-controller-field,
 .game-mode-field {
@@ -303,6 +328,18 @@
   flex-wrap: wrap;
   gap: 8px 14px;
   padding: 12px;
+}
+
+.lineup-summary__item {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.lineup-summary__avatar {
+  border-radius: 4px;
+  flex-shrink: 0;
+  object-fit: cover;
 }
 
 .lineup-summary strong,
@@ -592,6 +629,19 @@ dd {
 .player-panel {
   display: grid;
   gap: 12px;
+}
+
+.player-panel__identity {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.player-panel__avatar {
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+  object-fit: cover;
 }
 
 .player-panel__identity h2 {
@@ -1064,6 +1114,16 @@ dd {
   color: #d5e2ea;
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.card-back__image {
+  border-radius: 4px;
+  display: block;
+  height: 48px;
+  margin: 0 auto 4px;
+  max-width: 100%;
+  object-fit: contain;
+  width: 36px;
 }
 
 .card-face__badge-row {

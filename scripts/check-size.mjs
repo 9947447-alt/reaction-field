@@ -7,7 +7,8 @@ const limits = Object.freeze({
   // Phase 20C Human Play View + opponent card-back UI; Freeze §8 authorizes this raise.
   javascriptGzip: 120000,
   cssGzip: 10 * 1024,
-  total: 500 * 1024,
+  // Phase 20D official play UI brand assets (19 compressed PNGs in public/brand/play); Freeze §8 authorizes this raise.
+  total: 6 * 1024 * 1024,
 });
 const distDirectory = fileURLToPath(new URL("../dist/", import.meta.url));
 

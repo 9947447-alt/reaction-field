@@ -14,6 +14,7 @@ type GameSummaryProps = {
   error?: string;
   onRestart: (trigger: HTMLButtonElement) => void;
   onReturnToCharacterSelection: (trigger: HTMLButtonElement) => void;
+  isDebug?: boolean;
 };
 
 export function GameSummary({
@@ -22,6 +23,7 @@ export function GameSummary({
   error,
   onRestart,
   onReturnToCharacterSelection,
+  isDebug = true,
 }: GameSummaryProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
@@ -77,10 +79,12 @@ export function GameSummary({
         ))}
       </dl>
 
-      <details className="debug-details">
-        <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-        <p>{game.phase} · {getTotalCardCount(game)} cards · {describeTableReference(game)}</p>
-      </details>
+      {isDebug ? (
+        <details className="debug-details">
+          <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+          <p>{game.phase} · {getTotalCardCount(game)} cards · {describeTableReference(game)}</p>
+        </details>
+      ) : null}
 
       <div className="summary-actions">
         {error ? <p className="error-banner">{error}</p> : <p className="quiet-banner">{isEnglish ? "Awaiting action" : "等待操作"}</p>}

@@ -52,6 +52,7 @@ type PlayingGameProps = Readonly<{
     kind: SessionConfirmationKind,
     trigger: HTMLButtonElement,
   ) => void;
+  isDebug?: boolean;
 }>;
 
 function PlayingGame({
@@ -62,6 +63,7 @@ function PlayingGame({
   onGuidanceVisibleChange,
   onGuidanceCollapsedChange,
   onRequestSessionExit,
+  isDebug = true,
 }: PlayingGameProps) {
   const { game, error, playerControllers } = session;
   const { locale } = useLocale();
@@ -84,6 +86,7 @@ function PlayingGame({
       <GameSummary
         error={error ?? undefined}
         game={playGame}
+        isDebug={isDebug}
         playerControllers={playerControllers}
         onRestart={(trigger) => onRequestSessionExit("restart", trigger)}
         onReturnToCharacterSelection={(trigger) => onRequestSessionExit("return", trigger)}
@@ -98,6 +101,7 @@ function PlayingGame({
                 game={playGame}
                 handReveal={viewerPlayerId !== undefined && player.id !== viewerPlayerId ? "backs" : "contents"}
                 handSelectionDisabled={playGame.phase !== "mainAction"}
+                isDebug={isDebug}
                 key={player.id}
                 onSelectCard={setSelectedCardId}
                 player={player}
@@ -107,7 +111,7 @@ function PlayingGame({
             ))}
           </div>
           <TableReferenceBoard game={playGame} />
-          <GameLog game={playGame} />
+          <GameLog game={playGame} isDebug={isDebug} />
         </div>
         <aside className="debug-sidebar play-sidebar" aria-label={isEnglish ? "Action panels" : "操作面板"}>
           <NewPlayerGuidance
@@ -183,6 +187,7 @@ export type LocalGamePageProps = Readonly<{
   policy?: NATBAPolicy;
   aiDelayMs?: number;
   random?: RandomSource;
+  isDebug?: boolean;
 }>;
 
 export function LocalGamePage({
@@ -192,6 +197,7 @@ export function LocalGamePage({
   policy,
   aiDelayMs,
   random,
+  isDebug = true,
 }: LocalGamePageProps = {}) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
@@ -303,6 +309,7 @@ export function LocalGamePage({
             dispatch={dispatch}
             guidanceCollapsed={guidanceCollapsed}
             guidanceVisible={guidanceVisible}
+            isDebug={isDebug}
             onGuidanceCollapsedChange={setGuidanceCollapsed}
             onGuidanceVisibleChange={setGuidanceVisible}
             session={session}
@@ -312,6 +319,7 @@ export function LocalGamePage({
             dispatch={dispatch}
             guidanceCollapsed={guidanceCollapsed}
             guidanceVisible={guidanceVisible}
+            isDebug={isDebug}
             onGuidanceCollapsedChange={setGuidanceCollapsed}
             onGuidanceVisibleChange={setGuidanceVisible}
             onRequestSessionExit={requestSessionExit}
@@ -323,7 +331,7 @@ export function LocalGamePage({
       </div>
 
       {aboutOpen ? (
-        <AboutDialog onClose={closeAbout} />
+        <AboutDialog isDebug={isDebug} onClose={closeAbout} />
       ) : confirmation ? (
         <ConfirmationDialog
           kind={confirmation.kind}

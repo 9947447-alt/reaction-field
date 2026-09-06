@@ -75,6 +75,7 @@ if (!rootElement) {
               <App
                 createGame={deterministicFixtureFactory}
                 createSession={getFixtureInitializer(readFixtureScenario())}
+                isDebug={true}
               />
             </>
           )}

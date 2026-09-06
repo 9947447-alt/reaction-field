@@ -25,7 +25,7 @@ const test = base.extend<{ runtimeErrors: string[] }>({
 test.use({ locale: "zh-CN" });
 
 async function startNoTeacherGame(page: Page) {
-  await page.goto("/");
+  await page.goto("/debug");
   await page.getByLabel("对局模式").selectOption("two_player");
   await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
   await page.getByLabel("player_2 角色").selectOption("acid_king");
@@ -189,7 +189,7 @@ test.describe("English browser preference", () => {
 
   test("Alpha 4 suggests English from an English browser preference", async ({ page, runtimeErrors }) => {
     void runtimeErrors;
-    await page.goto("/");
+    await page.goto("/debug");
 
     expect(await page.evaluate(() => ({
       language: navigator.language,
@@ -211,7 +211,7 @@ test("Alpha 4 English display covers setup, all public phases, dialogs, and fata
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
   };
 
-  await switchToEnglish("/");
+  await switchToEnglish("/debug");
   await expect(page.getByRole("heading", { name: "REACTION FIELD · Solo vs AI character selection" })).toBeVisible();
   await expect(page.getByText(
     "Current goal: Confirm the local shared-screen two-player lineup before starting this public game.",
@@ -283,7 +283,7 @@ test("Alpha 4 English display covers setup, all public phases, dialogs, and fata
 
 test("默认配置、正式元数据与 configuring 帮助界面", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/");
+  await page.goto("/debug");
 
   await expect(page.getByRole("heading", {
     name: "反应域 · 本地人机角色选择",
@@ -312,7 +312,7 @@ test("默认配置、正式元数据与 configuring 帮助界面", async ({ page
 
 test("人机私密视角只显示对手牌背与张数，双人仍公开手牌", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/");
+  await page.goto("/debug");
   await expect(page.getByText("选择角色与模式后开始；只显示自己的手牌，对手为牌背。")).toBeVisible();
   await page.getByRole("button", { name: "开始游戏" }).click();
   await expect(page.getByRole("heading", { name: "本地人机对局" })).toBeVisible();
@@ -341,7 +341,7 @@ test("人机私密视角只显示对手牌背与张数，双人仍公开手牌",
 
 test("新手引导覆盖真实流程和 fixture 窗口，并保持可键盘恢复", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/");
+  await page.goto("/debug");
   await expect(page.getByText(
     "当前目标：确认本地同屏双人阵容后，再开始本局公开对局。",
     { exact: true },
@@ -513,7 +513,7 @@ test("新手引导覆盖真实流程和 fixture 窗口，并保持可键盘恢�
     Number(factoryCountBeforeGuidanceInteractions),
   );
 
-  await page.goto("/?scenario=response-window");
+  await page.goto("/debug?scenario=response-window");
   await expectGuidanceCopy(
     page,
     "新手引导：响应",
@@ -521,7 +521,7 @@ test("新手引导覆盖真实流程和 fixture 窗口，并保持可键盘恢�
     "使用下方“响应窗口”内显示的选项，或“放弃响应”。",
     "响应 DIY 在 MVP0-P10 中关闭；引导不判断任何具体卡牌是否合法。",
   );
-  await page.goto("/?scenario=status-window");
+  await page.goto("/debug?scenario=status-window");
   await expectGuidanceCopy(
     page,
     "新手引导：状态处理",
@@ -529,7 +529,7 @@ test("新手引导覆盖真实流程和 fixture 窗口，并保持可键盘恢�
     "使用下方“状态处理窗口”内显示的选项，或“放弃处理”。",
     "可用处理牌由现有状态面板决定；引导不创建或判断处理选项。",
   );
-  await page.goto("/?scenario=experiment-counterattack-window");
+  await page.goto("/debug?scenario=experiment-counterattack-window");
   await expectGuidanceCopy(
     page,
     "新手引导：实验反击",
@@ -539,7 +539,7 @@ test("新手引导覆盖真实流程和 fixture 窗口，并保持可键盘恢�
   );
   await expect(page.locator('section[aria-labelledby="player_2-title"]').getByText("7 / 8", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "选择回复", exact: true })).toBeEnabled();
-  await page.goto("/?scenario=game-over");
+  await page.goto("/debug?scenario=game-over");
   await expectGuidanceCopy(
     page,
     "新手引导：对局结束",
@@ -551,7 +551,7 @@ test("新手引导覆盖真实流程和 fixture 窗口，并保持可键盘恢�
 
 test("默认老师/CEO、双老师备课与无老师 mainAction", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/");
+  await page.goto("/debug");
   await page.getByRole("button", { name: "开始游戏" }).click();
   await expect(page.getByRole("heading", { name: "实验室老师 · 备课" })).toBeVisible();
 
@@ -635,7 +635,7 @@ test("playing 重开和返回配置的确认、焦点、Escape 与原子取消",
 
 test("gameOver 后重开和返回角色选择均无需确认，帮助仍可访问", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/?scenario=game-over");
+  await page.goto("/debug?scenario=game-over");
   await expectFactoryCount(page, 1);
   await expect(page.getByRole("heading", { name: "本地双人公开对局" })).toBeVisible();
   const gameOverRepository = page.getByRole("link", { name: "在新标签页打开反应域 GitHub 仓库" });
@@ -662,7 +662,7 @@ test("gameOver 后重开和返回角色选择均无需确认，帮助仍可访�
   await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
   await expectFactoryCount(page, 2);
 
-  await page.goto("/?scenario=game-over");
+  await page.goto("/debug?scenario=game-over");
   await page.getByRole("button", { name: "返回角色选择" }).click();
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
   await expect(page.getByRole("heading", {
@@ -672,7 +672,7 @@ test("gameOver 后重开和返回角色选择均无需确认，帮助仍可访�
 
 test("fatal 会话只允许全新恢复或返回配置", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/?scenario=fatal");
+  await page.goto("/debug?scenario=fatal");
   await expect(page.getByRole("heading", { name: "当前对局已安全停止" })).toBeVisible();
   await expect(page.getByText("GAME_ACTION_FAILED", { exact: true })).toBeVisible();
   await expect(page.getByText("旧对局状态已从本地会话中移除", {
@@ -683,7 +683,7 @@ test("fatal 会话只允许全新恢复或返回配置", async ({ page, runtimeE
   await page.getByRole("button", { name: "按原阵容创建全新对局" }).click();
   await expect(page.getByRole("heading", { name: "实验室老师 · 备课" })).toBeVisible();
 
-  await page.goto("/?scenario=fatal");
+  await page.goto("/debug?scenario=fatal");
   await page.getByRole("button", { name: "返回角色选择" }).click();
   await expect(page.getByRole("heading", {
     name: "反应域 · 本地人机角色选择",
@@ -692,7 +692,7 @@ test("fatal 会话只允许全新恢复或返回配置", async ({ page, runtimeE
 
 test("React ErrorBoundary 显示脱敏兜底且提供重新加载", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/?scenario=render-error");
+  await page.goto("/debug?scenario=render-error");
   await expect(page.getByRole("heading", {
     name: "页面遇到无法继续处理的错误",
   })).toBeVisible();
@@ -703,23 +703,23 @@ test("React ErrorBoundary 显示脱敏兜底且提供重新加载", async ({ pag
 
 test("成功反应公开摘要不泄漏内部状态标识，调试详情保留结构化诊断", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/?scenario=reaction-h2o");
+  await page.goto("/debug?scenario=reaction-h2o");
   await expect(page.locator(".successful-reaction-notice")).toHaveCount(0);
   await expect(page.locator(".game-log__reaction")).toContainText("成功反应 · 酸碱中和");
   await expect(page.locator(".game-log__reaction")).toContainText("伤害已完全抵消；生成虚拟结果 H2O");
 
-  await page.goto("/?scenario=reaction-co2");
+  await page.goto("/debug?scenario=reaction-co2");
   await expect(page.locator(".successful-reaction-notice")).toHaveCount(0);
   await expect(page.locator(".game-log__reaction")).toContainText("成功反应 · 酸与碳酸盐");
   await expect(page.locator(".game-log__reaction")).toContainText("伤害已完全抵消；生成虚拟结果 CO2");
 
-  await page.goto("/?scenario=reaction-so2-immediate");
+  await page.goto("/debug?scenario=reaction-so2-immediate");
   await expect(page.locator(".successful-reaction-notice")).toHaveCount(0);
   await expect(page.locator(".game-log__reaction")).toContainText("成功反应 · SO2 碱性吸收");
   await expect(page.getByText("入口：即时多目标响应")).toBeVisible();
   await expect(page.getByText("结果：伤害已完全抵消")).toBeVisible();
 
-  await page.goto("/?scenario=reaction-so2-status");
+  await page.goto("/debug?scenario=reaction-so2-status");
   await expect(page.locator(".successful-reaction-notice")).toHaveCount(0);
   const reaction = page.locator(".game-log__reaction");
   await expect(reaction).toContainText("成功反应 · SO2 碱性吸收");
@@ -732,7 +732,7 @@ test("成功反应公开摘要不泄漏内部状态标识，调试详情保留�
   await details.locator("summary").click();
   await expect(details).toContainText("status_phase11_fixture_so2");
 
-  await page.goto("/?scenario=response-window");
+  await page.goto("/debug?scenario=response-window");
   await expect(page.locator(".successful-reaction-notice")).toHaveCount(0);
   await page.locator(".response-panel").getByRole("button", {
     name: "稀 NaOH 可在当前对局中选择",
@@ -749,7 +749,7 @@ test("成功反应公开摘要不泄漏内部状态标识，调试详情保留�
   await expect(page.locator(".game-log__reaction")).toContainText("成功反应 · 酸碱中和");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/?scenario=response-window");
+  await page.goto("/debug?scenario=response-window");
   await page.locator(".response-panel").getByRole("button", {
     name: "稀 NaOH 可在当前对局中选择",
   }).click();
@@ -759,7 +759,7 @@ test("成功反应公开摘要不泄漏内部状态标识，调试详情保留�
 
 test("真实 reducer 长日志可滚动且页面无水平溢出", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
-  await page.goto("/?scenario=long-log");
+  await page.goto("/debug?scenario=long-log");
   await expectFactoryCount(page, 1);
   const logEntries = page.locator(".game-log li");
   expect(await logEntries.count()).toBeGreaterThanOrEqual(100);
@@ -777,7 +777,7 @@ test("真实 reducer 长日志可滚动且页面无水平溢出", async ({ page,
 test("390×844 覆盖 configuring、playing、reaction、About、fatal 与 gameOver", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/debug");
   await expectNoHorizontalOverflow(page);
   await expect(page.getByRole("heading", { name: "新手引导：配置" })).toBeVisible();
   await expect(page.getByText("备课", { exact: true }).first()).toBeVisible();
@@ -792,16 +792,16 @@ test("390×844 覆盖 configuring、playing、reaction、About、fatal 与 gameO
   await expectNoHorizontalOverflow(page);
   await page.getByRole("button", { name: "关闭帮助" }).click();
 
-  await page.goto("/?scenario=reaction-so2-status");
+  await page.goto("/debug?scenario=reaction-so2-status");
   await expectNoHorizontalOverflow(page);
   await page.getByRole("button", { name: "关于与帮助" }).click();
   await expectNoHorizontalOverflow(page);
   await page.getByRole("button", { name: "关闭帮助" }).click();
 
-  await page.goto("/?scenario=fatal");
+  await page.goto("/debug?scenario=fatal");
   await expectNoHorizontalOverflow(page);
 
-  await page.goto("/?scenario=game-over");
+  await page.goto("/debug?scenario=game-over");
   await expectNoHorizontalOverflow(page);
   await expectGuidanceCopy(
     page,

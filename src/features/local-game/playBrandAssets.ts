@@ -2,16 +2,16 @@ import type { CharacterId } from "../../game/engine/types";
 
 /**
  * Resolves a brand asset path under public/brand/play using import.meta.env.BASE_URL.
- * When base is relative ("./") and the page is on a sub-route such as /debug or /playtest/debug,
- * it adjusts the path relative to the app root so assets do not resolve to /debug/brand/play/... (404).
+ * The resolved path is guaranteed to be absolute-rooted (${BASE_URL}brand/play/<file>),
+ * strictly forbidding relative "./brand/play/" which causes sub-route 404 resolution.
+ * When on sub-routes such as /debug or /playtest/debug, it resolves relative to the app root.
  */
 export function resolvePlayBrandAsset(fileName: string): string {
-  const rawBase = import.meta.env.BASE_URL ?? "./";
   const cleanFileName = fileName.replace(/^\.?\/+/u, "").replace(/^brand\/play\/+/u, "");
-
-  if (rawBase && rawBase !== "./") {
-    const prefix = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
-    return `${prefix}brand/play/${cleanFileName}`;
+  const envBase = import.meta.env.BASE_URL;
+  let base = envBase && envBase !== "./" ? envBase : "/";
+  if (!base.endsWith("/")) {
+    base = `${base}/`;
   }
 
   if (typeof window !== "undefined" && window.location?.pathname) {
@@ -21,10 +21,12 @@ export function resolvePlayBrandAsset(fileName: string): string {
       const prefix = rootPath.endsWith("/") ? rootPath : `${rootPath}/`;
       return `${prefix}brand/play/${cleanFileName}`.replace(/\/+/gu, "/");
     }
+    if (pathname.startsWith("/playtest")) {
+      return `/playtest/brand/play/${cleanFileName}`.replace(/\/+/gu, "/");
+    }
   }
 
-  const prefix = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
-  return `${prefix}brand/play/${cleanFileName}`;
+  return `${base}brand/play/${cleanFileName}`.replace(/\/+/gu, "/");
 }
 
 export const PLAY_BRAND_ASSETS = Object.freeze({

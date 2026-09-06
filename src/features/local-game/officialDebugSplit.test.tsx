@@ -125,6 +125,30 @@ describe("Phase 20D — Official Play & Debug Lab Split", () => {
     container.remove();
   });
 
+  const acceptancePathnameCases = [
+    { pathname: "/", expected: "/brand/play/card-back.png" },
+    { pathname: "/debug", expected: "/brand/play/card-back.png" },
+    { pathname: "/playtest/debug", expected: "/playtest/brand/play/card-back.png" },
+    { pathname: "/Chemistry-online-Card-Game/", expected: "/Chemistry-online-Card-Game/brand/play/card-back.png" },
+    { pathname: "/Chemistry-online-Card-Game/debug", expected: "/Chemistry-online-Card-Game/brand/play/card-back.png" },
+  ] as const;
+
+  for (const { pathname, expected } of acceptancePathnameCases) {
+    it(`resolves resolvePlayBrandAsset('card-back.png') under pathname='${pathname}' exactly to '${expected}'`, () => {
+      const originalPathname = window.location.pathname;
+      try {
+        window.history.pushState({}, "", pathname);
+        expect(window.location.pathname).toBe(pathname);
+        const resolved = resolvePlayBrandAsset("card-back.png");
+        expect(resolved).toBe(expected);
+        expect(resolved.startsWith("./brand/play/")).toBe(false);
+        expect(resolved).not.toContain("/debug/brand/");
+      } finally {
+        window.history.pushState({}, "", originalPathname);
+      }
+    });
+  }
+
   it("resource function and PLAY_BRAND_ASSETS strictly forbid starting with './brand/play/'", () => {
     const testFiles = [
       "table-felt.png",

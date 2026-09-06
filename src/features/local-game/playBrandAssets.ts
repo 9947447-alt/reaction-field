@@ -1,32 +1,30 @@
 import type { CharacterId } from "../../game/engine/types";
 
 /**
- * Resolves a brand asset path under public/brand/play using import.meta.env.BASE_URL.
- * The resolved path is guaranteed to be absolute-rooted (${BASE_URL}brand/play/<file>),
- * strictly forbidding relative "./brand/play/" which causes sub-route 404 resolution.
- * When on sub-routes such as /debug or /playtest/debug, it resolves relative to the app root.
+ * Derives the application root base prefix from the runtime environment.
+ * On browser/DOM runtimes, extracts the prefix by removing sub-routes (/debug)
+ * from window.location.pathname without hardcoding specific deployment paths.
  */
+function getPlayBrandBasePrefix(): string {
+  if (typeof window !== "undefined" && window.location?.pathname) {
+    const stripped = window.location.pathname
+      .replace(/\/debug(?:\/.*)?$/u, "")
+      .replace(/\/+$/u, "");
+    const normalized = stripped === "" ? "/" : (stripped.startsWith("/") ? `${stripped}/` : `/${stripped}/`);
+    return normalized.replace(/\/+/gu, "/");
+  }
+
+  const envBase = import.meta.env.BASE_URL;
+  if (envBase && envBase.startsWith("/")) {
+    return envBase.endsWith("/") ? envBase : `${envBase}/`;
+  }
+  return "/";
+}
+
 export function resolvePlayBrandAsset(fileName: string): string {
   const cleanFileName = fileName.replace(/^\.?\/+/u, "").replace(/^brand\/play\/+/u, "");
-  const envBase = import.meta.env.BASE_URL;
-  let base = envBase && envBase !== "./" ? envBase : "/";
-  if (!base.endsWith("/")) {
-    base = `${base}/`;
-  }
-
-  if (typeof window !== "undefined" && window.location?.pathname) {
-    const pathname = window.location.pathname;
-    if (pathname.includes("/debug")) {
-      const rootPath = pathname.replace(/\/debug(?:\/.*)?$/u, "/");
-      const prefix = rootPath.endsWith("/") ? rootPath : `${rootPath}/`;
-      return `${prefix}brand/play/${cleanFileName}`.replace(/\/+/gu, "/");
-    }
-    if (pathname.startsWith("/playtest")) {
-      return `/playtest/brand/play/${cleanFileName}`.replace(/\/+/gu, "/");
-    }
-  }
-
-  return `${base}brand/play/${cleanFileName}`.replace(/\/+/gu, "/");
+  const basePrefix = getPlayBrandBasePrefix();
+  return `${basePrefix}brand/play/${cleanFileName}`;
 }
 
 export const PLAY_BRAND_ASSETS = Object.freeze({

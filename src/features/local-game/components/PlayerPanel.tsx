@@ -22,6 +22,7 @@ type PlayerPanelProps = {
   player: Player;
   controller?: PlayerController;
   selectedCardId?: CardInstanceId;
+  highlightedCardId?: CardInstanceId;
   onSelectCard: (cardInstanceId: CardInstanceId) => void;
   handReveal?: "contents" | "backs";
   handSelectionDisabled?: boolean;
@@ -34,6 +35,7 @@ export function PlayerPanel({
   player,
   controller,
   selectedCardId,
+  highlightedCardId,
   onSelectCard,
   handReveal = "contents",
   handSelectionDisabled = false,
@@ -192,17 +194,28 @@ export function PlayerPanel({
                 <span className="card-back__caption">{isEnglish ? "Face down" : "牌背"}</span>
               </article>
             ))
-          : player.hand.map((cardInstanceId) => (
-              <OfficialCard
-                cardInstanceId={cardInstanceId}
-                disabled={effectiveHandDisabled}
-                game={game}
-                isDebug={isDebug}
-                key={cardInstanceId}
-                onSelect={effectiveHandDisabled ? undefined : onSelectCard}
-                selected={!effectiveHandDisabled && selectedCardId === cardInstanceId}
-              />
-            ))}
+          : player.hand.map((cardInstanceId) => {
+              const isTargetHighlighted = highlightedCardId === cardInstanceId;
+              const handleCardSelect = (clickedId: CardInstanceId) => {
+                if (highlightedCardId !== undefined && clickedId !== highlightedCardId) {
+                  return;
+                }
+                onSelectCard(clickedId);
+              };
+
+              return (
+                <OfficialCard
+                  cardInstanceId={cardInstanceId}
+                  disabled={effectiveHandDisabled}
+                  game={game}
+                  highlighted={isTargetHighlighted}
+                  isDebug={isDebug}
+                  key={cardInstanceId}
+                  onSelect={effectiveHandDisabled ? undefined : handleCardSelect}
+                  selected={!effectiveHandDisabled && selectedCardId === cardInstanceId}
+                />
+              );
+            })}
       </div>
     </section>
   );

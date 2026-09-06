@@ -31,6 +31,8 @@ type ActionPanelProps = {
   selectedCardId?: CardInstanceId;
   onSelectCard: (cardInstanceId: CardInstanceId | undefined) => void;
   dispatchGameAction: (action: GameAction) => void;
+  isTutorial?: boolean;
+  highlightAction?: "play-reference-card" | "none";
 };
 
 type DrawSkillId = "extra_lesson" | "emergency_supply";
@@ -154,6 +156,8 @@ export function ActionPanel({
   selectedCardId,
   onSelectCard,
   dispatchGameAction,
+  isTutorial = false,
+  highlightAction,
 }: ActionPanelProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
@@ -195,6 +199,9 @@ export function ActionPanel({
     return null;
   }
 
+  const isPassDisabled = isAi || (isTutorial && highlightAction === "play-reference-card");
+  const isSkillDisabled = isAi || isTutorial;
+
   return (
     <section className="debug-section action-panel" aria-labelledby="main-action-title">
       <div className="panel-heading">
@@ -204,8 +211,11 @@ export function ActionPanel({
         </div>
         <button
           className="secondary-button"
-          disabled={isAi}
-          onClick={() => dispatchGameAction({ type: "PASS_ACTION", playerId: activePlayer.id })}
+          disabled={isPassDisabled}
+          onClick={() => {
+            if (isPassDisabled) return;
+            dispatchGameAction({ type: "PASS_ACTION", playerId: activePlayer.id });
+          }}
           type="button"
         >
           {isEnglish ? "End this action" : "结束本次行动"}
@@ -225,7 +235,7 @@ export function ActionPanel({
           <button
             className="primary-button"
             disabled={
-              isAi ||
+              isSkillDisabled ||
               activePlayer.hand.length > 4 ||
               Boolean(activePlayer.characterUsage.perCycle[activeCharacterSkill.usageKey]) ||
               game.deck.length + game.discardPile.length === 0
@@ -245,7 +255,7 @@ export function ActionPanel({
       ) : null}
       <CharacterSkillActions
         activePlayer={activePlayer}
-        disabled={isAi}
+        disabled={isSkillDisabled}
         dispatchGameAction={dispatchGameAction}
         game={game}
       />
@@ -271,12 +281,17 @@ export function ActionPanel({
           const targetPlayerId = isOxygen
             ? activePlayer.id
             : targetByCardId[cardInstanceId] ?? targets[0]?.id;
+          const isCurrentSelected = selectedCardId === cardInstanceId;
+          const isHighlightPlay = isTutorial && highlightAction === "play-reference-card" && isCurrentSelected;
 
           return (
             <article
-              className={`action-card${selectedCardId === cardInstanceId ? " is-selected" : ""}`}
+              className={`action-card${isCurrentSelected ? " is-selected" : ""}`}
               key={cardInstanceId}
-              onClick={() => onSelectCard(cardInstanceId)}
+              onClick={() => {
+                if (isTutorial) return;
+                onSelectCard(cardInstanceId);
+              }}
             >
               <div>
                 <strong>{getOptionalCardDisplayName(definition, locale)}</strong>
@@ -292,6 +307,7 @@ export function ActionPanel({
                 <label className="field-row compact-field">
                   <span>{isEnglish ? "Effect target" : "执行效果目标"}</span>
                   <select
+                    disabled={isTutorial}
                     onChange={(event) =>
                       setTargetByCardId((current) => ({
                         ...current,
@@ -313,9 +329,10 @@ export function ActionPanel({
                 {canExecute && (
                   <button
                     className="primary-button"
-                    disabled={isAi}
+                    disabled={isAi || isTutorial}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (isTutorial) return;
                       dispatchGameAction({ type: "PLAY_CARD", playerId: activePlayer.id, cardInstanceId, targetPlayerId });
                     }}
                     type="button"
@@ -324,10 +341,11 @@ export function ActionPanel({
                   </button>
                 )}
                 <button
-                  className="secondary-button"
-                  disabled={isAi || !canAssociate}
+                  className={`secondary-button${isHighlightPlay ? " coach-highlight" : ""}`}
+                  disabled={isAi || !canAssociate || (isTutorial && !isHighlightPlay)}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (isTutorial && !isHighlightPlay) return;
                     dispatchGameAction({ type: "PLAY_REFERENCE_CARD", playerId: activePlayer.id, cardInstanceId });
                   }}
                   type="button"

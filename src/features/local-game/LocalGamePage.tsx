@@ -39,6 +39,14 @@ import {
   getOfficialHumanViewerPlayerId,
   getOfficialPlayState,
 } from "./officialPlayView";
+import { createInitialGame } from "../../game/engine/createInitialGame";
+import { CoachBanner } from "./components/CoachBanner";
+import {
+  TUTORIAL_SEED,
+  TUTORIAL_TARGET_PLAY_CARD_ID,
+  TUTORIAL_TARGET_RESPONSE_CARD_ID,
+  deriveTutorialStep,
+} from "./tutorial/tutorialScript";
 import { requiresSessionExitConfirmation } from "./sessionConfirmation";
 
 type PlayingGameProps = Readonly<{
@@ -53,6 +61,8 @@ type PlayingGameProps = Readonly<{
     trigger: HTMLButtonElement,
   ) => void;
   isDebug?: boolean;
+  isTutorial?: boolean;
+  onSkipTutorial?: () => void;
 }>;
 
 function PlayingGame({
@@ -64,6 +74,8 @@ function PlayingGame({
   onGuidanceCollapsedChange,
   onRequestSessionExit,
   isDebug = true,
+  isTutorial = false,
+  onSkipTutorial,
 }: PlayingGameProps) {
   const { game, error, playerControllers } = session;
   const { locale } = useLocale();
@@ -85,6 +97,20 @@ function PlayingGame({
     setSelectedCardId(undefined);
   }
 
+  const tutorialStep = isTutorial ? deriveTutorialStep(playGame, selectedCardId) : undefined;
+  const highlightedCardId =
+    isTutorial && tutorialStep === "SELECT_HAND_CARD"
+      ? TUTORIAL_TARGET_PLAY_CARD_ID
+      : undefined;
+  const highlightAction =
+    isTutorial && tutorialStep === "PLAY_REFERENCE_CARD"
+      ? "play-reference-card"
+      : "none";
+  const highlightResponseCardId =
+    isTutorial && tutorialStep === "RESPOND_WITH_CARD"
+      ? TUTORIAL_TARGET_RESPONSE_CARD_ID
+      : undefined;
+
   return (
     <main className="local-game-page">
       <GameSummary
@@ -96,6 +122,9 @@ function PlayingGame({
         onReturnToCharacterSelection={(trigger) => onRequestSessionExit("return", trigger)}
       />
       <SuccessfulReactionNotice game={playGame} />
+      {isTutorial && tutorialStep && onSkipTutorial ? (
+        <CoachBanner onSkip={onSkipTutorial} stepKey={tutorialStep} />
+      ) : null}
       <div className="debug-layout play-shell-layout">
         <div className="debug-main play-surface">
           <div className="players-grid">
@@ -105,6 +134,7 @@ function PlayingGame({
                 game={playGame}
                 handReveal={viewerPlayerId !== undefined && player.id !== viewerPlayerId ? "backs" : "contents"}
                 handSelectionDisabled={playGame.phase !== "mainAction"}
+                highlightedCardId={player.id === "player_1" ? highlightedCardId : undefined}
                 isDebug={isDebug}
                 key={player.id}
                 onSelectCard={handleSelectCard}
@@ -130,6 +160,7 @@ function PlayingGame({
             <PreparationPanel
               dispatchGameAction={dispatchGameAction}
               game={playGame}
+              isTutorial={isTutorial}
               playerControllers={playerControllers}
             />
           ) : playGame.phase === "experimentCounterattackWindow" ? (
@@ -143,6 +174,8 @@ function PlayingGame({
               <ActionPanel
                 dispatchGameAction={dispatchGameAction}
                 game={playGame}
+                highlightAction={highlightAction}
+                isTutorial={isTutorial}
                 onSelectCard={handleSelectCard}
                 playerControllers={playerControllers}
                 selectedCardId={selectedCardId}
@@ -155,6 +188,8 @@ function PlayingGame({
               <ResponsePanel
                 dispatchGameAction={dispatchGameAction}
                 game={playGame}
+                highlightResponseCardId={highlightResponseCardId}
+                isTutorial={isTutorial}
                 playerControllers={playerControllers}
               />
               <StatusPanel
@@ -205,14 +240,60 @@ export function LocalGamePage({
 }: LocalGamePageProps = {}) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
+  const [isTutorial, setIsTutorial] = useState(false);
+  const isTutorialRef = useRef(false);
+
+  const tutorialGameFactory = useCallback<LocalGameFactory>(
+    (characterIds) => {
+      const mutableCharacterIds: [typeof characterIds[0], typeof characterIds[1]] = [
+        characterIds[0],
+        characterIds[1],
+      ];
+      if (isTutorialRef.current) {
+        return createInitialGame({
+          characterIds: mutableCharacterIds,
+          seed: TUTORIAL_SEED,
+        });
+      }
+      return createGame
+        ? createGame(characterIds)
+        : createInitialGame({ characterIds: mutableCharacterIds });
+    },
+    [createGame],
+  );
+
   const [session, dispatch] = useLocalGameDebug({
-    createGame,
+    createGame: tutorialGameFactory,
     reduceGame,
     createSession,
     policy,
     aiDelayMs,
     random,
   });
+
+  const handleStartTutorial = useCallback(() => {
+    isTutorialRef.current = true;
+    setIsTutorial(true);
+    dispatch({ type: "SELECT_CHARACTER", playerIndex: 0, characterId: "laboratory_teacher" });
+    dispatch({ type: "SELECT_CHARACTER", playerIndex: 1, characterId: "chemical_factory_ceo" });
+    dispatch({ type: "SELECT_PLAYER_CONTROLLER", playerIndex: 0, controller: "human" });
+    dispatch({ type: "SELECT_PLAYER_CONTROLLER", playerIndex: 1, controller: "ai" });
+    dispatch({ type: "START_LOCAL_GAME" });
+  }, [dispatch]);
+
+  const handleSkipTutorial = useCallback(() => {
+    isTutorialRef.current = false;
+    setIsTutorial(false);
+    dispatch({ type: "RESTART_CURRENT_LINEUP" });
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (session.mode === "configuring") {
+      isTutorialRef.current = false;
+      setIsTutorial(false);
+    }
+  }, [session.mode]);
+
   const [aboutOpen, setAboutOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<PendingSessionConfirmation | null>(null);
   const [guidanceVisible, setGuidanceVisible] = useState(true);
@@ -316,6 +397,7 @@ export function LocalGamePage({
             isDebug={isDebug}
             onGuidanceCollapsedChange={setGuidanceCollapsed}
             onGuidanceVisibleChange={setGuidanceVisible}
+            onStartTutorial={handleStartTutorial}
             session={session}
           />
         ) : session.mode === "playing" ? (
@@ -324,9 +406,11 @@ export function LocalGamePage({
             guidanceCollapsed={guidanceCollapsed}
             guidanceVisible={guidanceVisible}
             isDebug={isDebug}
+            isTutorial={isTutorial}
             onGuidanceCollapsedChange={setGuidanceCollapsed}
             onGuidanceVisibleChange={setGuidanceVisible}
             onRequestSessionExit={requestSessionExit}
+            onSkipTutorial={handleSkipTutorial}
             session={session}
           />
         ) : (

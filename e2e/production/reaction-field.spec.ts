@@ -595,3 +595,89 @@ test("生产构建在 /playtest/debug 下品牌图片正常加载无 404", async
   expect(teacherSrc).toContain("brand/play/");
   expect(teacherSrc).not.toContain("/debug/brand/");
 });
+
+test("正式页可开启交互式脚本教学：高亮引导、点错守卫、引擎推进酸碱中和及跳过进人机", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await page.goto("/");
+  const startTutorialButton = page.locator(".start-tutorial-button");
+  await expect(startTutorialButton).toBeVisible();
+  await expect(startTutorialButton).toHaveText("开始教学");
+
+  // 1. Enter tutorial
+  await startTutorialButton.click();
+
+  const coachBanner = page.locator(".coach-banner");
+  await expect(coachBanner).toBeVisible();
+  await expect(coachBanner).toContainText("第 1/4 步");
+  await expect(coachBanner).toContainText("备课阶段");
+
+  // Confirm preparation button is highlighted
+  const confirmPrepButton = page.locator(".preparation-panel button.coach-highlight");
+  await expect(confirmPrepButton).toBeVisible();
+  await confirmPrepButton.click();
+
+  // 2. Step 2: Hand inspection & card selection
+  await expect(coachBanner).toContainText("第 2/4 步");
+  await expect(coachBanner).toContainText("看手牌与选牌");
+
+  const ownPanel = page.locator('[aria-labelledby="player_1-title"]');
+  const highlightedCard = ownPanel.locator(".official-card.coach-highlight");
+  await expect(highlightedCard).toBeVisible();
+  await expect(highlightedCard).toContainText("稀 NaOH");
+
+  // Clicking non-target card should not select it
+  const otherCard = ownPanel.locator(".official-card.card-face:not(.coach-highlight)").first();
+  await otherCard.locator("button.debug-card__select").click();
+  await expect(otherCard).not.toHaveClass(/is-selected/);
+
+  // Click highlighted card
+  await highlightedCard.locator("button.debug-card__select").click();
+  const selectedCard = ownPanel.locator(".official-card.is-selected");
+  await expect(selectedCard).toBeVisible();
+  await expect(selectedCard).toContainText("稀 NaOH");
+
+  // 3. Step 3: Play card as reference
+  await expect(coachBanner).toContainText("第 3/4 步");
+  await expect(coachBanner).toContainText("普通出牌建立基准");
+
+  const actionPanel = page.locator(".action-panel");
+  const playButton = actionPanel.locator("button.secondary-button.coach-highlight");
+  await expect(playButton).toBeVisible();
+  await expect(playButton).toHaveText("普通出牌");
+
+  await playButton.click();
+
+  // 4. Step 4: AI attacks -> responseWindow
+  await expect(coachBanner).toContainText("第 4/4 步");
+  await expect(coachBanner).toContainText("响应酸性伤害");
+
+  const responsePanel = page.locator(".response-panel");
+  await expect(responsePanel).toBeVisible();
+
+  const kohResponse = responsePanel.locator(".response-card-wrapper.coach-highlight");
+  await expect(kohResponse).toBeVisible();
+  await expect(kohResponse).toContainText("稀 KOH");
+
+  await kohResponse.locator("button.debug-card__select").click();
+
+  // 5. Reaction recorded and tutorial completed
+  const gameLog = page.locator(".game-log");
+  await expect(gameLog).toContainText("成功反应 · 酸碱中和");
+  await expect(coachBanner).toContainText("教学完成");
+
+  const completeBtn = coachBanner.locator(".coach-banner__complete-btn");
+  await expect(completeBtn).toBeVisible();
+  await expect(completeBtn).toHaveText("进入人机对局");
+
+  await completeBtn.click();
+  await expect(coachBanner).toHaveCount(0);
+  await expect(page.locator(".players-grid")).toBeVisible();
+});

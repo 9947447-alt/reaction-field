@@ -22,6 +22,7 @@ type CharacterSelectionPanelProps = {
   guidanceCollapsed: boolean;
   onGuidanceVisibleChange: (visible: boolean) => void;
   onGuidanceCollapsedChange: (collapsed: boolean) => void;
+  onStartTutorial?: () => void;
   isDebug?: boolean;
 };
 
@@ -55,6 +56,7 @@ export function CharacterSelectionPanel({
   guidanceCollapsed,
   onGuidanceVisibleChange,
   onGuidanceCollapsedChange,
+  onStartTutorial,
   isDebug = true,
 }: CharacterSelectionPanelProps) {
   const { locale } = useLocale();
@@ -219,14 +221,25 @@ export function CharacterSelectionPanel({
           ) : null}
         </div>
         {session.error ? <p className="error-banner">{session.error}</p> : null}
-        <button
-          className="primary-button start-game-button"
-          disabled={!canStart}
-          onClick={() => dispatch({ type: "START_LOCAL_GAME" })}
-          type="button"
-        >
-          {isEnglish ? "Start game" : "开始游戏"}
-        </button>
+        <div className="lineup-action-row" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button
+            className="primary-button start-game-button"
+            disabled={!canStart}
+            onClick={() => dispatch({ type: "START_LOCAL_GAME" })}
+            type="button"
+          >
+            {isEnglish ? "Start game" : "开始游戏"}
+          </button>
+          {!isDebug && onStartTutorial ? (
+            <button
+              className="secondary-button start-tutorial-button"
+              onClick={onStartTutorial}
+              type="button"
+            >
+              {isEnglish ? "Start tutorial" : "开始教学"}
+            </button>
+          ) : null}
+        </div>
       </section>
 
       <NewPlayerGuidance

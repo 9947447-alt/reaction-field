@@ -6,13 +6,16 @@ import type { PlayerControllerSelection } from "../localGameSession";
 import { CardDebugCard } from "./CardDebugCard";
 import { getAiAutoActionNote, getPlayerDisplayName } from "../presentationLocale";
 
+import { TUTORIAL_PRESET_PREPARATION_CARD_IDS } from "../tutorial/tutorialScript";
+
 type PreparationPanelProps = {
   game: GameState;
   playerControllers?: PlayerControllerSelection;
   dispatchGameAction: (action: GameAction) => void;
+  isTutorial?: boolean;
 };
 
-export function PreparationPanel({ game, playerControllers, dispatchGameAction }: PreparationPanelProps) {
+export function PreparationPanel({ game, playerControllers, dispatchGameAction, isTutorial }: PreparationPanelProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
   const pending = game.pendingLaboratoryPreparation;
@@ -31,13 +34,24 @@ export function PreparationPanel({ game, playerControllers, dispatchGameAction }
   const validSelectedIds = selectedIds.filter((id) => validCandidateIdSet.has(id));
 
   useEffect(() => {
+    if (isTutorial && pending) {
+      const preset = TUTORIAL_PRESET_PREPARATION_CARD_IDS.filter((id) =>
+        validCandidateIdSet.has(id),
+      );
+      if (preset.length === pending.keepCount) {
+        setSelectedIds(preset);
+        return;
+      }
+    }
     setSelectedIds([]);
-  }, [game, pending?.playerId]);
+  }, [game, pending?.playerId, isTutorial]);
 
   if (game.phase !== "preparationSelection" || !pending) return null;
 
-  const toggleCard = (id: CardInstanceId) =>
+  const toggleCard = (id: CardInstanceId) => {
+    if (isTutorial) return;
     setSelectedIds((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+  };
 
   return (
     <section className="debug-section preparation-panel" aria-labelledby="preparation-title">
@@ -61,7 +75,7 @@ export function PreparationPanel({ game, playerControllers, dispatchGameAction }
         ) : validCandidateIds.map((cardInstanceId) => (
           <CardDebugCard
             cardInstanceId={cardInstanceId}
-            disabled={false}
+            disabled={isTutorial}
             game={game}
             key={cardInstanceId}
             onSelect={toggleCard}
@@ -70,7 +84,7 @@ export function PreparationPanel({ game, playerControllers, dispatchGameAction }
         ))}
       </div>
       <button
-        className="primary-button"
+        className={`primary-button${isTutorial && validSelectedIds.length === pending.keepCount ? " coach-highlight" : ""}`}
         disabled={isAi || validSelectedIds.length !== pending.keepCount}
         onClick={() => {
           dispatchGameAction({

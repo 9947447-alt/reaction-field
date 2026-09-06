@@ -2062,3 +2062,166 @@ select {
     font-size: 1.05rem;
   }
 }
+
+/* -------------------------------------------------------------
+   Phase 20-Tut Interactive Tutorial Styles
+   ------------------------------------------------------------- */
+
+.start-tutorial-button {
+  background: #1b5e3c;
+  border-color: #2e8b57;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.start-tutorial-button:hover:not(:disabled) {
+  background: #237449;
+}
+
+.start-tutorial-button:focus-visible {
+  outline: 3px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.coach-banner {
+  align-items: center;
+  background: linear-gradient(135deg, #0e2d42 0%, #17384d 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(14, 45, 66, 0.35);
+  color: #f0f6fc;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  min-width: 0;
+  padding: 14px 20px;
+}
+
+.coach-banner__content {
+  display: grid;
+  flex: 1 1 320px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.coach-banner__heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.coach-banner__badge {
+  background: #f59e0b;
+  border-radius: 4px;
+  color: #1a202c;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+
+.coach-banner__title {
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.coach-banner__instruction {
+  color: #d1e2ee;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.coach-banner__actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+.coach-banner__skip {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.coach-banner__skip:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.coach-banner__complete-btn {
+  background: #1b5e3c;
+  border-color: #2e8b57;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+@keyframes coachPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.65), 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.9), 0 0 18px rgba(245, 158, 11, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.65), 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+}
+
+.coach-highlight {
+  animation: coachPulse 1.8s infinite ease-in-out;
+  border-color: #f59e0b !important;
+  position: relative;
+  z-index: 5;
+}
+
+.coach-pointer-container {
+  display: inline-flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.coach-pointer {
+  align-items: center;
+  animation: coachPointerBounce 1.2s infinite ease-in-out;
+  background: #f59e0b;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: #1a202c;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  gap: 4px;
+  padding: 3px 8px;
+  pointer-events: none;
+  position: absolute;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.coach-pointer--top {
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.coach-pointer--bottom {
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+}
+
+@keyframes coachPointerBounce {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-4px);
+  }
+}

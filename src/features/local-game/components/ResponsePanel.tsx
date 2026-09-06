@@ -1,6 +1,6 @@
 import type { GameAction } from "../../../game/engine/actions";
 import { useLocale } from "../../../app/locale";
-import type { GameState } from "../../../game/engine/types";
+import type { CardInstanceId, GameState } from "../../../game/engine/types";
 import type { PlayerControllerSelection } from "../localGameSession";
 import {
   describePendingResponse,
@@ -16,9 +16,17 @@ type ResponsePanelProps = {
   game: GameState;
   playerControllers?: PlayerControllerSelection;
   dispatchGameAction: (action: GameAction) => void;
+  isTutorial?: boolean;
+  highlightResponseCardId?: CardInstanceId;
 };
 
-export function ResponsePanel({ game, playerControllers, dispatchGameAction }: ResponsePanelProps) {
+export function ResponsePanel({
+  game,
+  playerControllers,
+  dispatchGameAction,
+  isTutorial = false,
+  highlightResponseCardId,
+}: ResponsePanelProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
   const pendingResponse = game.pendingResponse;
@@ -39,6 +47,8 @@ export function ResponsePanel({ game, playerControllers, dispatchGameAction }: R
     return null;
   }
 
+  const isPassDisabled = isAi || (isTutorial && highlightResponseCardId !== undefined);
+
   return (
     <section className="debug-section response-panel" aria-labelledby="response-title">
       <div className="panel-heading">
@@ -48,8 +58,11 @@ export function ResponsePanel({ game, playerControllers, dispatchGameAction }: R
         </div>
         <button
           className="secondary-button"
-          disabled={isAi}
-          onClick={() => dispatchGameAction({ type: "PASS_RESPONSE", playerId: responder.id })}
+          disabled={isPassDisabled}
+          onClick={() => {
+            if (isPassDisabled) return;
+            dispatchGameAction({ type: "PASS_RESPONSE", playerId: responder.id });
+          }}
           type="button"
         >
           {isEnglish ? "Pass response" : "放弃响应"}
@@ -67,24 +80,39 @@ export function ResponsePanel({ game, playerControllers, dispatchGameAction }: R
       </details>
       <div className="candidate-grid">
         {responseCards.length > 0 ? (
-          responseCards.map((cardInstanceId) => (
-            <CardDebugCard
-              cardInstanceId={cardInstanceId}
-              disabled={isAi}
-              game={game}
-              key={cardInstanceId}
-              onSelect={
-                isAi
-                  ? undefined
-                  : () =>
-                      dispatchGameAction({
-                        type: "RESPOND_WITH_CARD",
-                        playerId: responder.id,
-                        cardInstanceId,
-                      })
-              }
-            />
-          ))
+          responseCards.map((cardInstanceId) => {
+            const isHighlighted = isTutorial && highlightResponseCardId === cardInstanceId;
+            const isClickable = !isAi && (!isTutorial || isHighlighted);
+
+            return (
+              <div
+                className={`response-card-wrapper${isHighlighted ? " coach-highlight" : ""}`}
+                key={cardInstanceId}
+                style={{ position: "relative" }}
+              >
+                {isHighlighted ? (
+                  <span className="coach-pointer coach-pointer--top">
+                    {isEnglish ? "👆 Respond" : "👆 点击响应"}
+                  </span>
+                ) : null}
+                <CardDebugCard
+                  cardInstanceId={cardInstanceId}
+                  disabled={!isClickable}
+                  game={game}
+                  onSelect={
+                    !isClickable
+                      ? undefined
+                      : () =>
+                          dispatchGameAction({
+                            type: "RESPOND_WITH_CARD",
+                            playerId: responder.id,
+                            cardInstanceId,
+                          })
+                  }
+                />
+              </div>
+            );
+          })
         ) : (
           <p className="empty-note">{isEnglish ? "No response cards available." : "当前无可用响应牌。"}</p>
         )}

@@ -12,9 +12,10 @@ import { ModalDialog } from "./ModalDialog";
 
 type AboutDialogProps = Readonly<{
   onClose: () => void;
+  isDebug?: boolean;
 }>;
 
-export function AboutDialog({ onClose }: AboutDialogProps) {
+export function AboutDialog({ onClose, isDebug = true }: AboutDialogProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const { locale } = useLocale();
   const isEnglish = locale === "en";
@@ -101,12 +102,14 @@ export function AboutDialog({ onClose }: AboutDialogProps) {
           <p>
             {isEnglish ? "Counterattack is partial." : "实验反击为部分选择。"}
           </p>
-          <details className="debug-details">
-            <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-            {characterDefinitions.map((character) => character.skills.map((skill) => (
-              <p key={skill.id}>{character.id} · {formatSkillDebugText(skill, locale)}</p>
-            )))}
-          </details>
+          {isDebug ? (
+            <details className="debug-details">
+              <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+              {characterDefinitions.map((character) => character.skills.map((skill) => (
+                <p key={skill.id}>{character.id} · {formatSkillDebugText(skill, locale)}</p>
+              )))}
+            </details>
+          ) : null}
         </section>
 
         <section className="about-section">

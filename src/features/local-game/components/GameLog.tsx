@@ -5,9 +5,10 @@ import { renderGameLogEntry } from "../gameLogRenderer";
 
 type GameLogProps = {
   game: GameState;
+  isDebug?: boolean;
 };
 
-export function GameLog({ game }: GameLogProps) {
+export function GameLog({ game, isDebug = true }: GameLogProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
   const context = game.logPresentationContext;
@@ -24,11 +25,13 @@ export function GameLog({ game }: GameLogProps) {
             <li className={isLatest ? "is-latest" : undefined} key={entry.id}>
               <div className="game-log__message">
                 {renderGameLogEntry(entry, locale, context)}
-                <details className="debug-details game-log__details">
-                  <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-                  <span className="game-log__entry-id">{isEnglish ? "Log ID" : "日志编号"}：{entry.id}</span>
-                  {reaction ? <span className="game-log__entry-id">{JSON.stringify(entry.reaction)}</span> : null}
-                </details>
+                {isDebug ? (
+                  <details className="debug-details game-log__details">
+                    <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+                    <span className="game-log__entry-id">{isEnglish ? "Log ID" : "日志编号"}：{entry.id}</span>
+                    {reaction ? <span className="game-log__entry-id">{JSON.stringify(entry.reaction)}</span> : null}
+                  </details>
+                ) : null}
               </div>
               {reaction ? (
                 <div className="game-log__reaction" aria-label={`${isEnglish ? "Successful reaction" : "成功反应"}：${reaction.name}`}>

@@ -162,6 +162,12 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
     await expect(page.getByLabel("对局模式")).toHaveValue("solo_ai");
     await expect(page.getByLabel("player_1 角色")).toHaveValue("laboratory_teacher");
     await expect(page.getByLabel("player_2 角色")).toHaveValue("chemical_factory_ceo");
+
+    // Official setup shows character avatars and no per-seat controller dropdowns
+    await expect(page.locator('img[src*="char-lab-teacher.png"]').first()).toBeVisible();
+    await expect(page.locator('img[src*="char-ceo.png"]').first()).toBeVisible();
+    await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
+
     await page.getByRole("button", { name: "关于与帮助" }).click();
     const about = page.getByRole("dialog", { name: "关于与帮助" });
     await expect(about).toContainText("REACTION FIELD");
@@ -206,12 +212,9 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
     expect(await gameLog.locator("ol li").count()).toBe(initialLogCount);
 
     const debugCard = page.locator(".debug-card").first();
-    const cardDetails = debugCard.locator("details");
-    const selectedBefore = await debugCard.getAttribute("class");
     await expect(debugCard.locator("button details")).toHaveCount(0);
-    await cardDetails.locator("summary").click();
-    await expect(cardDetails).toHaveAttribute("open", "");
-    expect(await debugCard.getAttribute("class")).toBe(selectedBefore);
+    // Official play cards do not expose debug details
+    await expect(debugCard.locator("details")).toHaveCount(0);
 
     // Action progression log test
     await page.getByRole("button", { name: "结束本次行动" }).click();
@@ -273,15 +276,11 @@ test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY
   const gameLog = page.locator(".game-log");
   await expect(gameLog).toBeVisible();
 
-  // Debug details in log entry
-  const logDetails = gameLog.locator("details.game-log__details").first();
-  await logDetails.locator("summary").click();
-  await expect(logDetails.locator(".game-log__entry-id")).toContainText("日志编号：log_001");
-  await page.getByRole("button", { name: "English" }).click();
-  await expect(logDetails.locator("summary")).toHaveText("Debug details");
-  await expect(logDetails.locator(".game-log__entry-id")).toContainText("Log ID：log_001");
-  await page.getByRole("button", { name: "中文" }).click();
-  await expect(logDetails.locator("summary")).toHaveText("调试详情");
+  // Official play log has no debug details, no Log ID, and no raw JSON
+  await expect(gameLog.locator("details.game-log__details")).toHaveCount(0);
+  await expect(gameLog.locator(".game-log__entry-id")).toHaveCount(0);
+  await expect(page.getByText("日志编号：")).toHaveCount(0);
+  await expect(page.getByText("Log ID：")).toHaveCount(0);
 
   // 1. Formal DIY Virtual Attack execution
   const diyPanel = page.locator(".diy-panel");
@@ -452,6 +451,8 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌",
   const opponentCount = Number(opponentCountText?.match(/(\d+)/)?.[1]);
   expect(opponentCount).toBe(14);
   await expect(opponent.locator(".card-back")).toHaveCount(opponentCount);
+  await expect(opponent.locator(".card-back img.card-back__image")).toHaveCount(opponentCount);
+  await expect(opponent.locator('.card-back img[src*="card-back.png"]')).toHaveCount(opponentCount);
   await expect(opponent.locator(".card-face")).toHaveCount(0);
   await expect(opponent.locator(".debug-card__select")).toHaveCount(0);
 
@@ -501,4 +502,15 @@ test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", a
   await page.setViewportSize({ width: 390, height: 844 });
   await expectPortraitPlayShell(page);
   await expectNoHorizontalOverflow(page);
+});
+
+test("生产构建在 /debug 保留调试实验室与控制方注入能力", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await page.goto("/debug");
+  await expect(page.getByRole("heading", { name: /角色选择/u })).toBeVisible();
+  const controllerSelects = page.locator("select[aria-label*='controller'], select[aria-label*='控制方']");
+  await expect(controllerSelects).toHaveCount(2);
 });

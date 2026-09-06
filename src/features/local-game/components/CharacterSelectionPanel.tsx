@@ -13,6 +13,7 @@ import {
 import { NewPlayerGuidance } from "./NewPlayerGuidance";
 import { getCharacterDisplayName, getPlayerControllerDisplayName } from "../presentationLocale";
 import { FirstGameExample } from "./FirstGameExample";
+import { getCharacterPlayIcon } from "../playBrandAssets";
 
 type CharacterSelectionPanelProps = {
   session: ConfiguringLocalGameSession;
@@ -21,6 +22,7 @@ type CharacterSelectionPanelProps = {
   guidanceCollapsed: boolean;
   onGuidanceVisibleChange: (visible: boolean) => void;
   onGuidanceCollapsedChange: (collapsed: boolean) => void;
+  isDebug?: boolean;
 };
 
 export function CharacterSkillList({
@@ -53,6 +55,7 @@ export function CharacterSelectionPanel({
   guidanceCollapsed,
   onGuidanceVisibleChange,
   onGuidanceCollapsedChange,
+  isDebug = true,
 }: CharacterSelectionPanelProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
@@ -139,7 +142,7 @@ export function CharacterSelectionPanel({
             >
               <option value="solo_ai">{isEnglish ? "Solo vs AI (Default)" : "人机对局 (默认)"}</option>
               <option value="two_player">{isEnglish ? "Local two-player" : "本地双人"}</option>
-              {currentModeValue === "custom" ? (
+              {isDebug && currentModeValue === "custom" ? (
                 <option value="custom">{isEnglish ? "Custom controllers" : "自定义控制方"}</option>
               ) : null}
             </select>
@@ -147,47 +150,67 @@ export function CharacterSelectionPanel({
         </div>
         <div className="character-select-grid">
           {([0, 1] as const).map((playerIndex) => (
-            <label className="field-row character-select-field" key={`character-${playerIndex}`}>
-              <span>{isEnglish ? "Player" : "玩家"} {playerIndex === 0 ? "A" : "B"}</span>
-              <select
-                aria-label={isEnglish ? `player_${playerIndex + 1} character` : `player_${playerIndex + 1} 角色`}
-                onChange={(event) => dispatch({
-                  type: "SELECT_CHARACTER",
-                  playerIndex,
-                  characterId: event.target.value,
-                })}
-                value={session.characterIds[playerIndex]}
-              >
-                {characterDefinitions.map((character) => (
-                  <option key={character.id} value={character.id}>
-                    {getCharacterDisplayName(character.id, locale)} · {character.maxHp} HP
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="character-select-card" key={`character-card-${playerIndex}`}>
+              <img
+                alt=""
+                aria-hidden="true"
+                className="character-select-field__avatar"
+                height="64"
+                src={getCharacterPlayIcon(session.characterIds[playerIndex])}
+                width="64"
+              />
+              <label className="field-row character-select-field" key={`character-${playerIndex}`}>
+                <span>{isEnglish ? "Player" : "玩家"} {playerIndex === 0 ? "A" : "B"}</span>
+                <select
+                  aria-label={isEnglish ? `player_${playerIndex + 1} character` : `player_${playerIndex + 1} 角色`}
+                  onChange={(event) => dispatch({
+                    type: "SELECT_CHARACTER",
+                    playerIndex,
+                    characterId: event.target.value,
+                  })}
+                  value={session.characterIds[playerIndex]}
+                >
+                  {characterDefinitions.map((character) => (
+                    <option key={character.id} value={character.id}>
+                      {getCharacterDisplayName(character.id, locale)} · {character.maxHp} HP
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           ))}
-          {([0, 1] as const).map((playerIndex) => (
-            <label className="field-row character-controller-field" key={`controller-${playerIndex}`}>
-              <span>{isEnglish ? "Controller" : "控制方"}</span>
-              <select
-                aria-label={isEnglish ? `player_${playerIndex + 1} controller` : `player_${playerIndex + 1} 控制方`}
-                onChange={(event) => dispatch({
-                  type: "SELECT_PLAYER_CONTROLLER",
-                  playerIndex,
-                  controller: event.target.value,
-                })}
-                value={session.playerControllers[playerIndex]}
-              >
-                <option value="human">{getPlayerControllerDisplayName("human", locale)}</option>
-                <option value="ai">{getPlayerControllerDisplayName("ai", locale)}</option>
-              </select>
-            </label>
-          ))}
+          {isDebug
+            ? ([0, 1] as const).map((playerIndex) => (
+                <label className="field-row character-controller-field" key={`controller-${playerIndex}`}>
+                  <span>{isEnglish ? "Controller" : "控制方"}</span>
+                  <select
+                    aria-label={isEnglish ? `player_${playerIndex + 1} controller` : `player_${playerIndex + 1} 控制方`}
+                    onChange={(event) => dispatch({
+                      type: "SELECT_PLAYER_CONTROLLER",
+                      playerIndex,
+                      controller: event.target.value,
+                    })}
+                    value={session.playerControllers[playerIndex]}
+                  >
+                    <option value="human">{getPlayerControllerDisplayName("human", locale)}</option>
+                    <option value="ai">{getPlayerControllerDisplayName("ai", locale)}</option>
+                  </select>
+                </label>
+              ))
+            : null}
         </div>
         <div className="lineup-summary" aria-live="polite">
           <strong>{isEnglish ? "Lineup confirmed" : "阵容确认"}</strong>
           {([0, 1] as const).map((i) => (
-            <span key={i}>
+            <span className="lineup-summary__item" key={i}>
+              <img
+                alt=""
+                aria-hidden="true"
+                className="lineup-summary__avatar"
+                height="24"
+                src={getCharacterPlayIcon(selectedCharacters[i].id)}
+                width="24"
+              />
               {isEnglish ? "Player" : "玩家"} {i === 0 ? "A" : "B"} ({getPlayerControllerDisplayName(session.playerControllers[i], locale)})：{getCharacterDisplayName(selectedCharacters[i].id, locale)}
             </span>
           ))}

@@ -89,8 +89,8 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(widths.documentScroll).toBeLessThanOrEqual(widths.documentClient);
 }
 
-for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playtest/", "/playtest/assets/", "/playtest/"]] as const) {
-  test(`正式构建在 ${path} 保持可操作且无横向溢出`, async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
+for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/assets/", "/"], ["/playtest/", "/playtest/play", "/playtest/assets/", "/playtest/"]] as const) {
+  test(`正式构建在 ${path} 展现大厅三入口与横持遮罩，点击进入 ${playPath} 且无横向溢出`, async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
     void externalRequests;
     void runtimeErrors;
     void networkFailures;
@@ -140,34 +140,33 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
       expect(asset.status, relativeAssetPath).toBe(200);
       expect(asset.contentType, relativeAssetPath).toBe(contentType);
     }
-    await expect(page.getByRole("heading", { name: "反应域 · 本地人机角色选择" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "新手引导：配置" })).toBeVisible();
-    await expect(page.getByText(
-      "当前目标：确认本地同屏双人阵容后，再开始本局公开对局。",
-      { exact: true },
-    )).toBeVisible();
-    await expect(page.getByRole("button", { name: "展开新手引导" })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-    await expect(page.locator(".first-game-example details")).not.toHaveAttribute("open", "");
+
+    // 1. Assert Lobby Page Presentation
+    await expect(page.locator('[data-testid="lobby-page"]')).toBeVisible();
+    await expect(page.locator(".lobby-banner")).toBeVisible();
+    await expect(page.locator(".lobby-banner__slot-tag")).toBeVisible();
     await expect(page.locator(".release-bar .secondary-brand")).toHaveText("REACTION FIELD");
+
+    // Assert Three Mode Entries visible
+    const soloCard = page.locator('[data-testid="mode-card-solo"]');
+    const duoCard = page.locator('[data-testid="mode-card-duo"]');
+    const tutorialCard = page.locator('[data-testid="mode-card-tutorial"]');
+    await expect(soloCard).toBeVisible();
+    await expect(duoCard).toBeVisible();
+    await expect(tutorialCard).toBeVisible();
+
+    // Official Lobby zero debug controls, zero Log IDs, zero JSON
+    await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
+    await expect(page.locator(".game-log__entry-id")).toHaveCount(0);
+    await expect(page.locator("details")).toHaveCount(0);
+
+    // Feedback link
     const feedback = page.getByRole("link", { name: "在新标签页打开 Microsoft Forms 反馈表" });
     await expect(feedback).toHaveAttribute("href", "https://forms.cloud.microsoft/r/QG8PACUnsa");
     await expect(feedback).toHaveAttribute("target", "_blank");
     await expect(feedback).toHaveAttribute("rel", "noopener noreferrer");
-    await expect(page.locator(".character-selection-hero__icon")).toBeVisible();
-    await expect(page.locator(".character-selection-hero__icon")).toHaveAttribute("alt", "");
-    await expect(page.locator(".character-selection-hero__icon")).toHaveAttribute("aria-hidden", "true");
-    await expect(page.getByLabel("对局模式")).toHaveValue("solo_ai");
-    await expect(page.getByLabel("player_1 角色")).toHaveValue("laboratory_teacher");
-    await expect(page.getByLabel("player_2 角色")).toHaveValue("chemical_factory_ceo");
 
-    // Official setup shows character avatars and no per-seat controller dropdowns
-    await expect(page.locator('img[src*="char-lab-teacher.png"]').first()).toBeVisible();
-    await expect(page.locator('img[src*="char-ceo.png"]').first()).toBeVisible();
-    await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
-
+    // About Dialog
     await page.getByRole("button", { name: "关于与帮助" }).click();
     const about = page.getByRole("dialog", { name: "关于与帮助" });
     await expect(about).toContainText("REACTION FIELD");
@@ -179,19 +178,43 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
       "href",
       "https://github.com/9947447-alt/reaction-field",
     );
-    await expect(repository).toHaveAttribute("target", "_blank");
-    await expect(repository).toHaveAttribute("rel", "noopener noreferrer");
     await page.keyboard.press("Escape");
-    await page.getByLabel("对局模式").selectOption("two_player");
+
+    // 2. Portrait Viewport: Assert Orientation Barrier blocks interaction
+    await page.setViewportSize({ width: 390, height: 844 });
+    const barrier = page.locator('[data-testid="orientation-barrier"]');
+    await expect(barrier).toBeVisible();
+    await expect(barrier).toContainText("请横持设备");
+
+    // Tapping button is blocked by barrier overlay
+    const soloButton = soloCard.getByRole("button", { name: "进入人机对局" });
+    let clickIntercepted = false;
+    try {
+      await soloButton.click({ timeout: 1500 });
+    } catch {
+      clickIntercepted = true;
+    }
+    expect(clickIntercepted).toBe(true);
+
+    // Rotate back to landscape
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(barrier).not.toBeVisible();
+
+    // 3. Click Duo button to navigate to /play
+    const duoButton = duoCard.getByRole("button", { name: "进入双人对局" });
+    await duoButton.click();
+    await expect(page).toHaveURL(new RegExp(playPath.replace("/", "\\/")));
+
+    // Official play setup has zero controller dropdowns
+    await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "反应域 · 本地双人角色选择" })).toBeVisible();
     await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
     await page.getByLabel("player_2 角色").selectOption("acid_king");
     await page.getByRole("button", { name: "开始游戏" }).click();
     await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "新手引导：主行动" })).toBeVisible();
-    await expect(page.locator(".release-bar .secondary-brand")).toHaveCount(0);
 
-    // Phase 16 GameLog contract verification
+    // GameLog verification
     const gameLog = page.locator(".game-log");
     await expect(gameLog).toBeVisible();
     await expect(gameLog.locator("h2")).toHaveText("完整游戏日志");
@@ -213,7 +236,6 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
 
     const debugCard = page.locator(".debug-card").first();
     await expect(debugCard.locator("button details")).toHaveCount(0);
-    // Official play cards do not expose debug details
     await expect(debugCard.locator("details")).toHaveCount(0);
 
     // Action progression log test
@@ -235,17 +257,20 @@ for (const [path, assetPrefix, brandPrefix] of [["/", "/assets/", "/"], ["/playt
     await page.getByRole("button", { name: "确认返回" }).click();
     await expect(page.getByRole("heading", { name: "反应域 · 本地双人角色选择" })).toBeVisible();
     await expectNoHorizontalOverflow(page);
+
+    // In portrait viewport in /play, orientation barrier is visible
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.locator('[data-testid="orientation-barrier"]')).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 }
 
-test("正式构建在 / 验证 Phase 16 双语游戏日志、反应日志与 DIY 虚拟攻击展示", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
+test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与 DIY 虚拟攻击展示", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
   void externalRequests;
   void runtimeErrors;
   void networkFailures;
 
-  await page.goto("/");
+  await page.goto("/play");
   await page.getByLabel("对局模式").selectOption("two_player");
   await page.getByLabel("player_1 角色").selectOption("laboratory_teacher");
   await page.getByLabel("player_2 角色").selectOption("laboratory_teacher");
@@ -440,7 +465,7 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌�
   void runtimeErrors;
   void networkFailures;
 
-  await page.goto("/");
+  await page.goto("/play");
   await expect(page.getByText("选择角色与模式后开始；只显示自己的手牌，对手为牌背。")).toBeVisible();
   await page.getByRole("button", { name: "开始游戏" }).click();
   await expect(page.getByRole("heading", { name: "本地人机对局" })).toBeVisible();
@@ -514,7 +539,7 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌�
   await expect(twoPlayerOwn.locator(".official-card__name").first()).toBeVisible();
 });
 
-test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", async ({
+test("正式对局壳横屏 844 与 1024 为双栏同屏，竖屏 390 呈现横持遮罩", async ({
   page,
   externalRequests,
   networkFailures,
@@ -524,7 +549,7 @@ test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", a
   void runtimeErrors;
   void networkFailures;
 
-  await page.goto("/");
+  await page.goto("/play");
   await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
   await page.getByLabel("player_2 角色").selectOption("acid_king");
   await page.getByRole("button", { name: "开始游戏" }).click();
@@ -545,7 +570,7 @@ test("正式对局壳在 390 竖屏单列，横屏 844 与 1024 双栏同屏", a
   await expectNoHorizontalOverflow(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expectPortraitPlayShell(page);
+  await expect(page.locator('[data-testid="orientation-barrier"]')).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 

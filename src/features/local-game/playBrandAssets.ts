@@ -8,7 +8,7 @@ import type { CharacterId } from "../../game/engine/types";
 function getPlayBrandBasePrefix(): string {
   if (typeof window !== "undefined" && window.location?.pathname) {
     const stripped = window.location.pathname
-      .replace(/\/debug(?:\/.*)?$/u, "")
+      .replace(/\/(?:debug|play)(?:\/.*)?$/u, "")
       .replace(/\/+$/u, "");
     const normalized = stripped === "" ? "/" : (stripped.startsWith("/") ? `${stripped}/` : `/${stripped}/`);
     return normalized.replace(/\/+/gu, "/");

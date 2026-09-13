@@ -1,0 +1,327 @@
+.lobby-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 1360px;
+  min-height: 100vh;
+  min-width: 0;
+  padding: 0 16px 32px;
+  width: 100%;
+}
+
+.lobby-main {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin: 0 auto;
+  max-width: 1100px;
+  padding-top: 20px;
+  width: 100%;
+}
+
+/* Lobby Banner Placeholder */
+.lobby-banner {
+  background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.lobby-banner__visual {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  max-height: 220px;
+  min-height: 160px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.lobby-banner__image {
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+  width: 100%;
+}
+
+.lobby-banner__overlay {
+  align-items: center;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.85) 100%);
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  left: 0;
+  padding: 20px;
+  position: absolute;
+  right: 0;
+  text-align: center;
+  top: 0;
+}
+
+.lobby-banner__slot-tag {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid #38bdf8;
+  border-radius: 9999px;
+  color: #7dd3fc;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  padding: 4px 12px;
+  text-transform: uppercase;
+}
+
+.lobby-banner__title {
+  color: #ffffff;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.lobby-banner__subtitle {
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  margin: 0;
+  max-width: 600px;
+}
+
+/* Mode Entry Grid */
+.lobby-modes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lobby-modes-heading {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.lobby-modes-heading h2 {
+  color: #f1f5f9;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.lobby-mode-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 768px) {
+  .lobby-mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lobby-mode-card {
+  background: linear-gradient(180deg, #1e293b 0%, #111827 100%);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lobby-mode-card:hover,
+.lobby-mode-card:focus-within {
+  border-color: #38bdf8;
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
+  transform: translateY(-2px);
+}
+
+.lobby-mode-card__hero {
+  align-items: center;
+  background: #0b1120;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  height: 130px;
+  justify-content: center;
+  position: relative;
+}
+
+.lobby-mode-card__badge {
+  background: #0284c7;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+}
+
+.lobby-mode-card__badge--secondary {
+  background: #475569;
+}
+
+.lobby-mode-card__image {
+  height: 90px;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+  width: 90px;
+}
+
+.lobby-mode-card:hover .lobby-mode-card__image {
+  transform: scale(1.05);
+}
+
+.lobby-mode-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+}
+
+.lobby-mode-card__title {
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.lobby-mode-card__description {
+  color: #94a3b8;
+  flex: 1;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.lobby-mode-card__action {
+  align-items: center;
+  background: #0284c7;
+  border: 1px solid #38bdf8;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 42px;
+  padding: 8px 16px;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.1s ease;
+  width: 100%;
+}
+
+.lobby-mode-card__action:hover {
+  background: #0369a1;
+}
+
+.lobby-mode-card__action:active {
+  transform: scale(0.98);
+}
+
+.lobby-mode-card__action--duo {
+  background: #0d9488;
+  border-color: #2dd4bf;
+}
+
+.lobby-mode-card__action--duo:hover {
+  background: #0f766e;
+}
+
+.lobby-mode-card__action--tutorial {
+  background: #d97706;
+  border-color: #fbbf24;
+}
+
+.lobby-mode-card__action--tutorial:hover {
+  background: #b45309;
+}
+
+/* Lobby Footer */
+.lobby-footer {
+  align-items: center;
+  border-top: 1px solid #1e293b;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 32px;
+  padding-top: 16px;
+}
+
+.lobby-footer__info {
+  color: #64748b;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.lobby-footer__links {
+  display: flex;
+  gap: 16px;
+}
+
+/* Landscape orientation barrier */
+.orientation-barrier {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  .orientation-barrier {
+    align-items: center;
+    backdrop-filter: blur(16px);
+    background: rgba(15, 23, 42, 0.98);
+    box-sizing: border-box;
+    color: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    inset: 0;
+    justify-content: center;
+    padding: 32px 24px;
+    pointer-events: auto;
+    position: fixed;
+    text-align: center;
+    user-select: none;
+    z-index: 99999;
+  }
+
+  .orientation-barrier__content {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 360px;
+  }
+
+  .orientation-barrier__icon {
+    color: #38bdf8;
+  }
+
+  .orientation-barrier__title {
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .orientation-barrier__text {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+}

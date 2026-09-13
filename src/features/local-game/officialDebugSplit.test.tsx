@@ -4,7 +4,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { StrictMode } from "react";
-import { isDebugRoute } from "../../app/routes";
+import { isDebugRoute, isPlayRoute, getAppRoute } from "../../app/routes";
 import { LocalGamePage } from "./LocalGamePage";
 import { deterministicFixtureFactory } from "../../../e2e/fixtureScenarios";
 import { LocaleProvider } from "../../app/locale";
@@ -22,6 +22,20 @@ describe("Phase 20D — Official Play & Debug Lab Split", () => {
     expect(isDebugRoute("/debug/")).toBe(true);
     expect(isDebugRoute("/playtest/debug")).toBe(true);
     expect(isDebugRoute("/playtest/debug/")).toBe(true);
+
+    expect(isPlayRoute("/")).toBe(false);
+    expect(isPlayRoute("/playtest/")).toBe(false);
+    expect(isPlayRoute("/play")).toBe(true);
+    expect(isPlayRoute("/play/")).toBe(true);
+    expect(isPlayRoute("/playtest/play")).toBe(true);
+    expect(isPlayRoute("/playtest/play/")).toBe(true);
+
+    expect(getAppRoute("/")).toBe("lobby");
+    expect(getAppRoute("/playtest/")).toBe("lobby");
+    expect(getAppRoute("/play")).toBe("play");
+    expect(getAppRoute("/playtest/play")).toBe("play");
+    expect(getAppRoute("/debug")).toBe("debug");
+    expect(getAppRoute("/playtest/debug")).toBe("debug");
   });
 
   it("official play mode (isDebug=false) has zero controller dropdowns and renders character avatars", async () => {
@@ -129,8 +143,11 @@ describe("Phase 20D — Official Play & Debug Lab Split", () => {
     { pathname: "/", expected: "/brand/play/card-back.png" },
     { pathname: "/debug", expected: "/brand/play/card-back.png" },
     { pathname: "/playtest/debug", expected: "/playtest/brand/play/card-back.png" },
+    { pathname: "/play", expected: "/brand/play/card-back.png" },
+    { pathname: "/playtest/play", expected: "/playtest/brand/play/card-back.png" },
     { pathname: "/Chemistry-online-Card-Game/", expected: "/Chemistry-online-Card-Game/brand/play/card-back.png" },
     { pathname: "/Chemistry-online-Card-Game/debug", expected: "/Chemistry-online-Card-Game/brand/play/card-back.png" },
+    { pathname: "/Chemistry-online-Card-Game/play", expected: "/Chemistry-online-Card-Game/brand/play/card-back.png" },
   ] as const;
 
   for (const { pathname, expected } of acceptancePathnameCases) {

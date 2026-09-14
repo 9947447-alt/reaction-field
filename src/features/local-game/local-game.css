@@ -17,6 +17,8 @@
   justify-content: space-between;
   min-width: 0;
   padding: 12px 24px;
+  position: relative;
+  z-index: 10001;
 }
 
 .release-bar > :first-child {
@@ -2062,3 +2064,360 @@ select {
     font-size: 1.05rem;
   }
 }
+
+/* ==========================================================================
+   Phase 20 Desk Table Layout (/play official card-table surface)
+   ========================================================================== */
+
+.desk-table-page {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 auto;
+  max-width: 1440px;
+  min-height: 100vh;
+  padding: 12px 16px;
+}
+
+.desk-table__top-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.desk-table__top-bar > .table-summary-bar {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+}
+
+.desk-table__log-toggle {
+  align-self: center;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  color: #f8fafc;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 8px 16px;
+}
+
+.desk-table__log-toggle:hover {
+  background: #334155;
+}
+
+.desk-table__surface {
+  background: radial-gradient(circle at 50% 50%, #17384d 0%, #0d2230 100%);
+  border: 2px solid #234e6b;
+  border-radius: 16px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+
+.desk-table__opponent-zone,
+.desk-table__own-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desk-table__center-zone {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  margin: 4px 0;
+}
+
+.desk-player-panel {
+  background: rgba(15, 35, 50, 0.75);
+  border: 1px solid #2d5a7b;
+  border-radius: 12px;
+  box-sizing: border-box;
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.desk-player-panel .player-panel__header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.desk-player-panel .player-panel__identity {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.desk-player-panel .player-panel__avatar {
+  border-radius: 8px;
+  flex: 0 0 auto;
+}
+
+.desk-player-panel .player-panel__identity h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.desk-player-panel .player-panel__identity p {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  margin: 2px 0 0;
+}
+
+.desk-player-panel .player-hp-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.desk-player-panel .player-status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Desk Action Bar (1-3 Big Buttons at the bottom) */
+.desk-action-bar {
+  align-items: center;
+  background: #0f172a;
+  border: 2px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 20px;
+}
+
+.desk-action-bar__info {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.desk-action-bar__phase-tag {
+  background: #1e293b;
+  border: 1px solid #38bdf8;
+  border-radius: 6px;
+  color: #38bdf8;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.desk-action-bar__phase-tag.is-response {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.desk-action-bar__phase-tag.is-counterattack {
+  border-color: #ec4899;
+  color: #ec4899;
+}
+
+.desk-action-bar__phase-tag.is-status {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.desk-action-bar__phase-tag.is-diy {
+  border-color: #a855f7;
+  color: #a855f7;
+}
+
+.desk-action-bar__phase-tag.is-gameover {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.desk-action-bar__hint {
+  color: #cbd5e1;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.desk-action-bar__buttons {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.desk-action-btn {
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  min-height: 48px;
+  min-width: 130px;
+  padding: 8px 20px;
+  text-align: center;
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+.desk-action-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.desk-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.desk-action-btn--primary {
+  background: #059669;
+  color: #ffffff;
+}
+
+.desk-action-btn--primary:hover:not(:disabled) {
+  background: #10b981;
+}
+
+.desk-action-btn--secondary {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.desk-action-btn--secondary:hover:not(:disabled) {
+  background: #475569;
+}
+
+.desk-action-btn--skill {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.desk-action-btn--skill:hover:not(:disabled) {
+  background: #8b5cf6;
+}
+
+/* Game Log Drawer */
+.game-log-drawer-backdrop {
+  align-items: stretch;
+  background: rgba(0, 0, 0, 0.65);
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 54px;
+  z-index: 10000;
+}
+
+.game-log-drawer {
+  background: #0f172a;
+  border-left: 1px solid #334155;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 100vw;
+  width: 480px;
+}
+
+.game-log-drawer__header {
+  align-items: center;
+  border-bottom: 1px solid #334155;
+  box-sizing: border-box;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.game-log-drawer__title-group {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.game-log-drawer__title {
+  color: #f8fafc;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.game-log-drawer__badge {
+  background: #1e293b;
+  border-radius: 9999px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+}
+
+.game-log-drawer__close {
+  background: #334155;
+  border: 0;
+  border-radius: 6px;
+  color: #f8fafc;
+  cursor: pointer;
+  padding: 6px 12px;
+}
+
+.game-log-drawer__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 14px 18px;
+}
+
+.game-log-drawer__body .game-log {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.game-log-drawer__body .game-log h2 {
+  display: none;
+}
+
+.game-log-drawer__body .game-log li {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.game-log-drawer__body .game-log li.is-latest {
+  background: #1e3a5f;
+  border-color: #38bdf8;
+}
+
+.game-log-drawer__body .game-log__reaction {
+  background: #14352b;
+  border-color: #10b981;
+}
+
+.game-log-drawer__body .game-log__reaction strong {
+  color: #34d399;
+}
+
+.game-log-drawer__body .game-log__reaction span {
+  color: #a7f3d0;
+}
+

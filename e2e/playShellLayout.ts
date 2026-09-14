@@ -46,3 +46,22 @@ export async function expectLandscapePlayShell(page: Page) {
   expect(layout.surfaceVisible, "play-surface must intersect the landscape viewport").toBe(true);
   expect(layout.sidebarVisible, "play-sidebar must intersect the landscape viewport").toBe(true);
 }
+
+export async function expectLandscapeDeskTable(page: Page) {
+  await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+  // 1. 对手区与手牌横排
+  await expect(page.locator(".desk-table__opponent-zone .official-hand-row")).toBeVisible();
+  // 2. 中央场面牌
+  await expect(page.locator(".desk-table__center-zone .table-center-board")).toBeVisible();
+  // 3. 己方手牌横排
+  await expect(page.locator(".desk-table__own-zone .official-hand-row")).toBeVisible();
+  // 4. 桌底 1~3 个大按钮操作条
+  await expect(page.locator(".desk-action-bar")).toBeVisible();
+  const buttons = page.locator(".desk-action-bar .desk-action-btn");
+  const count = await buttons.count();
+  expect(count).toBeGreaterThanOrEqual(1);
+  expect(count).toBeLessThanOrEqual(3);
+  await expect(
+    page.locator(".desk-action-btn", { hasText: /金属反击|Metal Counterattack/u }),
+  ).toHaveCount(0);
+}

@@ -255,12 +255,14 @@ export function CharacterSelectionPanel({
                 <span className="active-pill">{c.maxHp} HP</span>
               </div>
               <CharacterSkillList character={c} locale={locale} />
-              <details className="debug-details">
-                <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-                {c.skills.map((s) => (
-                  <p key={s.id}>{formatSkillDebugText(s, locale)}</p>
-                ))}
-              </details>
+              {isDebug ? (
+                <details className="debug-details">
+                  <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+                  {c.skills.map((s) => (
+                    <p key={s.id}>{formatSkillDebugText(s, locale)}</p>
+                  ))}
+                </details>
+              ) : null}
             </article>
           ))}
         </div>

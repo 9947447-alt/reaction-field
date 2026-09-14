@@ -22,9 +22,11 @@ type PlayerPanelProps = {
   player: Player;
   controller?: PlayerController;
   selectedCardId?: CardInstanceId;
+  selectedCardIds?: CardInstanceId[];
   onSelectCard: (cardInstanceId: CardInstanceId) => void;
   handReveal?: "contents" | "backs";
   handSelectionDisabled?: boolean;
+  selectableCardIds?: readonly CardInstanceId[];
   showActivePlayerIndicator?: boolean;
   isDebug?: boolean;
 };
@@ -34,9 +36,11 @@ export function PlayerPanel({
   player,
   controller,
   selectedCardId,
+  selectedCardIds,
   onSelectCard,
   handReveal = "contents",
   handSelectionDisabled = false,
+  selectableCardIds,
   showActivePlayerIndicator = true,
   isDebug = true,
 }: PlayerPanelProps) {
@@ -53,7 +57,10 @@ export function PlayerPanel({
   const hpToneClass = hpPercent <= 25 ? "is-critical" : hpPercent <= 50 ? "is-low" : "is-healthy";
 
   return (
-    <section className="debug-section player-panel" aria-labelledby={`${player.id}-title`}>
+    <section
+      aria-labelledby={`${player.id}-title`}
+      className={`${isDebug ? "debug-section " : "desk-player-panel "}player-panel`}
+    >
       <div className="player-panel__header">
         <div className="player-panel__identity">
           <img
@@ -121,39 +128,39 @@ export function PlayerPanel({
         </span>
       </div>
 
-      <dl className="player-stats">
-        {([
-          [isEnglish ? "HP" : "生命值", `${player.hp} / ${player.maxHp}`],
-          [isEnglish ? "Eliminated" : "淘汰", player.eliminated ? (isEnglish ? "Yes" : "是") : (isEnglish ? "No" : "否")],
-          [isEnglish ? "Pending status" : "待处理状态", player.statuses.length > 0 ? (isEnglish ? "Yes" : "有") : (isEnglish ? "No" : "无")],
-          [isEnglish ? "DIY this cycle" : "本周期 DIY", player.usedDIYThisCycle ? (isEnglish ? "Used" : "已用") : (isEnglish ? "Unused" : "未用")],
-          [isEnglish ? "Hand" : "手牌", player.hand.length],
-        ] as const).map(([l, v]) => (
-          <div key={l}><dt>{l}</dt><dd>{v}</dd></div>
-        ))}
-      </dl>
-      <p className="status-line">{isEnglish ? "Current status" : "当前状态"}：{player.statuses.length > 0 ? (isEnglish ? "Pending status" : "有待处理状态") : (isEnglish ? "Normal" : "正常")}</p>
       {isDebug ? (
-        <details className="debug-details">
-          <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-          <p>{player.id} · {statusText}</p>
-        </details>
-      ) : null}
-      <div className="character-readout">
-        <div className="character-readout__heading">
-          <h3>{isEnglish ? "Character skills" : "角色技能"}</h3>
-          <span>{getCharacterDisplayName(character.id, locale)}</span>
-        </div>
-        <CharacterSkillList character={character} locale={locale} />
-        {isDebug ? (
+        <>
+          <dl className="player-stats">
+            {([
+              [isEnglish ? "HP" : "生命值", `${player.hp} / ${player.maxHp}`],
+              [isEnglish ? "Eliminated" : "淘汰", player.eliminated ? (isEnglish ? "Yes" : "是") : (isEnglish ? "No" : "否")],
+              [isEnglish ? "Pending status" : "待处理状态", player.statuses.length > 0 ? (isEnglish ? "Yes" : "有") : (isEnglish ? "No" : "无")],
+              [isEnglish ? "DIY this cycle" : "本周期 DIY", player.usedDIYThisCycle ? (isEnglish ? "Used" : "已用") : (isEnglish ? "Unused" : "未用")],
+              [isEnglish ? "Hand" : "手牌", player.hand.length],
+            ] as const).map(([l, v]) => (
+              <div key={l}><dt>{l}</dt><dd>{v}</dd></div>
+            ))}
+          </dl>
+          <p className="status-line">{isEnglish ? "Current status" : "当前状态"}：{player.statuses.length > 0 ? (isEnglish ? "Pending status" : "有待处理状态") : (isEnglish ? "Normal" : "正常")}</p>
           <details className="debug-details">
             <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
-            {character.skills.map((skill) => (
-              <p key={skill.id}>{formatSkillDebugText(skill, locale)}</p>
-            ))}
+            <p>{player.id} · {statusText}</p>
           </details>
-        ) : null}
-      </div>
+          <div className="character-readout">
+            <div className="character-readout__heading">
+              <h3>{isEnglish ? "Character skills" : "角色技能"}</h3>
+              <span>{getCharacterDisplayName(character.id, locale)}</span>
+            </div>
+            <CharacterSkillList character={character} locale={locale} />
+            <details className="debug-details">
+              <summary>{isEnglish ? "Debug details" : "调试详情"}</summary>
+              {character.skills.map((skill) => (
+                <p key={skill.id}>{formatSkillDebugText(skill, locale)}</p>
+              ))}
+            </details>
+          </div>
+        </>
+      ) : null}
       <div className="hand-row-header">
         <span className="hand-row-title">
           {isEnglish ? "Hand cards" : "手牌"}
@@ -192,17 +199,25 @@ export function PlayerPanel({
                 <span className="card-back__caption">{isEnglish ? "Face down" : "牌背"}</span>
               </article>
             ))
-          : player.hand.map((cardInstanceId) => (
-              <OfficialCard
-                cardInstanceId={cardInstanceId}
-                disabled={effectiveHandDisabled}
-                game={game}
-                isDebug={isDebug}
-                key={cardInstanceId}
-                onSelect={effectiveHandDisabled ? undefined : onSelectCard}
-                selected={!effectiveHandDisabled && selectedCardId === cardInstanceId}
-              />
-            ))}
+          : player.hand.map((cardInstanceId) => {
+              const isSelectable = selectableCardIds ? selectableCardIds.includes(cardInstanceId) : true;
+              const cardDisabled = effectiveHandDisabled || !isSelectable;
+              return (
+                <OfficialCard
+                  cardInstanceId={cardInstanceId}
+                  disabled={cardDisabled}
+                  game={game}
+                  isDebug={isDebug}
+                  key={cardInstanceId}
+                  onSelect={cardDisabled ? undefined : onSelectCard}
+                  selected={
+                    !cardDisabled &&
+                    (selectedCardId === cardInstanceId ||
+                      (selectedCardIds?.includes(cardInstanceId) ?? false))
+                  }
+                />
+              );
+            })}
       </div>
     </section>
   );

@@ -1,6 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { expect, test as base, type Page } from "@playwright/test";
-import { expectLandscapePlayShell, expectPortraitPlayShell } from "../playShellLayout";
+import {
+  expectLandscapeDeskTable,
+  expectLandscapePlayShell,
+  expectPortraitPlayShell,
+} from "../playShellLayout";
 
 function readExpectedBuildCommit(): string {
   const commit = execFileSync("git", ["rev-parse", "--short=12", "HEAD"], {
@@ -211,35 +215,51 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
     await page.getByLabel("player_2 角色").selectOption("acid_king");
     await page.getByRole("button", { name: "开始游戏" }).click();
-    await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "新手引导：主行动" })).toBeVisible();
 
-    // GameLog verification
-    const gameLog = page.locator(".game-log");
+    // Assert Desk Table 4 Core Pieces
+    await expectLandscapeDeskTable(page);
+    await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
+    await expect(page.locator("details")).toHaveCount(0);
+    await expect(page.locator("dl")).toHaveCount(0);
+    await expect(page.locator(".action-panel")).toHaveCount(0);
+
+    // Official GameLogDrawer verification
+    const logButton = page.locator(".desk-table__log-toggle");
+    await expect(logButton).toBeVisible();
+    await logButton.click();
+
+    const drawer = page.locator(".game-log-drawer");
+    await expect(drawer).toBeVisible();
+    const gameLog = drawer.locator(".game-log");
     await expect(gameLog).toBeVisible();
-    await expect(gameLog.locator("h2")).toHaveText("完整游戏日志");
     await expect(gameLog.locator("ol li").first()).toContainText("游戏开始，进入第 1 实验周期。");
     const initialLogCount = await gameLog.locator("ol li").count();
     expect(initialLogCount).toBeGreaterThanOrEqual(1);
 
     // In-place locale switch to English
     await page.getByRole("button", { name: "English" }).click();
-    await expect(gameLog.locator("h2")).toHaveText("Full game log");
     await expect(gameLog.locator("ol li").first()).toContainText("Game started; entering experiment cycle 1.");
     expect(await gameLog.locator("ol li").count()).toBe(initialLogCount);
 
     // In-place locale switch back to Chinese
     await page.getByRole("button", { name: "中文" }).click();
-    await expect(gameLog.locator("h2")).toHaveText("完整游戏日志");
     await expect(gameLog.locator("ol li").first()).toContainText("游戏开始，进入第 1 实验周期。");
     expect(await gameLog.locator("ol li").count()).toBe(initialLogCount);
 
-    const debugCard = page.locator(".debug-card").first();
-    await expect(debugCard.locator("button details")).toHaveCount(0);
-    await expect(debugCard.locator("details")).toHaveCount(0);
+    // Close GameLogDrawer
+    await drawer.locator(".game-log-drawer__close").click();
+    await expect(drawer).toHaveCount(0);
 
-    // Action progression log test
+    const officialCard = page.locator(".official-card").first();
+    await expect(officialCard.locator("button details")).toHaveCount(0);
+    await expect(officialCard.locator("details")).toHaveCount(0);
+
+    // Action progression log test: click desk action bar button
     await page.getByRole("button", { name: "结束本次行动" }).click();
+
+    // Re-open log drawer to verify progression
+    await logButton.click();
+    await expect(drawer).toBeVisible();
     const postActionCount = await gameLog.locator("ol li").count();
     expect(postActionCount).toBeGreaterThan(initialLogCount);
     await expect(gameLog.locator("ol li").last()).toContainText("轮到 玩家 B 行动。");
@@ -249,10 +269,12 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     await expect(gameLog.locator("ol li").last()).toContainText("It is Player B's turn.");
     expect(await gameLog.locator("ol li").count()).toBe(postActionCount);
     await page.getByRole("button", { name: "中文" }).click();
+    await drawer.locator(".game-log-drawer__close").click();
+    await expect(drawer).toHaveCount(0);
 
     await page.getByRole("button", { name: "按当前阵容重开" }).click();
     await page.getByRole("button", { name: "确认重开" }).click();
-    await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
+    await expectLandscapeDeskTable(page);
     await page.getByRole("button", { name: "返回角色选择" }).click();
     await page.getByRole("button", { name: "确认返回" }).click();
     await expect(page.getByRole("heading", { name: "反应域 · 本地双人角色选择" })).toBeVisible();
@@ -276,40 +298,27 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   await page.getByLabel("player_2 角色").selectOption("laboratory_teacher");
   await page.getByRole("button", { name: "开始游戏" }).click();
 
-  // Helper to select the first 10 cards in preparation panel
-  async function selectFirstTenPreparationCards() {
-    const candidateGrid = page.locator(".preparation-candidate-grid");
-    const cards = candidateGrid.locator(".debug-card button.debug-card__select");
+  // Helper to select the first 10 cards in preparation
+  async function selectFirstTenPreparationCards(zoneLocator: ReturnType<typeof page.locator>) {
+    const cards = zoneLocator.locator(".official-card button.debug-card__select");
     await expect(cards).toHaveCount(20);
 
     for (let index = 0; index < 10; index += 1) {
       await cards.nth(index).click();
     }
 
-    await page.getByRole("button", { name: "确认备课选择" }).click();
+    await page.getByRole("button", { name: /确认备课/u }).click();
   }
 
   // Player A preparation: keep 10 cards
-  await expect(page.getByText("当前选择玩家：玩家 A")).toBeVisible();
-  await selectFirstTenPreparationCards();
+  await selectFirstTenPreparationCards(page.locator(".desk-table__own-zone"));
 
   // Player B preparation: keep 10 cards
-  await expect(page.getByText("当前选择玩家：玩家 B")).toBeVisible();
-  await selectFirstTenPreparationCards();
+  await selectFirstTenPreparationCards(page.locator(".desk-table__opponent-zone"));
 
-  await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
-  const gameLog = page.locator(".game-log");
-  await expect(gameLog).toBeVisible();
-
-  // Official play log has no debug details, no Log ID, and no raw JSON
-  await expect(gameLog.locator("details.game-log__details")).toHaveCount(0);
-  await expect(gameLog.locator(".game-log__entry-id")).toHaveCount(0);
-  await expect(page.getByText("日志编号：")).toHaveCount(0);
-  await expect(page.getByText("Log ID：")).toHaveCount(0);
+  await expectLandscapeDeskTable(page);
 
   // 1. Formal DIY Virtual Attack execution
-  const diyPanel = page.locator(".diy-panel");
-  await expect(diyPanel).toBeVisible();
   await page.getByRole("button", { name: "进入主动 DIY" }).click();
 
   const virtualAttackRecipes = [
@@ -371,13 +380,13 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   ];
 
   let selectedRecipeInfo = virtualAttackRecipes[0];
-  const candidateButtons = diyPanel.locator(".candidate-card");
+  const candidateButtons = page.locator(".desk-table__own-zone .official-card button.debug-card__select");
   const candidateCount = await candidateButtons.count();
   const availableCandidates: { element: ReturnType<typeof candidateButtons.nth>; name: string }[] = [];
 
   for (let i = 0; i < candidateCount; i += 1) {
     const card = candidateButtons.nth(i);
-    const name = (await card.locator(".debug-card__name").textContent()) ?? "";
+    const name = (await card.locator(".official-card__name").textContent()) ?? "";
     availableCandidates.push({ element: card, name: name.trim() });
   }
 
@@ -410,6 +419,19 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   await expect(page.getByRole("button", { name: "执行主动 DIY" })).toBeEnabled();
   await page.getByRole("button", { name: "执行主动 DIY" }).click();
 
+  // Open GameLogDrawer to verify logs
+  const logButton = page.locator(".desk-table__log-toggle");
+  await logButton.click();
+  const drawer = page.locator(".game-log-drawer");
+  await expect(drawer).toBeVisible();
+  const gameLog = drawer.locator(".game-log");
+
+  // Official play log has no debug details, no Log ID, and no raw JSON
+  await expect(gameLog.locator("details.game-log__details")).toHaveCount(0);
+  await expect(gameLog.locator(".game-log__entry-id")).toHaveCount(0);
+  await expect(page.getByText("日志编号：")).toHaveCount(0);
+  await expect(page.getByText("Log ID：")).toHaveCount(0);
+
   const logItems = gameLog.locator("ol li");
   const diyLog = logItems.last();
   const logCountAfterDiy = await logItems.count();
@@ -425,14 +447,18 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   expect(await logItems.count()).toBe(logCountAfterDiy);
 
   await page.getByRole("button", { name: "中文" }).click();
+  await drawer.locator(".game-log-drawer__close").click();
+  await expect(drawer).toHaveCount(0);
 
   // 2. Formal Response execution triggering Reaction
-  const responsePanel = page.locator(".response-panel");
-  await expect(responsePanel).toBeVisible();
-  const responseCards = responsePanel.locator(".debug-card button.debug-card__select");
+  const responseCards = page.locator(".desk-table__opponent-zone .official-card button.debug-card__select:not([disabled])");
   await expect(responseCards.first()).toBeVisible();
   await responseCards.first().click();
+  await page.getByRole("button", { name: "打出响应" }).click();
 
+  // Re-open log drawer to verify reaction log
+  await logButton.click();
+  await expect(drawer).toBeVisible();
   const reactionItem = gameLog.locator("li:has(.game-log__reaction)").last();
   await expect(reactionItem).toBeVisible();
   const reactionLog = reactionItem.locator(".game-log__reaction");
@@ -453,6 +479,8 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   expect(await logItems.count()).toBe(logCountAfterReaction);
 
   await page.getByRole("button", { name: "中文" }).click();
+  await drawer.locator(".game-log-drawer__close").click();
+  await expect(drawer).toHaveCount(0);
 });
 
 test("正式构建人机只显示对手牌背与张数，双人仍公开手牌，且手牌支持点选抬起与取消", async ({
@@ -492,7 +520,8 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌�
   await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
   await page.getByLabel("player_2 角色").selectOption("acid_king");
   await page.getByRole("button", { name: "开始游戏" }).click();
-  await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
+  await expectLandscapeDeskTable(page);
+  await expect(page.locator(".desk-action-bar__phase-tag")).toHaveText("主行动");
 
   const own = page.locator('[aria-labelledby="player_1-title"]');
   await expect(own.locator(".official-hand-row")).toBeVisible();
@@ -539,7 +568,7 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌�
   await expect(twoPlayerOwn.locator(".official-card__name").first()).toBeVisible();
 });
 
-test("正式对局壳横屏 844 与 1024 为双栏同屏，竖屏 390 呈现横持遮罩", async ({
+test("正式对局壳横屏 844 与 1024 为桌面四件套，竖屏 390 呈现横持遮罩", async ({
   page,
   externalRequests,
   networkFailures,
@@ -553,20 +582,18 @@ test("正式对局壳横屏 844 与 1024 为双栏同屏，竖屏 390 呈现横�
   await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
   await page.getByLabel("player_2 角色").selectOption("acid_king");
   await page.getByRole("button", { name: "开始游戏" }).click();
-  await expect(page.locator(".play-shell-layout")).toBeVisible();
-  await expect(page.locator(".play-surface")).toBeVisible();
-  await expect(page.locator(".play-sidebar")).toBeVisible();
+  await expectLandscapeDeskTable(page);
 
   await page.setViewportSize({ width: 1280, height: 800 });
-  await expectLandscapePlayShell(page);
+  await expectLandscapeDeskTable(page);
   await expectNoHorizontalOverflow(page);
 
   await page.setViewportSize({ width: 1024, height: 768 });
-  await expectLandscapePlayShell(page);
+  await expectLandscapeDeskTable(page);
   await expectNoHorizontalOverflow(page);
 
   await page.setViewportSize({ width: 844, height: 390 });
-  await expectLandscapePlayShell(page);
+  await expectLandscapeDeskTable(page);
   await expectNoHorizontalOverflow(page);
 
   await page.setViewportSize({ width: 390, height: 844 });

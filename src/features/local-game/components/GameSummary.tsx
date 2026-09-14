@@ -58,26 +58,29 @@ export function GameSummary({
               ? `Cycle ${game.cycleNumber} · Round ${game.roundInCycle}`
               : `第 ${game.cycleNumber} 周期 · 第 ${game.roundInCycle} 轮`}
           </span>
+          {!isDebug ? <span className="visibility-badge">{visibilityValue}</span> : null}
           {game.phase === "gameOver" ? (
             <span className="outcome-badge is-game-over">{winnerText}</span>
           ) : null}
         </div>
       </div>
 
-      <dl className="summary-grid">
-        {([
-          [isEnglish ? "Experiment cycle" : "实验周期", game.cycleNumber],
-          [isEnglish ? "Round in cycle" : "本周期轮次", game.roundInCycle],
-          [isEnglish ? "Current phase" : "当前阶段", game.phase === "mainAction" ? (isEnglish ? "Main action" : "主行动") : game.phase === "gameOver" ? (isEnglish ? "Game over" : "对局结束") : (isEnglish ? "Waiting" : "等待处理")],
-          [isEnglish ? "Active player" : "当前行动玩家", getPlayerDisplayName(game.players.find((p) => p.id === game.activePlayerId), locale)],
-          [isEnglish ? "Deck" : "牌堆", game.deck.length],
-          [isEnglish ? "Discard pile" : "弃牌堆", game.discardPile.length],
-          [visibilityLabel, visibilityValue],
-          [isEnglish ? "Outcome" : "胜负", winnerText],
-        ] as const).map(([l, v]) => (
-          <div key={l}><dt>{l}</dt><dd>{v}</dd></div>
-        ))}
-      </dl>
+      {isDebug ? (
+        <dl className="summary-grid">
+          {([
+            [isEnglish ? "Experiment cycle" : "实验周期", game.cycleNumber],
+            [isEnglish ? "Round in cycle" : "本周期轮次", game.roundInCycle],
+            [isEnglish ? "Current phase" : "当前阶段", game.phase === "mainAction" ? (isEnglish ? "Main action" : "主行动") : game.phase === "gameOver" ? (isEnglish ? "Game over" : "对局结束") : (isEnglish ? "Waiting" : "等待处理")],
+            [isEnglish ? "Active player" : "当前行动玩家", getPlayerDisplayName(game.players.find((p) => p.id === game.activePlayerId), locale)],
+            [isEnglish ? "Deck" : "牌堆", game.deck.length],
+            [isEnglish ? "Discard pile" : "弃牌堆", game.discardPile.length],
+            [visibilityLabel, visibilityValue],
+            [isEnglish ? "Outcome" : "胜负", winnerText],
+          ] as const).map(([l, v]) => (
+            <div key={l}><dt>{l}</dt><dd>{v}</dd></div>
+          ))}
+        </dl>
+      ) : null}
 
       {isDebug ? (
         <details className="debug-details">

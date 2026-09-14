@@ -11,10 +11,8 @@ import type { RandomSource } from "../../shared/random";
 import { ActionPanel } from "./components/ActionPanel";
 import { AboutDialog } from "./components/AboutDialog";
 import { CharacterSelectionPanel } from "./components/CharacterSelectionPanel";
-import {
-  ConfirmationDialog,
-  type SessionConfirmationKind,
-} from "./components/ConfirmationDialog";
+import { ConfirmationDialog, type SessionConfirmationKind } from "./components/ConfirmationDialog";
+import { DeskTable } from "./components/DeskTable";
 import { DiyPanel } from "./components/DiyPanel";
 import { ExperimentCounterattackPanel } from "./components/ExperimentCounterattackPanel";
 import { FatalSessionPage } from "./components/FatalSessionPage";
@@ -319,16 +317,24 @@ export function LocalGamePage({
             session={session}
           />
         ) : session.mode === "playing" ? (
-          <PlayingGame
-            dispatch={dispatch}
-            guidanceCollapsed={guidanceCollapsed}
-            guidanceVisible={guidanceVisible}
-            isDebug={isDebug}
-            onGuidanceCollapsedChange={setGuidanceCollapsed}
-            onGuidanceVisibleChange={setGuidanceVisible}
-            onRequestSessionExit={requestSessionExit}
-            session={session}
-          />
+          isDebug ? (
+            <PlayingGame
+              dispatch={dispatch}
+              guidanceCollapsed={guidanceCollapsed}
+              guidanceVisible={guidanceVisible}
+              isDebug={isDebug}
+              onGuidanceCollapsedChange={setGuidanceCollapsed}
+              onGuidanceVisibleChange={setGuidanceVisible}
+              onRequestSessionExit={requestSessionExit}
+              session={session}
+            />
+          ) : (
+            <DeskTable
+              dispatch={dispatch}
+              onRequestSessionExit={requestSessionExit}
+              session={session}
+            />
+          )
         ) : (
           <FatalSessionPage dispatch={dispatch} session={session} />
         )}

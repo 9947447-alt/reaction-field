@@ -1,3 +1,4 @@
+import { Children, type ReactNode } from "react";
 import { useLocale } from "../../../app/locale";
 import type { GameAction } from "../../../game/engine/actions";
 import type {
@@ -13,7 +14,6 @@ import {
   canPlayAgainstCurrentTableReference,
   getActivePlayer,
   getCardDefinition,
-  getExperimentCounterattackMetalCards,
   getExperimentCounterattackPursuitCards,
   getOpponentTargets,
   getPlayer,
@@ -48,6 +48,16 @@ export type DeskActionBarProps = Readonly<{
 }>;
 
 type DrawSkillId = "extra_lesson" | "emergency_supply";
+
+const MAX_DESK_ACTION_BUTTONS = 3;
+
+function DeskActionButtons({ children }: { children: ReactNode }) {
+  return (
+    <div className="desk-action-bar__buttons">
+      {Children.toArray(children).slice(0, MAX_DESK_ACTION_BUTTONS)}
+    </div>
+  );
+}
 
 export function DeskActionBar({
   game,
@@ -91,7 +101,7 @@ export function DeskActionBar({
                 : `请在下方点选保留 ${keepCount} 张手牌（已选 ${selectedCount}/${keepCount} 张）`}
           </span>
         </div>
-        <div className="desk-action-bar__buttons">
+        <DeskActionButtons>
           <button
             className="desk-action-btn desk-action-btn--primary"
             disabled={!canConfirm}
@@ -109,7 +119,7 @@ export function DeskActionBar({
               ? `Confirm Selection (${selectedCount}/${keepCount})`
               : `确认备课选择 (${selectedCount}/${keepCount})`}
           </button>
-        </div>
+        </DeskActionButtons>
       </nav>
     );
   }
@@ -150,7 +160,7 @@ export function DeskActionBar({
                   : (isEnglish ? "No response cards available" : "无可用响应牌")}
           </span>
         </div>
-        <div className="desk-action-bar__buttons">
+        <DeskActionButtons>
           <button
             className="desk-action-btn desk-action-btn--primary"
             disabled={isAi || !canRespond}
@@ -180,7 +190,7 @@ export function DeskActionBar({
           >
             {isEnglish ? "Pass Response" : "放弃响应"}
           </button>
-        </div>
+        </DeskActionButtons>
       </nav>
     );
   }
@@ -196,9 +206,7 @@ export function DeskActionBar({
     );
     const canRecover = pending?.legalOptions.includes("recover") ?? false;
     const pursuitCards = !isAi && responder ? getExperimentCounterattackPursuitCards(game, responder) : [];
-    const metalCards = !isAi && responder ? getExperimentCounterattackMetalCards(game, responder) : [];
     const isPursuitSelected = Boolean(selectedCardId && pursuitCards.includes(selectedCardId));
-    const isMetalSelected = Boolean(selectedCardId && metalCards.includes(selectedCardId));
 
     return (
       <nav aria-label={isEnglish ? "Counterattack action bar" : "实验反击操作条"} className="desk-action-bar">
@@ -211,12 +219,10 @@ export function DeskActionBar({
               ? (isEnglish ? "AI deciding counterattack..." : "AI 正在选择反击选项...")
               : isPursuitSelected
                 ? (isEnglish ? "Selected card for pursuit counterattack" : "已选中追击反击牌")
-                : isMetalSelected
-                  ? (isEnglish ? "Selected card for metal counterattack" : "已选中金属反击牌")
-                  : (isEnglish ? "Choose recovery, pursuit with card, or pass" : "可选择回复 HP、点选手牌追击或放弃反击")}
+                : (isEnglish ? "Choose recovery or pursuit with a selected card" : "可选择回复 HP，或点选手牌追击")}
           </span>
         </div>
-        <div className="desk-action-bar__buttons">
+        <DeskActionButtons>
           {isPursuitSelected ? (
             <button
               className="desk-action-btn desk-action-btn--primary"
@@ -233,23 +239,6 @@ export function DeskActionBar({
               type="button"
             >
               {isEnglish ? "Pursuit Counterattack" : "追击反击"}
-            </button>
-          ) : isMetalSelected ? (
-            <button
-              className="desk-action-btn desk-action-btn--primary"
-              disabled={isAi}
-              onClick={() => {
-                if (!responder || !selectedCardId) return;
-                dispatchGameAction({
-                  type: "RESOLVE_EXPERIMENT_COUNTERATTACK",
-                  playerId: responder.id,
-                  option: "metal-counterattack",
-                  cardInstanceId: selectedCardId,
-                });
-              }}
-              type="button"
-            >
-              {isEnglish ? "Metal Counterattack" : "金属反击"}
             </button>
           ) : (
             <button
@@ -268,7 +257,7 @@ export function DeskActionBar({
               {isEnglish ? "Recover 1 HP" : "回复 1 HP"}
             </button>
           )}
-        </div>
+        </DeskActionButtons>
       </nav>
     );
   }
@@ -303,7 +292,7 @@ export function DeskActionBar({
                   : (isEnglish ? "No handling card available" : "无可用处理牌")}
           </span>
         </div>
-        <div className="desk-action-bar__buttons">
+        <DeskActionButtons>
           <button
             className="desk-action-btn desk-action-btn--primary"
             disabled={isAi || !canHandle}
@@ -335,7 +324,7 @@ export function DeskActionBar({
           >
             {isEnglish ? "Pass Handling" : "放弃处理"}
           </button>
-        </div>
+        </DeskActionButtons>
       </nav>
     );
   }
@@ -352,7 +341,7 @@ export function DeskActionBar({
             {isEnglish ? "The game has concluded." : "对局已结算完毕。"}
           </span>
         </div>
-        <div className="desk-action-bar__buttons">
+        <DeskActionButtons>
           <button
             className="desk-action-btn desk-action-btn--primary"
             onClick={(e) => onRestart?.(e.currentTarget)}
@@ -367,7 +356,7 @@ export function DeskActionBar({
           >
             {isEnglish ? "Return to Character Selection" : "返回角色选择"}
           </button>
-        </div>
+        </DeskActionButtons>
       </nav>
     );
   }
@@ -438,7 +427,7 @@ export function DeskActionBar({
           </span>
           <span className="desk-action-bar__hint">{diyHint}</span>
         </div>
-        <div className="desk-action-bar__buttons">
+        <DeskActionButtons>
           <button
             className="desk-action-btn desk-action-btn--primary"
             disabled={!isExecutable}
@@ -469,7 +458,7 @@ export function DeskActionBar({
           >
             {isEnglish ? "Cancel DIY" : "取消 DIY"}
           </button>
-        </div>
+        </DeskActionButtons>
       </nav>
     );
   }
@@ -529,7 +518,7 @@ export function DeskActionBar({
         </span>
         <span className="desk-action-bar__hint">{hintText}</span>
       </div>
-      <div className="desk-action-bar__buttons">
+      <DeskActionButtons>
         {selectedCardId ? (
           canExecute ? (
             <button
@@ -634,7 +623,7 @@ export function DeskActionBar({
               : (isEnglish ? "Activate Emergency Supply" : "发动应急调货")}
           </button>
         ) : null}
-      </div>
+      </DeskActionButtons>
     </nav>
   );
 }

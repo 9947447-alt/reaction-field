@@ -61,4 +61,7 @@ export async function expectLandscapeDeskTable(page: Page) {
   const count = await buttons.count();
   expect(count).toBeGreaterThanOrEqual(1);
   expect(count).toBeLessThanOrEqual(3);
+  await expect(
+    page.locator(".desk-action-btn", { hasText: /金属反击|Metal Counterattack/u }),
+  ).toHaveCount(0);
 }

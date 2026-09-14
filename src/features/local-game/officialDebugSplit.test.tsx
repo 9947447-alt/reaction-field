@@ -62,6 +62,7 @@ describe("Phase 20D — Official Play & Debug Lab Split", () => {
       "select[aria-label*='controller'], select[aria-label*='控制方']",
     );
     expect(controllerSelects).toHaveLength(0);
+    expect(container.querySelectorAll("details.debug-details")).toHaveLength(0);
 
     // Mode selector only has solo and duo, no custom
     const customOption = container.querySelector("option[value='custom']");

@@ -14,7 +14,6 @@ import type {
 } from "../localGameSession";
 import {
   getActivePlayer,
-  getExperimentCounterattackMetalCards,
   getExperimentCounterattackPursuitCards,
   getOpponentTargets,
   getPlayerStatusById,
@@ -149,10 +148,7 @@ export function DeskTable({
       }
       if (playGame.phase === "experimentCounterattackWindow") {
         if (playGame.pendingExperimentCounterattack?.responderPlayerId === targetPlayer.id) {
-          return [
-            ...getExperimentCounterattackPursuitCards(playGame, targetPlayer),
-            ...getExperimentCounterattackMetalCards(playGame, targetPlayer),
-          ];
+          return getExperimentCounterattackPursuitCards(playGame, targetPlayer);
         }
         return [];
       }

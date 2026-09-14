@@ -211,6 +211,7 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
 
     // Official play setup has zero controller dropdowns
     await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
+    await expect(page.locator("details.debug-details")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "反应域 · 本地双人角色选择" })).toBeVisible();
     await page.getByLabel("player_1 角色").selectOption("chemical_factory_ceo");
     await page.getByLabel("player_2 角色").selectOption("acid_king");

@@ -491,6 +491,7 @@ export function DeskActionBar({
 
   const isOxygen = selectedCardDef?.id === "substance_o2";
   const targetPlayerId = isOxygen ? activePlayer?.id : targets[0]?.id;
+  const keepSkillSlot = Boolean(selectedCardId && canActivateSkill);
 
   let hintText = isAi
     ? (isEnglish ? "AI is playing..." : "AI 正在行动...")
@@ -564,7 +565,7 @@ export function DeskActionBar({
           )
         ) : null}
 
-        {selectedCardId && canExecute && canAssociate ? (
+        {keepSkillSlot ? null : selectedCardId && canExecute && canAssociate ? (
           <button
             className="desk-action-btn desk-action-btn--secondary"
             disabled={isAi}

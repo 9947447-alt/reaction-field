@@ -13,6 +13,12 @@ function publicButtons(container: HTMLElement): HTMLButtonElement[] {
   return Array.from(container.querySelectorAll(".desk-action-btn"));
 }
 
+function emergencySupplyButton(container: HTMLElement): HTMLButtonElement | undefined {
+  return publicButtons(container).find((button) =>
+    /应急调货|Emergency Supply/u.test(button.textContent ?? ""),
+  );
+}
+
 function createSkillReadyMainActionGame(): GameState {
   const base = createInitialGame({
     characterIds: ["chemical_factory_ceo", "acid_king"],
@@ -71,6 +77,7 @@ describe("Official desk action bar", () => {
     const root = createRoot(container);
     const game = createSkillReadyMainActionGame();
     const selectedCardId = game.players[0].hand[0];
+    const dispatchGameAction = vi.fn();
     expect(game.players[0].hand).toHaveLength(4);
 
     try {
@@ -80,7 +87,7 @@ describe("Official desk action bar", () => {
             LocaleProvider,
             null,
             createElement(DeskActionBar, {
-              dispatchGameAction: vi.fn(),
+              dispatchGameAction,
               game,
               playerControllers: ["human", "ai"],
             }),
@@ -88,7 +95,9 @@ describe("Official desk action bar", () => {
         );
       });
 
-      expect(container.textContent).toMatch(/应急调货|Emergency Supply/);
+      const skillBeforeSelect = emergencySupplyButton(container);
+      expect(skillBeforeSelect).toBeDefined();
+      expect(skillBeforeSelect?.disabled).toBe(false);
       expect(publicButtons(container).length).toBeLessThanOrEqual(3);
 
       await act(async () => {
@@ -97,7 +106,7 @@ describe("Official desk action bar", () => {
             LocaleProvider,
             null,
             createElement(DeskActionBar, {
-              dispatchGameAction: vi.fn(),
+              dispatchGameAction,
               game,
               playerControllers: ["human", "ai"],
               selectedCardId,
@@ -106,7 +115,23 @@ describe("Official desk action bar", () => {
         );
       });
 
+      const skillAfterSelect = emergencySupplyButton(container);
+      const labelsAfterSelect = publicButtons(container).map((button) => button.textContent ?? "");
       expect(publicButtons(container).length).toBeLessThanOrEqual(3);
+      expect(skillAfterSelect).toBeDefined();
+      expect(skillAfterSelect?.disabled).toBe(false);
+      expect(labelsAfterSelect.some((label) => /进入主动 DIY|Active DIY/u.test(label))).toBe(false);
+      expect(labelsAfterSelect.some((label) => /结束本次行动|End Action/u.test(label))).toBe(true);
+
+      await act(async () => {
+        skillAfterSelect?.click();
+      });
+
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        playerId: "player_1",
+        skillId: "emergency_supply",
+        type: "ACTIVATE_CHARACTER_SKILL",
+      });
     } finally {
       await act(async () => root.unmount());
       container.remove();

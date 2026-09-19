@@ -605,6 +605,7 @@ export function DeskActionBar({
             node: (
               <button
                 className="desk-action-btn desk-action-btn--skill"
+                data-skill-id={action.skillId}
                 key={`skill-${action.skillId}-${"cardInstanceId" in action ? action.cardInstanceId : "targetPlayerId" in action ? action.targetPlayerId : "solo"}`}
                 onClick={() => {
                   dispatchGameAction(action);

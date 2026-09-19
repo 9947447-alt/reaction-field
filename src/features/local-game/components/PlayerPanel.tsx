@@ -27,6 +27,7 @@ type PlayerPanelProps = {
   handReveal?: "contents" | "backs";
   handSelectionDisabled?: boolean;
   selectableCardIds?: readonly CardInstanceId[];
+  highlightCardId?: CardInstanceId;
   showActivePlayerIndicator?: boolean;
   isDebug?: boolean;
 };
@@ -41,6 +42,7 @@ export function PlayerPanel({
   handReveal = "contents",
   handSelectionDisabled = false,
   selectableCardIds,
+  highlightCardId,
   showActivePlayerIndicator = true,
   isDebug = true,
 }: PlayerPanelProps) {
@@ -207,6 +209,7 @@ export function PlayerPanel({
                   cardInstanceId={cardInstanceId}
                   disabled={cardDisabled}
                   game={game}
+                  highlighted={highlightCardId === cardInstanceId}
                   isDebug={isDebug}
                   key={cardInstanceId}
                   onSelect={cardDisabled ? undefined : onSelectCard}

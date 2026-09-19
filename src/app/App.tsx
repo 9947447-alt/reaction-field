@@ -44,9 +44,11 @@ export function App(props: LocalGamePageProps) {
   }
 
   let effectiveCreateSession = props.createSession;
-  if (!effectiveCreateSession && typeof window !== "undefined") {
-    const modeParam = new URLSearchParams(window.location.search).get("mode");
-    if (modeParam === "two_player") {
+  let isTutorialFromUrl = false;
+  if (typeof window !== "undefined") {
+    const searchParams = new URLSearchParams(window.location.search);
+    isTutorialFromUrl = searchParams.get("tutorial") === "1";
+    if (!effectiveCreateSession && searchParams.get("mode") === "two_player") {
       effectiveCreateSession = () =>
         createConfiguringLocalGameSession(defaultCharacterSelection, ["human", "human"]);
     }
@@ -58,6 +60,7 @@ export function App(props: LocalGamePageProps) {
       <LocalGamePage
         {...props}
         createSession={effectiveCreateSession}
+        initialTutorial={props.initialTutorial ?? isTutorialFromUrl}
         isDebug={false}
       />
     </>

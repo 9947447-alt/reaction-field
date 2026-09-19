@@ -2421,3 +2421,107 @@ select {
   color: #a7f3d0;
 }
 
+/* ==========================================================================
+   Interactive Scripted Tutorial / Coach Banner
+   ========================================================================== */
+
+.coach-banner {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.94));
+  border-bottom: 1.5px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  color: #f8fafc;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 10px 20px;
+  position: relative;
+  width: 100%;
+  z-index: 50;
+}
+
+.coach-banner__content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.coach-banner__header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.coach-banner__tag {
+  background: #f59e0b;
+  border-radius: 4px;
+  color: #1e1b4b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.coach-banner__title {
+  color: #fbbf24;
+  font-size: 0.98rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.coach-banner__instruction {
+  color: #e2e8f0;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.coach-banner__actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.coach-banner__skip {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #cbd5e1;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+}
+
+.coach-banner__skip:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.coach-banner__complete-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-weight: 800;
+  padding: 8px 16px;
+}
+
+.coach-highlight {
+  animation: coachPulse 1.6s ease-in-out infinite alternate !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px #f59e0b, 0 0 16px rgba(245, 158, 11, 0.55) !important;
+  position: relative;
+  z-index: 20 !important;
+}
+
+@keyframes coachPulse {
+  0% {
+    box-shadow: 0 0 0 2px #f59e0b, 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 4px #fbbf24, 0 0 22px rgba(251, 191, 36, 0.75);
+  }
+}
+
+

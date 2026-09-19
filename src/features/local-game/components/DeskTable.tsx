@@ -31,6 +31,15 @@ import { PlayerPanel } from "./PlayerPanel";
 import { SuccessfulReactionNotice } from "./SuccessfulReactionNotice";
 import { TableReferenceBoard } from "./TableReferenceBoard";
 import type { SessionConfirmationKind } from "./ConfirmationDialog";
+import { CoachBanner } from "./CoachBanner";
+import {
+  TUTORIAL_PRESET_PREPARATION_CARD_IDS,
+  TUTORIAL_STEPS,
+  TUTORIAL_TARGET_PLAY_CARD_ID,
+  TUTORIAL_TARGET_RESPONSE_CARD_ID,
+  deriveTutorialStep,
+  isAllowedTutorialGameAction,
+} from "../tutorial/tutorialScript";
 
 export type DeskTableProps = Readonly<{
   session: PlayingLocalGameSession;
@@ -39,12 +48,18 @@ export type DeskTableProps = Readonly<{
     kind: SessionConfirmationKind,
     trigger: HTMLButtonElement,
   ) => void;
+  isTutorial?: boolean;
+  onSkipTutorial?: () => void;
+  onCompleteTutorial?: () => void;
 }>;
 
 export function DeskTable({
   session,
   dispatch,
   onRequestSessionExit,
+  isTutorial = false,
+  onSkipTutorial,
+  onCompleteTutorial,
 }: DeskTableProps) {
   const { game, error, playerControllers } = session;
   const { locale } = useLocale();
@@ -63,6 +78,27 @@ export function DeskTable({
     setSelectedCardIds([]);
     setIsDiyMode(false);
   }, [session.revision, playGame.phase]);
+
+  const tutorialStepKey = isTutorial ? deriveTutorialStep(playGame, selectedCardId) : undefined;
+  const tutorialStepInfo = tutorialStepKey ? TUTORIAL_STEPS[tutorialStepKey] : undefined;
+
+  const highlightCardId = useMemo(() => {
+    if (!isTutorial) return undefined;
+    if (tutorialStepKey === "SELECT_HAND_CARD" || tutorialStepKey === "PLAY_REFERENCE_CARD") {
+      return TUTORIAL_TARGET_PLAY_CARD_ID;
+    }
+    if (tutorialStepKey === "RESPOND_WITH_CARD") {
+      return TUTORIAL_TARGET_RESPONSE_CARD_ID;
+    }
+    return undefined;
+  }, [isTutorial, tutorialStepKey]);
+
+  // Preset recommended preparation cards in tutorial mode
+  useEffect(() => {
+    if (isTutorial && playGame.phase === "preparationSelection") {
+      setSelectedCardIds([...TUTORIAL_PRESET_PREPARATION_CARD_IDS]);
+    }
+  }, [isTutorial, playGame.phase]);
 
   const activePlayer = getActivePlayer(playGame);
   const targets = activePlayer ? getOpponentTargets(playGame, activePlayer.id) : [];
@@ -99,11 +135,18 @@ export function DeskTable({
   }, [isDiyMode, playGame.pendingLaboratoryPreparation, playGame.phase]);
 
   const dispatchGameAction = useCallback((action: GameAction) => {
+    if (isTutorial) {
+      const currentStep = deriveTutorialStep(playGame, selectedCardId);
+      if (!isAllowedTutorialGameAction(action, currentStep)) {
+        // Strict Dispatch Gate: unallowed actions are dropped without dispatching
+        return;
+      }
+    }
     dispatch({ type: "DISPATCH_GAME_ACTION", action });
     setSelectedCardId(undefined);
     setSelectedCardIds([]);
     setIsDiyMode(false);
-  }, [dispatch]);
+  }, [dispatch, isTutorial, playGame, selectedCardId]);
 
   // DIY selection analysis for DeskActionBar
   const diyAnalysis: DIYSelectionAnalysis | null = useMemo(() => {
@@ -166,6 +209,14 @@ export function DeskTable({
 
   return (
     <main className="local-game-page desk-table-page" data-testid="desk-table">
+      {isTutorial && tutorialStepInfo ? (
+        <CoachBanner
+          onComplete={onCompleteTutorial ?? onSkipTutorial}
+          onSkip={onSkipTutorial}
+          step={tutorialStepInfo}
+        />
+      ) : null}
+
       <div className="desk-table__top-bar">
         <GameSummary
           error={error ?? undefined}
@@ -218,6 +269,7 @@ export function DeskTable({
             game={playGame}
             handReveal="contents"
             handSelectionDisabled={isPlayer1Ai || !isPlayer1Active}
+            highlightCardId={highlightCardId}
             isDebug={false}
             onSelectCard={handleSelectCard}
             player={ownPlayer}
@@ -249,6 +301,7 @@ export function DeskTable({
         playerControllers={playerControllers}
         selectedCardId={selectedCardId}
         selectedCardIds={selectedCardIds}
+        tutorialStepKey={tutorialStepKey}
       />
 
       {/* Game Log Drawer */}

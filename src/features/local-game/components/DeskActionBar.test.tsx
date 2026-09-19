@@ -5,7 +5,8 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../../../app/locale";
 import { createInitialGame } from "../../../game/engine/createInitialGame";
-import type { GameState } from "../../../game/engine/types";
+import { getLegalCharacterSkillActions } from "../../../game/engine/characterSkills";
+import type { CardInstanceId, CharacterId, GameState } from "../../../game/engine/types";
 import { identityShuffle } from "../../../shared/random";
 import { DeskActionBar } from "./DeskActionBar";
 
@@ -34,6 +35,69 @@ function createSkillReadyMainActionGame(): GameState {
       player.id === "player_1" ? { ...player, hand: kept } : player,
     ),
   };
+}
+
+function findInstanceId(game: GameState, definitionId: string): CardInstanceId {
+  const instance = Object.values(game.cardInstances).find(
+    (card) => card.definitionId === definitionId,
+  );
+  if (!instance) {
+    throw new Error(`Missing card instance for ${definitionId}`);
+  }
+  return instance.id;
+}
+
+function withPlayerHand(
+  game: GameState,
+  playerId: "player_1" | "player_2",
+  extraHandIds: readonly CardInstanceId[],
+  hp?: number,
+): GameState {
+  const player = game.players.find((candidate) => candidate.id === playerId);
+  if (!player) {
+    throw new Error(`Missing ${playerId}`);
+  }
+
+  const extra = extraHandIds.filter((id) => !player.hand.includes(id));
+  const hand = [...player.hand, ...extra];
+  const taken = new Set(extra);
+
+  return {
+    ...game,
+    deck: game.deck.filter((id) => !taken.has(id)),
+    discardPile: game.discardPile.filter((id) => !taken.has(id)),
+    cardInstances: {
+      ...game.cardInstances,
+      ...Object.fromEntries(
+        extra.map((id) => [
+          id,
+          {
+            ...game.cardInstances[id],
+            ownerId: playerId,
+            zone: { type: "hand" as const, playerId },
+          },
+        ]),
+      ),
+    },
+    players: game.players.map((candidate) =>
+      candidate.id === playerId
+        ? { ...candidate, hand, hp: hp ?? candidate.hp }
+        : candidate,
+    ),
+  };
+}
+
+function createMainActionGame(characterIds: [CharacterId, CharacterId]): GameState {
+  return createInitialGame({
+    characterIds,
+    shuffle: identityShuffle,
+  });
+}
+
+function createCaptainSkillReadyGame(): GameState {
+  const base = createMainActionGame(["caustic_soda_captain", "acid_king"]);
+  const alkaliId = findInstanceId(base, "substance_naoh_dilute");
+  return withPlayerHand(base, "player_1", [alkaliId], base.players[0].maxHp - 1);
 }
 
 function createCounterattackGame(): GameState {
@@ -168,6 +232,216 @@ describe("Official desk action bar", () => {
       expect(metalButtons).toHaveLength(0);
       expect(publicButtons(container).some((button) => button.disabled === false && /金属/u.test(button.textContent ?? ""))).toBe(false);
       expect(dispatchGameAction).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
+  it("renders engine-legal main-action skills for captain, director, and secretary", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const dispatchGameAction = vi.fn();
+
+    try {
+      const captainGame = createCaptainSkillReadyGame();
+      const alkaliId = findInstanceId(captainGame, "substance_naoh_dilute");
+      expect(getLegalCharacterSkillActions(captainGame, "player_1").some((action) => action.skillId === "alkali_recovery")).toBe(true);
+
+      await act(async () => {
+        root.render(
+          createElement(
+            LocaleProvider,
+            null,
+            createElement(DeskActionBar, {
+              dispatchGameAction,
+              game: captainGame,
+              playerControllers: ["human", "ai"],
+            }),
+          ),
+        );
+      });
+
+      const alkaliButton = publicButtons(container).find((button) =>
+        /碱液回收|Alkali Recovery/u.test(button.textContent ?? ""),
+      );
+      expect(alkaliButton).toBeDefined();
+      expect(publicButtons(container).length).toBeLessThanOrEqual(3);
+
+      await act(async () => {
+        alkaliButton?.click();
+      });
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        cardInstanceId: alkaliId,
+        playerId: "player_1",
+        skillId: "alkali_recovery",
+        type: "ACTIVATE_CHARACTER_SKILL",
+      });
+
+      const directorGame = createMainActionGame(["sulfuric_acid_factory_director", "acid_king"]);
+      dispatchGameAction.mockClear();
+      await act(async () => {
+        root.render(
+          createElement(
+            LocaleProvider,
+            null,
+            createElement(DeskActionBar, {
+              dispatchGameAction,
+              game: directorGame,
+              playerControllers: ["human", "ai"],
+            }),
+          ),
+        );
+      });
+      const dischargeButton = publicButtons(container).find((button) =>
+        /排放尾气|Exhaust Discharge/u.test(button.textContent ?? ""),
+      );
+      expect(dischargeButton).toBeDefined();
+      await act(async () => {
+        dischargeButton?.click();
+      });
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        playerId: "player_1",
+        skillId: "exhaust_discharge",
+        targetPlayerId: "player_2",
+        type: "ACTIVATE_CHARACTER_SKILL",
+      });
+
+      const secretaryGame = createMainActionGame(["clumsy_party_secretary", "acid_king"]);
+      await act(async () => {
+        root.render(
+          createElement(
+            LocaleProvider,
+            null,
+            createElement(DeskActionBar, {
+              dispatchGameAction,
+              game: secretaryGame,
+              playerControllers: ["human", "ai"],
+            }),
+          ),
+        );
+      });
+      const secretaryLabels = publicButtons(container).map((button) => button.textContent ?? "");
+      expect(secretaryLabels.some((label) => /尾气泄漏|Exhaust Leak/u.test(label))).toBe(true);
+      expect(secretaryLabels.some((label) => /实验台起火|Laboratory Bench Fire/u.test(label))).toBe(true);
+      expect(secretaryLabels.some((label) => /强放热事故|Exothermic Accident/u.test(label))).toBe(true);
+      expect(publicButtons(container).length).toBeLessThanOrEqual(3);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
+  it("keeps alkali recovery when a hand card is selected and binds the selected strong alkali", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const game = createCaptainSkillReadyGame();
+    const alkaliId = findInstanceId(game, "substance_naoh_dilute");
+    const otherCardId = game.players[0].hand.find((id) => id !== alkaliId);
+    const dispatchGameAction = vi.fn();
+    expect(otherCardId).toBeDefined();
+
+    try {
+      await act(async () => {
+        root.render(
+          createElement(
+            LocaleProvider,
+            null,
+            createElement(DeskActionBar, {
+              dispatchGameAction,
+              game,
+              playerControllers: ["human", "ai"],
+              selectedCardId: otherCardId,
+            }),
+          ),
+        );
+      });
+
+      const skillAfterSelect = publicButtons(container).find((button) =>
+        /碱液回收|Alkali Recovery/u.test(button.textContent ?? ""),
+      );
+      expect(publicButtons(container).length).toBeLessThanOrEqual(3);
+      expect(skillAfterSelect).toBeDefined();
+
+      await act(async () => {
+        skillAfterSelect?.click();
+      });
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        cardInstanceId: alkaliId,
+        playerId: "player_1",
+        skillId: "alkali_recovery",
+        type: "ACTIVATE_CHARACTER_SKILL",
+      });
+
+      dispatchGameAction.mockClear();
+      await act(async () => {
+        root.render(
+          createElement(
+            LocaleProvider,
+            null,
+            createElement(DeskActionBar, {
+              dispatchGameAction,
+              game,
+              playerControllers: ["human", "ai"],
+              selectedCardId: alkaliId,
+            }),
+          ),
+        );
+      });
+      const boundButton = publicButtons(container).find((button) =>
+        /碱液回收|Alkali Recovery/u.test(button.textContent ?? ""),
+      );
+      await act(async () => {
+        boundButton?.click();
+      });
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        cardInstanceId: alkaliId,
+        playerId: "player_1",
+        skillId: "alkali_recovery",
+        type: "ACTIVATE_CHARACTER_SKILL",
+      });
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+    }
+  });
+
+  it("does not show a main-action skill button for enthusiast or acid king", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    const dispatchGameAction = vi.fn();
+
+    try {
+      for (const characterId of ["chemistry_enthusiast", "acid_king"] as const) {
+        const game = createMainActionGame([characterId, "laboratory_teacher"]);
+        await act(async () => {
+          root.render(
+            createElement(
+              LocaleProvider,
+              null,
+              createElement(DeskActionBar, {
+                dispatchGameAction,
+                game,
+                playerControllers: ["human", "ai"],
+              }),
+            ),
+          );
+        });
+        expect(getLegalCharacterSkillActions(game, "player_1")).toEqual([]);
+        expect(
+          publicButtons(container).some((button) =>
+            /发动|Activate Extra Lesson|Activate Emergency Supply|Alkali Recovery|Exhaust Discharge|Exhaust Leak|Laboratory Bench Fire|Exothermic Accident|加课|应急调货|碱液回收|排放尾气|尾气泄漏|实验台起火|强放热事故/u.test(
+              button.textContent ?? "",
+            ),
+          ),
+        ).toBe(false);
+      }
     } finally {
       await act(async () => root.unmount());
       container.remove();

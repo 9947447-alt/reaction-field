@@ -648,3 +648,97 @@ test("生产构建在 /playtest/debug 下品牌图片正常加载无 404", async
   expect(teacherSrc).toContain("brand/play/");
   expect(teacherSrc).not.toContain("/debug/brand/");
 });
+
+test("生产构建从大厅进入教学引导进入受控脚本局，支持步骤推进、刷新重置与跳过教学", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  // 1. Visit lobby
+  await page.goto("/");
+  await expect(page.locator('[data-testid="lobby-page"]')).toBeVisible();
+
+  // 2. Click Tutorial card action
+  const tutorialCard = page.locator('[data-testid="mode-card-tutorial"]');
+  await expect(tutorialCard).toBeVisible();
+  await tutorialCard.getByRole("button", { name: "进入教学" }).click();
+
+  // 3. Directly on /play?mode=solo_ai&tutorial=1, lands on DeskTable in tutorial mode
+  await expect(page).toHaveURL(/\/play\?mode=solo_ai&tutorial=1/);
+  await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+
+  // Zero debug dropdowns, zero raw details
+  await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
+  await expect(page.locator("details")).toHaveCount(0);
+
+  // Coach banner is present showing step 1
+  const coachBanner = page.locator('[data-testid="coach-banner"]');
+  await expect(coachBanner).toBeVisible();
+  await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
+
+  // 4. Test page refresh: URL keeps tutorial=1 and resets to the tutorial start
+  await page.reload();
+  await expect(page).toHaveURL(/tutorial=1/);
+  await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+  await expect(coachBanner).toBeVisible();
+  await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
+
+  // 5. Step 1: Click highlighted confirm preparation
+  const confirmPrepButton = page.locator(".desk-action-bar button.coach-highlight");
+  await expect(confirmPrepButton).toBeVisible();
+  await expect(confirmPrepButton).toContainText("确认备课选择");
+  await confirmPrepButton.click();
+
+  // 6. Step 2: Select hand card (dilute NaOH)
+  await expect(coachBanner).toContainText("步骤 2/4 · 看手牌与选牌");
+  const naohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
+  await expect(naohCard).toBeVisible();
+  await expect(naohCard).toContainText("稀 NaOH");
+  await naohCard.locator("button.official-card__button").click();
+
+  // 7. Step 3: Play card as reference
+  await expect(coachBanner).toContainText("步骤 3/4 · 普通出牌建立基准");
+  const playButtons = page.locator(".desk-action-bar button");
+  const playRefButton = playButtons.filter({ hasText: "普通出牌" });
+  await expect(playRefButton).toBeVisible();
+  await expect(playRefButton).toHaveClass(/coach-highlight/);
+  await playRefButton.click();
+
+  // 8. Step 4: Opponent AI deals 1 acid damage -> Response Window
+  await expect(coachBanner).toContainText("步骤 4/4 · 响应酸性伤害");
+  const kohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
+  await expect(kohCard).toBeVisible();
+  await expect(kohCard).toContainText("稀 KOH");
+  await kohCard.locator("button.official-card__button").click();
+
+  const playResponseButton = page.locator(".desk-action-bar button.coach-highlight");
+  await expect(playResponseButton).toBeVisible();
+  await expect(playResponseButton).toContainText("打出响应");
+  await playResponseButton.click();
+
+  // 9. Step 5: Completed banner & transition to Solo vs AI
+  await expect(coachBanner).toContainText("教学完成");
+  const completeButton = page.locator('[data-testid="coach-banner-complete"]');
+  await expect(completeButton).toBeVisible();
+  await completeButton.click();
+
+  // Coach banner dismissed, enters regular desk table
+  await expect(coachBanner).toHaveCount(0);
+  await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+
+  // 10. Test skipping tutorial at any time
+  await page.goto("/play?mode=solo_ai&tutorial=1");
+  await expect(page.locator('[data-testid="coach-banner"]')).toBeVisible();
+  const skipButton = page.locator('[data-testid="coach-banner-skip"]');
+  await expect(skipButton).toBeVisible();
+  await skipButton.click();
+  await expect(page).not.toHaveURL(/tutorial=1/);
+  await expect(page.locator('[data-testid="coach-banner"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+});
+

@@ -32,6 +32,7 @@ import {
 } from "../presentationLocale";
 import { describeIncomingResponseAnnouncement } from "../publicRecentAction";
 import { getOfficialHumanViewerPlayerId } from "../officialPlayView";
+import type { TutorialStepKey } from "../tutorial/tutorialScript";
 
 export type DeskActionBarProps = Readonly<{
   game: GameState;
@@ -45,6 +46,7 @@ export type DeskActionBarProps = Readonly<{
   dispatchGameAction: (action: GameAction) => void;
   onRestart?: (trigger: HTMLButtonElement) => void;
   onReturnToCharacterSelection?: (trigger: HTMLButtonElement) => void;
+  tutorialStepKey?: TutorialStepKey;
 }>;
 
 const MAX_DESK_ACTION_BUTTONS = 3;
@@ -125,6 +127,7 @@ export function DeskActionBar({
   dispatchGameAction,
   onRestart,
   onReturnToCharacterSelection,
+  tutorialStepKey,
 }: DeskActionBarProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
@@ -156,7 +159,7 @@ export function DeskActionBar({
         </div>
         <DeskActionButtons>
           <button
-            className="desk-action-btn desk-action-btn--primary"
+            className={`desk-action-btn desk-action-btn--primary${tutorialStepKey === "PREPARATION" ? " coach-highlight" : ""}`}
             disabled={!canConfirm}
             onClick={() => {
               if (!pending) return;
@@ -212,7 +215,7 @@ export function DeskActionBar({
         </div>
         <DeskActionButtons>
           <button
-            className="desk-action-btn desk-action-btn--primary"
+            className={`desk-action-btn desk-action-btn--primary${tutorialStepKey === "RESPOND_WITH_CARD" && canRespond ? " coach-highlight" : ""}`}
             disabled={isAi || !canRespond}
             onClick={() => {
               if (!responder || !selectedCardId) return;
@@ -572,7 +575,7 @@ export function DeskActionBar({
                     </button>
                   ) : canAssociate ? (
                     <button
-                      className="desk-action-btn desk-action-btn--primary"
+                      className={`desk-action-btn desk-action-btn--primary${tutorialStepKey === "PLAY_REFERENCE_CARD" ? " coach-highlight" : ""}`}
                       disabled={isAi}
                       key="play-reference"
                       onClick={() => {
@@ -626,7 +629,7 @@ export function DeskActionBar({
                     kind: "play" as const,
                     node: (
                       <button
-                        className="desk-action-btn desk-action-btn--secondary"
+                        className={`desk-action-btn desk-action-btn--secondary${tutorialStepKey === "PLAY_REFERENCE_CARD" ? " coach-highlight" : ""}`}
                         disabled={isAi}
                         key="play-reference-secondary"
                         onClick={() => {

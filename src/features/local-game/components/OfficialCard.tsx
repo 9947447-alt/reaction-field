@@ -9,6 +9,7 @@ export type OfficialCardProps = {
   game: GameState;
   selected?: boolean;
   disabled?: boolean;
+  highlighted?: boolean;
   onSelect?: (cardInstanceId: CardInstanceId) => void;
   isDebug?: boolean;
 };
@@ -18,6 +19,7 @@ export function OfficialCard({
   game,
   selected = false,
   disabled = false,
+  highlighted = false,
   onSelect,
   isDebug = false,
 }: OfficialCardProps) {
@@ -52,7 +54,7 @@ export function OfficialCard({
 
   return (
     <article
-      className={`debug-card card-face official-card${selected ? " is-selected" : ""}${disabled ? " is-disabled" : ""}`}
+      className={`debug-card card-face official-card${selected ? " is-selected" : ""}${disabled ? " is-disabled" : ""}${highlighted ? " coach-highlight" : ""}`}
     >
       <img
         alt=""

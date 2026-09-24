@@ -116,8 +116,8 @@ export const TUTORIAL_STEPS: Record<TutorialStepKey, TutorialStepInfo> = {
       en: "Tutorial completed!",
     },
     instruction: {
-      zh: "🎉 恭喜！你已掌握看手牌、出牌与响应的核心流程。你可以继续体验本局，或点击【进入人机对局】开始全新对局！",
-      en: "🎉 Congratulations! You have mastered the core flow. You can continue playing or click [Start solo vs AI] for a fresh game!",
+      zh: "🎉 恭喜！你已掌握看手牌、出牌与响应的核心流程。本局教学已结束，动作不会继续放行。请点击【进入人机对局】重开一局。",
+      en: "🎉 Congratulations! You have mastered the core flow. This tutorial match is over and further actions stay blocked. Click [Start solo vs AI] to restart a fresh game.",
     },
     targetId: "none",
   },

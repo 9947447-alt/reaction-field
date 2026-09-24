@@ -681,8 +681,9 @@ test("生产构建从大厅进入教学引导进入受控脚本局，支持步�
   await expect(coachBanner).toBeVisible();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
 
-  // 4. Test page refresh: resets back to tutorial starting point
+  // 4. Test page refresh: URL keeps tutorial=1 and resets to the tutorial start
   await page.reload();
+  await expect(page).toHaveURL(/tutorial=1/);
   await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
   await expect(coachBanner).toBeVisible();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
@@ -736,6 +737,7 @@ test("生产构建从大厅进入教学引导进入受控脚本局，支持步�
   const skipButton = page.locator('[data-testid="coach-banner-skip"]');
   await expect(skipButton).toBeVisible();
   await skipButton.click();
+  await expect(page).not.toHaveURL(/tutorial=1/);
   await expect(page.locator('[data-testid="coach-banner"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
 });

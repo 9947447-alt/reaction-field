@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from "react";
 import { useLocale } from "../../../app/locale";
 import type { GameAction } from "../../../game/engine/actions";
 import { analyzeDIYSelection } from "../../../game/engine/diy";
@@ -51,6 +51,7 @@ export type DeskTableProps = Readonly<{
   isTutorial?: boolean;
   onSkipTutorial?: () => void;
   onCompleteTutorial?: () => void;
+  dispatchGameActionRef?: MutableRefObject<((action: GameAction) => void) | null>;
 }>;
 
 export function DeskTable({
@@ -60,6 +61,7 @@ export function DeskTable({
   isTutorial = false,
   onSkipTutorial,
   onCompleteTutorial,
+  dispatchGameActionRef,
 }: DeskTableProps) {
   const { game, error, playerControllers } = session;
   const { locale } = useLocale();
@@ -147,6 +149,16 @@ export function DeskTable({
     setSelectedCardIds([]);
     setIsDiyMode(false);
   }, [dispatch, isTutorial, playGame, selectedCardId]);
+
+  useEffect(() => {
+    if (!dispatchGameActionRef) {
+      return;
+    }
+    dispatchGameActionRef.current = dispatchGameAction;
+    return () => {
+      dispatchGameActionRef.current = null;
+    };
+  }, [dispatchGameAction, dispatchGameActionRef]);
 
   // DIY selection analysis for DeskActionBar
   const diyAnalysis: DIYSelectionAnalysis | null = useMemo(() => {

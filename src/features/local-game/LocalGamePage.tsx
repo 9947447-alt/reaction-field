@@ -1,5 +1,5 @@
 import "./local-game.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { FeedbackLink } from "../../app/feedback";
 import { LocaleSwitch, useLocale } from "../../app/locale";
 import { ProjectRepositoryLink } from "../../app/projectRepository";
@@ -207,6 +207,7 @@ export type LocalGamePageProps = Readonly<{
   random?: RandomSource;
   isDebug?: boolean;
   initialTutorial?: boolean;
+  dispatchGameActionRef?: MutableRefObject<((action: GameAction) => void) | null>;
 }>;
 
 export function LocalGamePage({
@@ -218,6 +219,7 @@ export function LocalGamePage({
   random,
   isDebug = true,
   initialTutorial,
+  dispatchGameActionRef,
 }: LocalGamePageProps = {}) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
@@ -417,6 +419,7 @@ export function LocalGamePage({
           ) : (
             <DeskTable
               dispatch={dispatch}
+              dispatchGameActionRef={dispatchGameActionRef}
               isTutorial={isTutorial}
               onCompleteTutorial={handleSkipTutorial}
               onRequestSessionExit={requestSessionExit}

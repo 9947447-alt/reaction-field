@@ -13,15 +13,15 @@ The external Core Rulebook is an extended tabletop reference, not the authoritat
 ## Try the Web Playtest
 
 - Play: [https://9947447-alt.github.io/reaction-field/](https://9947447-alt.github.io/reaction-field/)
-- Current public milestone: **Reaction Field Alpha 6**
-- Current published technical version: `0.16.0-alpha.2`
-- Current public tag: `web-playtest-v0.16.0-alpha.2`
+- Current public channel: **Web Playtest Alpha**
+- Current published technical version: `0.20.0-alpha.1`
+- Current public tag: `web-playtest-v0.20.0-alpha.1`
+- Peeled SHA: `8db1e95a3454085f57f5c5ca470b102ac19115c1`
 - Rules version: `MVP0-P10`
-- GitHub Release: [Reaction Field Alpha 6 — v0.16.0-alpha.2](https://github.com/9947447-alt/reaction-field/releases/tag/web-playtest-v0.16.0-alpha.2)
+- GitHub tag: [web-playtest-v0.20.0-alpha.1](https://github.com/9947447-alt/reaction-field/releases/tag/web-playtest-v0.20.0-alpha.1)
 - Repository: [https://github.com/9947447-alt/reaction-field](https://github.com/9947447-alt/reaction-field)
-- Application version `0.20.0-alpha.1` is pending release / pending tag. It is not deployed.
 
-The current public release is Reaction Field Alpha 6 (`0.16.0-alpha.2`) with rules version `MVP0-P10` and public tag `web-playtest-v0.16.0-alpha.2`. The live playtest URL remains `https://9947447-alt.github.io/reaction-field/` from the Phase 17 deployment. Application version `0.20.0-alpha.1` is pending release / pending tag and is not deployed to that Pages site.
+The current public build is Web Playtest Alpha `0.20.0-alpha.1` with rules version `MVP0-P10` and public tag `web-playtest-v0.20.0-alpha.1`. The live playtest URL is `https://9947447-alt.github.io/reaction-field/`. This is not Beta 1. The earlier Alpha 6 tag `web-playtest-v0.16.0-alpha.2` remains a historical published tag.
 
 ## What Is Reaction Field?
 
@@ -51,9 +51,9 @@ This is an alpha playtest, not a stable release.
 
 ## Alpha Status
 
-The current public release is Reaction Field Alpha 6, technical version `0.16.0-alpha.2`, rules version `MVP0-P10`, and tag `web-playtest-v0.16.0-alpha.2`. Its public Pages build is served from the live URL; this is not evidence of broad cross-browser compatibility. Application version `0.20.0-alpha.1` is pending release / pending tag and has no Pages deployment.
+The current public release is Web Playtest Alpha, technical version `0.20.0-alpha.1`, rules version `MVP0-P10`, and tag `web-playtest-v0.20.0-alpha.1` (peeled `8db1e95a3454085f57f5c5ca470b102ac19115c1`). Its public Pages build is served from the live URL; this is not evidence of broad cross-browser compatibility and is not Beta 1.
 
-The earlier `web-playtest-v0.13.0-alpha.2` tag remains unchanged at `57550f70856d5d5e27ac3fcb0fa508cd698d3be6`. Its Pages workflow failed because a production E2E assertion was pinned to an older commit, so alpha.2 was not deployed successfully. Historical tags remain immutable.
+The earlier Alpha 6 tag `web-playtest-v0.16.0-alpha.2` remains a historical published tag. The earlier `web-playtest-v0.13.0-alpha.2` tag remains unchanged at `57550f70856d5d5e27ac3fcb0fa508cd698d3be6`. Historical tags remain immutable.
 
 ## International Playtest and Bilingual Game Log Status
 
@@ -69,7 +69,7 @@ The international presentation layer provides Simplified Chinese and English mod
 
 ## Alpha 6 / Phase 16 & Phase 17 Release Status
 
-Phase 16 full bilingual game log and Phase 17 repository identity migration are implemented and published as Reaction Field Alpha 6 (`0.16.0-alpha.2`) under tag `web-playtest-v0.16.0-alpha.2`. Application version `0.20.0-alpha.1` is pending release / pending tag. Alpha 6 provides bilingual structured logs, localized damage and status rendering, migrated repository and Pages identity under `9947447-alt/reaction-field`, and production test coverage. Alpha 6 is an alpha playtest; it does not include online multiplayer, accounts, persistence, complete mobile compatibility, or an iOS Firefox fix.
+Phase 16 full bilingual game log and Phase 17 repository identity migration were published as Reaction Field Alpha 6 (`0.16.0-alpha.2`) under tag `web-playtest-v0.16.0-alpha.2`. That tag remains historical. The current public Pages build is `0.20.0-alpha.1`. Alpha 6 provided bilingual structured logs, localized damage and status rendering, migrated repository and Pages identity under `9947447-alt/reaction-field`, and production test coverage. This project remains an alpha playtest; it does not include online multiplayer, accounts, persistence, complete mobile compatibility, or an iOS Firefox fix.
 
 ## Feedback
 

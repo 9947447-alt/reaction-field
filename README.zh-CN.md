@@ -2,7 +2,7 @@
 
 # 反应域
 
-**反应域（REACTION FIELD）** 是一款基于化学主题的开源本地同屏双人策略卡牌游戏，当前以公开 Web Playtest Alpha 分发。当前已公开发布为 Reaction Field Alpha 6 / `0.16.0-alpha.2`，发布标签为 `web-playtest-v0.16.0-alpha.2`，规则版本严格保持 `MVP0-P10`，不增加任何游戏规则。应用版本 `0.20.0-alpha.1` 待发布 / 待打 tag。这是一个基于 React、TypeScript、Vite、Vitest 与 Playwright 的本地同屏双人公开试玩版本，不是正式发行版。
+**反应域（REACTION FIELD）** 是一款基于化学主题的开源本地同屏双人策略卡牌游戏，当前以公开 Web Playtest Alpha 分发。当前已公开发布技术版本为 `0.20.0-alpha.1`，发布标签为 `web-playtest-v0.20.0-alpha.1`，规则版本严格保持 `MVP0-P10`，不增加任何游戏规则。这不是 Beta 1。这是一个基于 React、TypeScript、Vite、Vitest 与 Playwright 的本地同屏双人公开试玩版本，不是正式发行版。上一份公开标签 `web-playtest-v0.16.0-alpha.2`（Reaction Field Alpha 6）仍作为历史标签保留。
 
 ## 核心规则书 — 扩展桌面规则参考
 
@@ -31,15 +31,15 @@ Web Playtest Alpha 公开双方手牌、牌堆数量、状态与完整日志。�
 ## 公开试玩地址与本轮状态
 
 - 公开试玩入口：[https://9947447-alt.github.io/reaction-field/](https://9947447-alt.github.io/reaction-field/)
-- 当前公开发布阶段：**Reaction Field Alpha 6**
-- 当前已发布技术版本：`0.16.0-alpha.2`
-- 当前已公开发布标签：`web-playtest-v0.16.0-alpha.2`
+- 当前公开发布频道：**Web Playtest Alpha**
+- 当前已发布技术版本：`0.20.0-alpha.1`
+- 当前已公开发布标签：`web-playtest-v0.20.0-alpha.1`
+- peeled SHA：`8db1e95a3454085f57f5c5ca470b102ac19115c1`
 - 规则版本：`MVP0-P10`
-- GitHub Release：[Reaction Field Alpha 6 — v0.16.0-alpha.2](https://github.com/9947447-alt/reaction-field/releases/tag/web-playtest-v0.16.0-alpha.2)
+- GitHub 标签：[web-playtest-v0.20.0-alpha.1](https://github.com/9947447-alt/reaction-field/releases/tag/web-playtest-v0.20.0-alpha.1)
 - 官方仓库：[https://github.com/9947447-alt/reaction-field](https://github.com/9947447-alt/reaction-field)
-- 应用版本 `0.20.0-alpha.1` 待发布 / 待打 tag，尚未部署
 
-当前已公开发布事实为：对外阶段 Reaction Field Alpha 6，技术版本 `0.16.0-alpha.2`，规则版本 `MVP0-P10`，标签 `web-playtest-v0.16.0-alpha.2`。公开试玩入口仍是 Phase 17 部署的 `https://9947447-alt.github.io/reaction-field/`。应用版本 `0.20.0-alpha.1` 待打 tag 后部署，Pages 尚未按该版本更新。历史标签 `web-playtest-v0.13.0-alpha.2` 保持不变，指向 `57550f70856d5d5e27ac3fcb0fa508cd698d3be6`；所有历史标签保持不可变。
+当前已公开发布事实为：频道 Web Playtest Alpha，技术版本 `0.20.0-alpha.1`，规则版本 `MVP0-P10`，标签 `web-playtest-v0.20.0-alpha.1`。公开试玩入口是 `https://9947447-alt.github.io/reaction-field/`。这不是 Beta 1。历史标签 `web-playtest-v0.16.0-alpha.2` 与 `web-playtest-v0.13.0-alpha.2`（`57550f70856d5d5e27ac3fcb0fa508cd698d3be6`）保持不变。
 
 ## 国际化试玩与双语游戏日志状态
 
@@ -55,7 +55,7 @@ Web Playtest Alpha 公开双方手牌、牌堆数量、状态与完整日志。�
 
 ## Alpha 6 / Phase 16 & Phase 17 发布状态
 
-Phase 16 完整双语游戏日志与 Phase 17 仓库身份迁移已实现并作为 Reaction Field Alpha 6（`0.16.0-alpha.2`，标签 `web-playtest-v0.16.0-alpha.2`）正式发布。应用版本 `0.20.0-alpha.1` 待发布 / 待打 tag。Alpha 6 支持强类型结构化双语游戏日志、伤害与状态本地化展示、统一的 `9947447-alt/reaction-field` 仓库与 Pages 身份及生产端测试覆盖。Alpha 6 是公开试玩版本，不代表完整教程、在线多人、账号、存档、完整移动端兼容或 iOS Firefox 修复。
+Phase 16 完整双语游戏日志与 Phase 17 仓库身份迁移已作为 Reaction Field Alpha 6（`0.16.0-alpha.2`，标签 `web-playtest-v0.16.0-alpha.2`）发布。该标签仍是历史标签。当前公开 Pages 构建是 `0.20.0-alpha.1`。Alpha 6 支持强类型结构化双语游戏日志、伤害与状态本地化展示、统一的 `9947447-alt/reaction-field` 仓库与 Pages 身份及生产端测试覆盖。当前仍是公开试玩版本，不代表完整教程、在线多人、账号、存档、完整移动端兼容、iOS Firefox 修复或 Beta 1。
 
 ## Feedback / 反馈
 
@@ -133,7 +133,7 @@ fatal 页面可复制的本地安全诊断只包含：
 
 ```text
 名称：反应域
-应用版本：0.20.0-alpha.1（待发布 / 待打 tag；该字段读取 package.json，不是已发布标签 web-playtest-v0.16.0-alpha.2）
+应用版本：0.20.0-alpha.1
 规则版本：MVP0-P10
 Commit：<短 SHA 或 dev/unknown>
 错误码：<稳定错误码>
@@ -148,7 +148,7 @@ Commit：<短 SHA 或 dev/unknown>
 - 真实金属卡池及实验反击金属选项、方程式、沉淀、响应 DIY、多人、联网、账号、存档和回放均延期。
 - 当前公开发布使用 GitHub Pages；本地开发与验证不执行部署。
 - Tauri、Electron、PWA、service worker、APP / DMG / EXE / MSI、签名、公证和自动更新均未实现，也不在本阶段范围。
-- 已知兼容性边界：在 iOS 27 beta 的 Firefox 中，打开帮助或重开确认框可能进入 `ROOT_RUNTIME_FAILED`。此前的 `requestAnimationFrame` 聚焦实验未解决该问题，未进入稳定分支；Safari 与已测试的 Edge 路径正常只是已有真机/浏览器记录，不构成所有版本的普遍保证。Alpha 6 不修复也不声称修复 iOS Firefox beta；失败热修复分支 `fix/ios-firefox-modal-focus-alpha2` 不复制、不合并、不修改。
+- 已知兼容性边界：在 iOS 27 beta 的 Firefox 中，打开帮助或重开确认框可能进入 `ROOT_RUNTIME_FAILED`。此前的 `requestAnimationFrame` 聚焦实验未解决该问题，未进入稳定分支；Safari 与已测试的 Edge 路径正常只是已有真机/浏览器记录，不构成所有版本的普遍保证。当前发布不修复也不声称修复 iOS Firefox beta；失败热修复分支 `fix/ios-firefox-modal-focus-alpha2` 不复制、不合并、不修改。
 
 发布、标签、回滚与停止公开试玩说明见 [`docs/PHASE12_REACTION_FIELD_WEB_PLAYTEST_FREEZE.md`](docs/PHASE12_REACTION_FIELD_WEB_PLAYTEST_FREEZE.md)。Phase 11 是历史稳定性基线；规则边界继续由 [`docs/MVP0_RULE_FREEZE.md`](docs/MVP0_RULE_FREEZE.md)、[`docs/PHASE8_CHARACTER_RULE_FREEZE.md`](docs/PHASE8_CHARACTER_RULE_FREEZE.md)、[`docs/PHASE9_DEBUG_UI_RULE_FREEZE.md`](docs/PHASE9_DEBUG_UI_RULE_FREEZE.md) 和 [`docs/PHASE10_REACTION_EVENT_RULE_FREEZE.md`](docs/PHASE10_REACTION_EVENT_RULE_FREEZE.md) 冻结；阶段总览见 [`docs/MVP_PLAN.md`](docs/MVP_PLAN.md)。
 

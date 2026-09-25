@@ -34,7 +34,7 @@ Phase 13 的权威实现边界见 `docs/PHASE13_NEW_PLAYER_GUIDANCE_FREEZE.md`�
 
 - 配置阶段位于角色选择操作之前；playing 阶段位于 preparation、main action、response、status、counterattack 与 game over 操作区之前。窄屏保持正常文档流，不使用浮层、遮罩、sticky coach mark 或 modal。
 - 阶段文案覆盖配置、备课、主行动、响应、状态处理、实验反击与对局结束；不复制合法性、卡牌匹配、伤害、反应或出牌建议，不 dispatch `GameAction`，不增加任何规则表。
-- 保持 `MVP0-P10`、68 张普通实体卡池、角色和冻结规则不变；Phase 13 引导实现已在 alpha.1 基线完成，`web-playtest-v0.13.0-alpha.1` 标签永久保持不变。当前应用版本为 `0.20.0-alpha.1`（待发布 / 待打 tag），由 `package.json` 作为唯一真值来源，`releaseMetadata` 继续读取构建注入的版本。当前已公开发布仍是 Reaction Field Alpha 6 / `0.16.0-alpha.2`，公开标签为 `web-playtest-v0.16.0-alpha.2`。公开试玩地址仍是 [https://9947447-alt.github.io/reaction-field/](https://9947447-alt.github.io/reaction-field/)；`0.20.0-alpha.1` 待打 tag 后部署。
+- 保持 `MVP0-P10`、68 张普通实体卡池、角色和冻结规则不变；Phase 13 引导实现已在 alpha.1 基线完成，`web-playtest-v0.13.0-alpha.1` 标签永久保持不变。当前已公开发布技术版本为 `0.20.0-alpha.1`，由 `package.json` 作为唯一真值来源，`releaseMetadata` 继续读取构建注入的版本。公开标签为 `web-playtest-v0.20.0-alpha.1`（peeled SHA `8db1e95a3454085f57f5c5ca470b102ac19115c1`），历史发布包含 Reaction Field Alpha 6 / `0.16.0-alpha.2`（公开标签 `web-playtest-v0.16.0-alpha.2`）。公开试玩地址为 [https://9947447-alt.github.io/reaction-field/](https://9947447-alt.github.io/reaction-field/)。
 
 ## 0.13.0-alpha.3 已公开发布（Reaction Field Alpha 2）
 
@@ -56,7 +56,7 @@ Phase 16 已公开发布为 Reaction Field Alpha 6，技术版本 `0.16.0-alpha.
 
 ## Phase 17 反应域品牌与仓库身份迁移（已完成并公开发布）
 
-Phase 17 正式启动并完成 Reaction Field 品牌统一与仓库身份迁移，方案由 `docs/PHASE17_BRAND_IDENTITY_FREEZE.md` 冻结，已作为 Reaction Field Alpha 6（`0.16.0-alpha.2`，标签 `web-playtest-v0.16.0-alpha.2`）正式公开发布。应用版本 `0.20.0-alpha.1` 待发布 / 待打 tag，不改变下述 Phase 17 发布记录。
+Phase 17 正式启动并完成 Reaction Field 品牌统一与仓库身份迁移，方案由 `docs/PHASE17_BRAND_IDENTITY_FREEZE.md` 冻结，已作为 Reaction Field Alpha 6（`0.16.0-alpha.2`，标签 `web-playtest-v0.16.0-alpha.2`）正式公开发布。当前已公开发布版本已演进至 `0.20.0-alpha.1`（标签 `web-playtest-v0.20.0-alpha.1`），不改变下述 Phase 17 发布记录。
 
 实施子阶段与路线图状态：
 - **Phase 17A（品牌与仓库身份审计）**：已完成。核实中英文正式品牌、UI 装饰大写、包名、仓库 slug、Pages URL、公开元数据及全量代码/文档引用点。
@@ -65,7 +65,7 @@ Phase 17 正式启动并完成 Reaction Field 品牌统一与仓库身份迁移�
 - **Phase 17D（GitHub 仓库改名与设置）**：已完成。GitHub 仓库成功重命名为 `9947447-alt/reaction-field`，仓库数字身份（numeric ID）保持不变，Description、Topics 与 local remote 已更新。
 - **Post-rename Cutover（代码库链接切换）**：已完成。正式将应用内静态仓库链接 `src/app/projectRepository.tsx`、测试断言及 README 切换至 `9947447-alt/reaction-field` 并合入集成主干。
 - **Release Preparation（发布版本准备）**：已完成。版本更新至 `0.16.0-alpha.2`，全量本地与 CI 测试通过并合入集成主干。
-- **Immutable Tag & Pages 部署**：已完成。创建并推送不可变标签 `web-playtest-v0.16.0-alpha.2`（peeled SHA `cd228fc833fbed65ef3f61ef43c0e459824d5bf8`），触发 `Phase 12 Web Playtest Pages` 工作流并构建/部署成功。应用版本 `0.20.0-alpha.1` 待发布 / 待打 tag，尚未部署。
+- **Immutable Tag & Pages 部署**：已完成。创建并推送不可变标签 `web-playtest-v0.16.0-alpha.2`（peeled SHA `cd228fc833fbed65ef3f61ef43c0e459824d5bf8`），触发 `Phase 12 Web Playtest Pages` 工作流并构建/部署成功。后续版本演进见对应发布（当前现网已公开发布 `0.20.0-alpha.1`）。
 - **Phase 17E 公网验收**：已完成。7 项公网真机/浏览器验收（新 Pages 200、旧 Pages 404、静态资源正常、标题准确、仓库与反馈链接安全、双语对局完整可用）全部通过。
 - **GitHub Release**：已完成。发布正式预发布版本 `Reaction Field Alpha 6 — v0.16.0-alpha.2`。
 - **Phase 17 收口**：全面完成。
@@ -74,11 +74,10 @@ Phase 17 正式启动并完成 Reaction Field 品牌统一与仓库身份迁移�
 - **当前活跃仓库（Active Repository）**：`https://github.com/9947447-alt/reaction-field`（仓库 numeric ID 不变）
 - **当前活跃包名（Package Name）**：`reaction-field`（`package.json`）
 - **当前真实 Live Pages 试玩**：`https://9947447-alt.github.io/reaction-field/`
-- **当前公开发布版本**：`0.16.0-alpha.2`（Tag: `web-playtest-v0.16.0-alpha.2`）
-- **待发布应用版本**：`0.20.0-alpha.1` 待发布 / 待打 tag，Pages 尚未按该版本部署
+- **当前公开发布版本**：`0.20.0-alpha.1`（Tag: `web-playtest-v0.20.0-alpha.1`，peeled SHA `8db1e95a3454085f57f5c5ca470b102ac19115c1`；历史标签包括 `web-playtest-v0.16.0-alpha.2` 等）
 - **平台 Pages 行为实测记录**：
   - 原旧 Pages URL（`https://9947447-alt.github.io/Chemistry-online-Card-Game/`）返回 HTTP 404；
-  - 新 Pages URL（`https://9947447-alt.github.io/reaction-field/`）返回 HTTP 200 并由 `web-playtest-v0.16.0-alpha.2` 构建正常提供 Alpha 6 静态站点；`0.20.0-alpha.1` 待打 tag 后部署，当前 Pages 不是该版本；
+  - 新 Pages URL（`https://9947447-alt.github.io/reaction-field/`）返回 HTTP 200，提供现网 Web Playtest Alpha 静态站点；
   - 线上代码链接、关于弹窗及对局结束链接均已指向 `9947447-alt/reaction-field`；
   - 品牌与发布迁移全链路收口闭环。
 

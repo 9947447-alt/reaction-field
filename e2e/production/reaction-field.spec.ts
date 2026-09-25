@@ -649,7 +649,38 @@ test("生产构建在 /playtest/debug 下品牌图片正常加载无 404", async
   expect(teacherSrc).not.toContain("/debug/brand/");
 });
 
-test("生产构建从大厅进入教学引导进入受控脚本局，支持步骤推进、刷新重置与跳过教学", async ({
+const tutorialOpponentHandNames = ["Na+", "稀 HCl", "H+", "H2O", "S", "稀 KOH", "Cl-", "稀 H2SO4", "SO2"];
+
+async function openTutorialFromLobby(page: Page) {
+  await page.goto("/");
+  await expect(page.locator('[data-testid="lobby-page"]')).toBeVisible();
+  const tutorialCard = page.locator('[data-testid="mode-card-tutorial"]');
+  await expect(tutorialCard).toBeVisible();
+  await tutorialCard.getByRole("button", { name: "进入教学" }).click();
+  await expect(page).toHaveURL(/\/play\?mode=solo_ai&tutorial=1/);
+  await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+  await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
+  await expect(page.locator("details")).toHaveCount(0);
+}
+
+async function expectTutorialOpponentHandHidden(page: Page) {
+  const opponentZone = page.locator(".desk-table__opponent-zone");
+  await expect(opponentZone.locator(".official-card--back").first()).toBeVisible();
+  await expect(opponentZone.locator(".official-card:not(.official-card--back)")).toHaveCount(0);
+  await expect(opponentZone.locator(".official-card__name")).toHaveCount(0);
+  for (const name of tutorialOpponentHandNames) {
+    await expect(opponentZone).not.toContainText(name);
+  }
+}
+
+function ownCardNamed(page: Page, name: string) {
+  return page
+    .locator(".desk-table__own-zone .official-card")
+    .filter({ has: page.locator(".official-card__name", { hasText: new RegExp(`^${name}$`, "u") }) })
+    .locator("button.official-card__button");
+}
+
+test("生产构建从大厅进入教学并走完备课、稀 NaOH 出牌、AI 公开牌与稀 KOH 响应", async ({
   page,
   externalRequests,
   networkFailures,
@@ -659,74 +690,38 @@ test("生产构建从大厅进入教学引导进入受控脚本局，支持步�
   void runtimeErrors;
   void networkFailures;
 
-  // 1. Visit lobby
-  await page.goto("/");
-  await expect(page.locator('[data-testid="lobby-page"]')).toBeVisible();
+  await openTutorialFromLobby(page);
 
-  // 2. Click Tutorial card action
-  const tutorialCard = page.locator('[data-testid="mode-card-tutorial"]');
-  await expect(tutorialCard).toBeVisible();
-  await tutorialCard.getByRole("button", { name: "进入教学" }).click();
-
-  // 3. Directly on /play?mode=solo_ai&tutorial=1, lands on DeskTable in tutorial mode
-  await expect(page).toHaveURL(/\/play\?mode=solo_ai&tutorial=1/);
-  await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
-
-  // Zero debug dropdowns, zero raw details
-  await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);
-  await expect(page.locator("details")).toHaveCount(0);
-
-  // Coach banner is present showing step 1
   const coachBanner = page.locator('[data-testid="coach-banner"]');
   await expect(coachBanner).toBeVisible();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
 
-  // 4. Test page refresh: URL keeps tutorial=1 and resets to the tutorial start
   await page.reload();
-  await expect(page).toHaveURL(/tutorial=1/);
+  await expect(page).toHaveURL(/\/play\?mode=solo_ai&tutorial=1/);
   await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
   await expect(coachBanner).toBeVisible();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
+  await expectTutorialOpponentHandHidden(page);
 
-  // Opponent hand of TUTORIAL_SEED (chemical_factory_ceo) stays face down
-  const opponentZone = page.locator(".desk-table__opponent-zone");
-  const opponentHandNames = ["Na+", "稀 HCl", "H+", "H2O", "S", "稀 KOH", "Cl-", "稀 H2SO4", "SO2"];
-  const expectOpponentHandHidden = async () => {
-    await expect(opponentZone.locator(".official-card--back").first()).toBeVisible();
-    await expect(opponentZone.locator(".official-card__name")).toHaveCount(0);
-    for (const name of opponentHandNames) {
-      await expect(opponentZone).not.toContainText(name);
-    }
-  };
-  const ownCardNamed = (name: string) =>
-    page
-      .locator(".desk-table__own-zone .official-card")
-      .filter({ has: page.locator(".official-card__name", { hasText: new RegExp(`^${name}$`, "u") }) })
-      .locator("button.official-card__button");
-  await expectOpponentHandHidden();
-
-  // 5. Step 1: another engine-legal 10-card preparation is rejected, the scripted 10 pass
   const confirmPrepButton = page.locator(".desk-action-bar button.coach-highlight");
   await expect(confirmPrepButton).toBeVisible();
   await expect(confirmPrepButton).toContainText("确认备课选择");
-  await ownCardNamed("O2").click();
-  await ownCardNamed("H2O").click();
+  await ownCardNamed(page, "O2").click();
+  await ownCardNamed(page, "H2O").click();
   await expect(confirmPrepButton).toContainText("10/10");
   await confirmPrepButton.click();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
-  await ownCardNamed("H2O").click();
-  await ownCardNamed("O2").click();
+  await ownCardNamed(page, "H2O").click();
+  await ownCardNamed(page, "O2").click();
   await confirmPrepButton.click();
 
-  // 6. Step 2: Select hand card (dilute NaOH)
   await expect(coachBanner).toContainText("步骤 2/4 · 看手牌与选牌");
-  await expectOpponentHandHidden();
+  await expectTutorialOpponentHandHidden(page);
   const naohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
   await expect(naohCard).toBeVisible();
   await expect(naohCard).toContainText("稀 NaOH");
   await naohCard.locator("button.official-card__button").click();
 
-  // 7. Step 3: Play card as reference; the out-of-script effect button stays blocked
   await expect(coachBanner).toContainText("步骤 3/4 · 普通出牌建立基准");
   const playButtons = page.locator(".desk-action-bar button");
   await playButtons.filter({ hasText: "执行效果" }).click();
@@ -736,38 +731,58 @@ test("生产构建从大厅进入教学引导进入受控脚本局，支持步�
   await expect(playRefButton).toHaveClass(/coach-highlight/);
   await playRefButton.click();
 
-  // 8. Step 4: Opponent AI publicly starts 1 acid damage -> Response Window
   await expect(coachBanner).toContainText("步骤 4/4 · 响应酸性伤害");
-  await expectOpponentHandHidden();
+  await expectTutorialOpponentHandHidden(page);
+  await expect(page.locator(".table-center-reference .table-reference-card__name")).toHaveText("稀 NaOH");
+  const aiPublicPlay = page.getByLabel("最近公开行动");
+  await expect(aiPublicPlay).toBeVisible();
+  await expect(aiPublicPlay).toContainText("主动 DIY");
+  await expect(aiPublicPlay.locator(".table-reference-card__name")).toHaveText("稀 HCl");
+
   const kohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
   await expect(kohCard).toBeVisible();
   await expect(kohCard).toContainText("稀 KOH");
   await kohCard.locator("button.official-card__button").click();
-
   const playResponseButton = page.locator(".desk-action-bar button.coach-highlight");
   await expect(playResponseButton).toBeVisible();
   await expect(playResponseButton).toContainText("打出响应");
   await playResponseButton.click();
 
-  // 9. Step 5: Completed banner & transition to Solo vs AI
   await expect(coachBanner).toContainText("教学完成");
-  await expectOpponentHandHidden();
+  await expect(coachBanner).toContainText("本局教学已结束");
+  await expect(page).toHaveURL(/tutorial=1/);
+  await expectTutorialOpponentHandHidden(page);
   const completeButton = page.locator('[data-testid="coach-banner-complete"]');
   await expect(completeButton).toBeVisible();
+  await expect(completeButton).toContainText("进入人机对局");
   await completeButton.click();
-
-  // Coach banner dismissed, enters regular desk table
   await expect(coachBanner).toHaveCount(0);
   await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+});
 
-  // 10. Test skipping tutorial at any time
-  await page.goto("/play?mode=solo_ai&tutorial=1");
-  await expect(page.locator('[data-testid="coach-banner"]')).toBeVisible();
-  const skipButton = page.locator('[data-testid="coach-banner-skip"]');
-  await expect(skipButton).toBeVisible();
-  await skipButton.click();
+test("生产构建从大厅进入教学后跳过，地址变为 /play?mode=solo_ai 且不含 tutorial=1", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await openTutorialFromLobby(page);
+  const coachBanner = page.locator('[data-testid="coach-banner"]');
+  await expect(coachBanner).toBeVisible();
+  await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
+  await expectTutorialOpponentHandHidden(page);
+
+  await page.locator('[data-testid="coach-banner-skip"]').click();
+  await expect(page).toHaveURL(/\/play\?mode=solo_ai$/);
   await expect(page).not.toHaveURL(/tutorial=1/);
-  await expect(page.locator('[data-testid="coach-banner"]')).toHaveCount(0);
+  await expect(coachBanner).toHaveCount(0);
   await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
+  const opponentZone = page.locator(".desk-table__opponent-zone");
+  await expect(opponentZone.locator(".official-card--back").first()).toBeVisible();
+  await expect(opponentZone.locator(".official-card__name")).toHaveCount(0);
 });
 

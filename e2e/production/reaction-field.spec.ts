@@ -116,7 +116,7 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     expect(script?.contentType).toMatch(/^text\/javascript/u);
     expect(stylesheet?.path.startsWith(assetPrefix)).toBe(true);
     expect(stylesheet?.contentType).toMatch(/^text\/css/u);
-    await expect(page).toHaveTitle(/反应域 · REACTION FIELD · Web Playtest Alpha · 0\.16\.0-alpha\.2/u);
+    await expect(page).toHaveTitle(/反应域 · REACTION FIELD · Web Playtest Alpha · 0\.20\.0-alpha\.1/u);
     const iconLinks = await page.locator('link[rel~="icon"]').evaluateAll((links) => links.map((link) => ({
       href: link.getAttribute("href"),
       sizes: link.getAttribute("sizes"),
@@ -181,7 +181,7 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     await page.getByRole("button", { name: "关于与帮助" }).click();
     const about = page.getByRole("dialog", { name: "关于与帮助" });
     await expect(about).toContainText("REACTION FIELD");
-    await expect(about).toContainText("0.16.0-alpha.2");
+    await expect(about).toContainText("0.20.0-alpha.1");
     await expect(about).toContainText("MVP0-P10");
     await expect(about).toContainText(expectedBuildCommit);
     const repository = about.getByRole("link", { name: "在新标签页打开反应域 GitHub 仓库" });

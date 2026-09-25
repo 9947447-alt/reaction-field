@@ -293,7 +293,7 @@ test("默认配置、正式元数据与 configuring 帮助界面", async ({ page
   await expect(page.getByLabel("player_2 角色")).toHaveValue("chemical_factory_ceo");
   await expect(page.getByLabel("player_1 控制方")).toHaveValue("human");
   await expect(page.getByLabel("player_2 控制方")).toHaveValue("ai");
-  await expect(page.getByText("Web Playtest Alpha · v0.16.0-alpha.2 · MVP0-P10", {
+  await expect(page.getByText("Web Playtest Alpha · v0.20.0-alpha.1 · MVP0-P10", {
     exact: false,
   })).toBeVisible();
 

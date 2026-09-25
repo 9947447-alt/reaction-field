@@ -19,8 +19,9 @@ The external Core Rulebook is an extended tabletop reference, not the authoritat
 - Rules version: `MVP0-P10`
 - GitHub Release: [Reaction Field Alpha 6 — v0.16.0-alpha.2](https://github.com/9947447-alt/reaction-field/releases/tag/web-playtest-v0.16.0-alpha.2)
 - Repository: [https://github.com/9947447-alt/reaction-field](https://github.com/9947447-alt/reaction-field)
+- Application version `0.20.0-alpha.1` is pending release / pending tag. It is not deployed.
 
-The current public release is Reaction Field Alpha 6 (`0.16.0-alpha.2`) with rules version `MVP0-P10` and public tag `web-playtest-v0.16.0-alpha.2`. The live playtest URL is served from `https://9947447-alt.github.io/reaction-field/` following the repository rename and Phase 17 release deployment.
+The current public release is Reaction Field Alpha 6 (`0.16.0-alpha.2`) with rules version `MVP0-P10` and public tag `web-playtest-v0.16.0-alpha.2`. The live playtest URL remains `https://9947447-alt.github.io/reaction-field/` from the Phase 17 deployment. Application version `0.20.0-alpha.1` is pending release / pending tag and is not deployed to that Pages site.
 
 ## What Is Reaction Field?
 
@@ -50,7 +51,7 @@ This is an alpha playtest, not a stable release.
 
 ## Alpha Status
 
-The current public release is Reaction Field Alpha 6, technical version `0.16.0-alpha.2`, rules version `MVP0-P10`, and tag `web-playtest-v0.16.0-alpha.2`. Its public Pages build is served from the live URL; this is not evidence of broad cross-browser compatibility.
+The current public release is Reaction Field Alpha 6, technical version `0.16.0-alpha.2`, rules version `MVP0-P10`, and tag `web-playtest-v0.16.0-alpha.2`. Its public Pages build is served from the live URL; this is not evidence of broad cross-browser compatibility. Application version `0.20.0-alpha.1` is pending release / pending tag and has no Pages deployment.
 
 The earlier `web-playtest-v0.13.0-alpha.2` tag remains unchanged at `57550f70856d5d5e27ac3fcb0fa508cd698d3be6`. Its Pages workflow failed because a production E2E assertion was pinned to an older commit, so alpha.2 was not deployed successfully. Historical tags remain immutable.
 
@@ -68,7 +69,7 @@ The international presentation layer provides Simplified Chinese and English mod
 
 ## Alpha 6 / Phase 16 & Phase 17 Release Status
 
-Phase 16 full bilingual game log and Phase 17 repository identity migration are implemented and published as Reaction Field Alpha 6 (`0.16.0-alpha.2`) under tag `web-playtest-v0.16.0-alpha.2`. Alpha 6 provides bilingual structured logs, localized damage and status rendering, migrated repository and Pages identity under `9947447-alt/reaction-field`, and production test coverage. Alpha 6 is an alpha playtest; it does not include online multiplayer, accounts, persistence, complete mobile compatibility, or an iOS Firefox fix.
+Phase 16 full bilingual game log and Phase 17 repository identity migration are implemented and published as Reaction Field Alpha 6 (`0.16.0-alpha.2`) under tag `web-playtest-v0.16.0-alpha.2`. Application version `0.20.0-alpha.1` is pending release / pending tag. Alpha 6 provides bilingual structured logs, localized damage and status rendering, migrated repository and Pages identity under `9947447-alt/reaction-field`, and production test coverage. Alpha 6 is an alpha playtest; it does not include online multiplayer, accounts, persistence, complete mobile compatibility, or an iOS Firefox fix.
 
 ## Feedback
 

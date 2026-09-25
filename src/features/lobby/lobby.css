@@ -20,7 +20,6 @@
   width: 100%;
 }
 
-/* Lobby Banner Placeholder */
 .lobby-banner {
   background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
   border: 1px solid #334155;
@@ -34,10 +33,9 @@
 
 .lobby-banner__visual {
   align-items: center;
+  aspect-ratio: 1600 / 893;
   display: flex;
   justify-content: center;
-  max-height: 220px;
-  min-height: 160px;
   overflow: hidden;
   position: relative;
   width: 100%;
@@ -46,7 +44,6 @@
 .lobby-banner__image {
   height: 100%;
   object-fit: cover;
-  opacity: 0.55;
   width: 100%;
 }
 
@@ -63,19 +60,6 @@
   right: 0;
   text-align: center;
   top: 0;
-}
-
-.lobby-banner__slot-tag {
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid #38bdf8;
-  border-radius: 9999px;
-  color: #7dd3fc;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
-  padding: 4px 12px;
-  text-transform: uppercase;
 }
 
 .lobby-banner__title {

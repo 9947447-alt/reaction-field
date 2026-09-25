@@ -72,12 +72,9 @@ export function LobbyPage() {
               alt=""
               aria-hidden="true"
               className="lobby-banner__image"
-              src={PLAY_BRAND_ASSETS.coachBanner}
+              src={PLAY_BRAND_ASSETS.lobbyBanner}
             />
             <div className="lobby-banner__overlay">
-              <span className="lobby-banner__slot-tag">
-                {isEnglish ? "Phase 20 Lobby Banner Slot" : "新大厅横幅预留槽 · 占位图"}
-              </span>
               <h1 className="lobby-banner__title">
                 {releaseMetadata.displayName} · {releaseMetadata.secondaryName}
               </h1>
@@ -171,7 +168,7 @@ export function LobbyPage() {
                   alt=""
                   aria-hidden="true"
                   className="lobby-mode-card__image"
-                  src={PLAY_BRAND_ASSETS.coachBanner}
+                  src={PLAY_BRAND_ASSETS.modeTutorial}
                 />
               </div>
               <div className="lobby-mode-card__body">

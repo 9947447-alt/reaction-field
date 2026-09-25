@@ -35,10 +35,12 @@ describe("Phase 20-Home — LobbyPage", () => {
       );
     });
 
-    // Banner slot exists
     const banner = container.querySelector(".lobby-banner");
     expect(banner).not.toBeNull();
     expect(banner?.textContent).toContain("反应域");
+    expect(banner?.textContent).not.toContain("占位图");
+    expect(banner?.textContent).not.toContain("Phase 20 Lobby Banner Slot");
+    expect(banner?.querySelector("img")?.getAttribute("src")).toContain("lobby-banner.png");
 
     // Three entry cards exist
     const soloCard = container.querySelector('[data-testid="mode-card-solo"]');
@@ -51,6 +53,10 @@ describe("Phase 20-Home — LobbyPage", () => {
     expect(soloCard?.textContent).toContain("单人人机对战");
     expect(duoCard?.textContent).toContain("本地双人对战");
     expect(tutorialCard?.textContent).toContain("交互式教学引导");
+    expect(soloCard?.querySelector("img")?.getAttribute("src")).toContain("mode-solo.png");
+    expect(duoCard?.querySelector("img")?.getAttribute("src")).toContain("mode-duo.png");
+    expect(tutorialCard?.querySelector("img")?.getAttribute("src")).toContain("mode-tutorial.png");
+    expect(container.querySelectorAll("[data-testid^='mode-card-']")).toHaveLength(3);
 
     // Zero controller dropdowns, zero Log IDs, zero raw details debug elements
     const controllerSelects = container.querySelectorAll(

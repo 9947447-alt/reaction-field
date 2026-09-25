@@ -43,6 +43,12 @@ export const PLAY_BRAND_ASSETS = Object.freeze({
   get modeDuo() {
     return resolvePlayBrandAsset("mode-duo.png");
   },
+  get modeTutorial() {
+    return resolvePlayBrandAsset("mode-tutorial.png");
+  },
+  get lobbyBanner() {
+    return resolvePlayBrandAsset("lobby-banner.png");
+  },
   get iconHp() {
     return resolvePlayBrandAsset("icon-hp.png");
   },

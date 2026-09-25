@@ -148,7 +148,10 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     // 1. Assert Lobby Page Presentation
     await expect(page.locator('[data-testid="lobby-page"]')).toBeVisible();
     await expect(page.locator(".lobby-banner")).toBeVisible();
-    await expect(page.locator(".lobby-banner__slot-tag")).toBeVisible();
+    await expect(page.locator(".lobby-banner__slot-tag")).toHaveCount(0);
+    await expect(page.locator(".lobby-banner__image")).toHaveAttribute("src", /lobby-banner\.png$/);
+    await expect(page.getByText("占位图")).toHaveCount(0);
+    await expect(page.getByText("Phase 20 Lobby Banner Slot")).toHaveCount(0);
     await expect(page.locator(".release-bar .secondary-brand")).toHaveText("REACTION FIELD");
 
     // Assert Three Mode Entries visible
@@ -158,6 +161,10 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     await expect(soloCard).toBeVisible();
     await expect(duoCard).toBeVisible();
     await expect(tutorialCard).toBeVisible();
+    await expect(soloCard.locator("img")).toHaveAttribute("src", /mode-solo\.png$/);
+    await expect(duoCard.locator("img")).toHaveAttribute("src", /mode-duo\.png$/);
+    await expect(tutorialCard.locator("img")).toHaveAttribute("src", /mode-tutorial\.png$/);
+    await expect(page.locator("[data-testid^='mode-card-']")).toHaveCount(3);
 
     // Official Lobby zero debug controls, zero Log IDs, zero JSON
     await expect(page.locator("select[aria-label*='controller'], select[aria-label*='控制方']")).toHaveCount(0);

@@ -46,8 +46,8 @@ export const TUTORIAL_STEPS: Record<TutorialStepKey, TutorialStepInfo> = {
       en: "Step 1/4 · Preparation",
     },
     instruction: {
-      zh: "实验室老师拥有备课特权，可从 20 张候选牌中挑选 10 张手牌。已为您预选好推荐配置，点击【确认备课选择】进入对局。",
-      en: "Laboratory Teacher selects 10 cards from 20 candidates. Recommended cards are preset; click [Confirm preparation selection].",
+      zh: "实验室老师拥有备课特权，可从 20 张候选牌中挑选 10 张手牌。已为您预选好推荐配置，本教学只接受这 10 张，点击【确认备课选择】进入对局。",
+      en: "Laboratory Teacher selects 10 cards from 20 candidates. Recommended cards are preset and this tutorial only accepts them; click [Confirm preparation selection].",
     },
     targetId: "preparation-confirm",
   },
@@ -102,8 +102,8 @@ export const TUTORIAL_STEPS: Record<TutorialStepKey, TutorialStepInfo> = {
       en: "Step 4/4 · Respond to acid damage",
     },
     instruction: {
-      zh: "对手合成了稀 HCl 对你造成 1 点酸性伤害！点击点选下方高亮手牌【稀 KOH】并点击【打出响应】（或放弃响应）完成酸碱中和。",
-      en: "Opponent synthesized dilute HCl and dealt 1 acid damage! Click highlighted card [Dilute KOH] and click [Play Response] (or pass) to neutralize.",
+      zh: "对手用 DIY 合成稀 HCl，向你发起 1 点酸性伤害！点选下方高亮手牌【稀 KOH】并点击【打出响应】完成酸碱中和；也可点击【放弃响应】承受这 1 点伤害。",
+      en: "Opponent synthesized dilute HCl via DIY and is dealing 1 acid damage! Select highlighted card [Dilute KOH] and click [Play Response] to neutralize, or click [Pass Response] to take the damage.",
     },
     targetId: `card:${TUTORIAL_TARGET_RESPONSE_CARD_ID}`,
   },
@@ -123,8 +123,21 @@ export const TUTORIAL_STEPS: Record<TutorialStepKey, TutorialStepInfo> = {
   },
 };
 
-export function hasRecordedReaction(game: GameState): boolean {
-  return game.log.some((entry) => entry.eventKey === "reaction");
+export function hasResolvedTutorialResponse(game: GameState): boolean {
+  return game.log.some(
+    (entry) =>
+      entry.eventKey === "reaction" ||
+      (entry.eventKey === "response_pass_damage" && entry.params.targetId === "player_1"),
+  );
+}
+
+export function isTutorialPresetPreparation(keptCardInstanceIds: readonly CardInstanceId[]): boolean {
+  const kept = new Set(keptCardInstanceIds);
+  return (
+    keptCardInstanceIds.length === TUTORIAL_PRESET_PREPARATION_CARD_IDS.length &&
+    kept.size === keptCardInstanceIds.length &&
+    TUTORIAL_PRESET_PREPARATION_CARD_IDS.every((id) => kept.has(id))
+  );
 }
 
 export function deriveTutorialStep(
@@ -135,15 +148,15 @@ export function deriveTutorialStep(
     return "PREPARATION";
   }
 
+  if (hasResolvedTutorialResponse(game)) {
+    return "COMPLETED";
+  }
+
   if (game.phase === "responseWindow") {
     if (game.pendingResponse?.responderId === "player_1") {
       return "RESPOND_WITH_CARD";
     }
     return "AWAIT_AI_ATTACK";
-  }
-
-  if (hasRecordedReaction(game)) {
-    return "COMPLETED";
   }
 
   if (game.phase === "mainAction") {
@@ -171,7 +184,8 @@ export function isAllowedTutorialGameAction(
     case "PREPARATION":
       return (
         action.type === "CONFIRM_LABORATORY_PREPARATION" &&
-        action.playerId === "player_1"
+        action.playerId === "player_1" &&
+        isTutorialPresetPreparation(action.keptCardInstanceIds)
       );
     case "PLAY_REFERENCE_CARD":
       return (

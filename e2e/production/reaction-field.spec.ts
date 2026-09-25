@@ -688,29 +688,57 @@ test("生产构建从大厅进入教学引导进入受控脚本局，支持步�
   await expect(coachBanner).toBeVisible();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
 
-  // 5. Step 1: Click highlighted confirm preparation
+  // Opponent hand of TUTORIAL_SEED (chemical_factory_ceo) stays face down
+  const opponentZone = page.locator(".desk-table__opponent-zone");
+  const opponentHandNames = ["Na+", "稀 HCl", "H+", "H2O", "S", "稀 KOH", "Cl-", "稀 H2SO4", "SO2"];
+  const expectOpponentHandHidden = async () => {
+    await expect(opponentZone.locator(".official-card--back").first()).toBeVisible();
+    await expect(opponentZone.locator(".official-card__name")).toHaveCount(0);
+    for (const name of opponentHandNames) {
+      await expect(opponentZone).not.toContainText(name);
+    }
+  };
+  const ownCardNamed = (name: string) =>
+    page
+      .locator(".desk-table__own-zone .official-card")
+      .filter({ has: page.locator(".official-card__name", { hasText: new RegExp(`^${name}$`, "u") }) })
+      .locator("button.official-card__button");
+  await expectOpponentHandHidden();
+
+  // 5. Step 1: another engine-legal 10-card preparation is rejected, the scripted 10 pass
   const confirmPrepButton = page.locator(".desk-action-bar button.coach-highlight");
   await expect(confirmPrepButton).toBeVisible();
   await expect(confirmPrepButton).toContainText("确认备课选择");
+  await ownCardNamed("O2").click();
+  await ownCardNamed("H2O").click();
+  await expect(confirmPrepButton).toContainText("10/10");
+  await confirmPrepButton.click();
+  await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
+  await ownCardNamed("H2O").click();
+  await ownCardNamed("O2").click();
   await confirmPrepButton.click();
 
   // 6. Step 2: Select hand card (dilute NaOH)
   await expect(coachBanner).toContainText("步骤 2/4 · 看手牌与选牌");
+  await expectOpponentHandHidden();
   const naohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
   await expect(naohCard).toBeVisible();
   await expect(naohCard).toContainText("稀 NaOH");
   await naohCard.locator("button.official-card__button").click();
 
-  // 7. Step 3: Play card as reference
+  // 7. Step 3: Play card as reference; the out-of-script effect button stays blocked
   await expect(coachBanner).toContainText("步骤 3/4 · 普通出牌建立基准");
   const playButtons = page.locator(".desk-action-bar button");
+  await playButtons.filter({ hasText: "执行效果" }).click();
+  await expect(coachBanner).toContainText("步骤 3/4 · 普通出牌建立基准");
   const playRefButton = playButtons.filter({ hasText: "普通出牌" });
   await expect(playRefButton).toBeVisible();
   await expect(playRefButton).toHaveClass(/coach-highlight/);
   await playRefButton.click();
 
-  // 8. Step 4: Opponent AI deals 1 acid damage -> Response Window
+  // 8. Step 4: Opponent AI publicly starts 1 acid damage -> Response Window
   await expect(coachBanner).toContainText("步骤 4/4 · 响应酸性伤害");
+  await expectOpponentHandHidden();
   const kohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
   await expect(kohCard).toBeVisible();
   await expect(kohCard).toContainText("稀 KOH");
@@ -723,6 +751,7 @@ test("生产构建从大厅进入教学引导进入受控脚本局，支持步�
 
   // 9. Step 5: Completed banner & transition to Solo vs AI
   await expect(coachBanner).toContainText("教学完成");
+  await expectOpponentHandHidden();
   const completeButton = page.locator('[data-testid="coach-banner-complete"]');
   await expect(completeButton).toBeVisible();
   await completeButton.click();

@@ -29,8 +29,8 @@ The current public build is Web Playtest Alpha `0.20.0-alpha.1` with rules versi
 
 The live version provides three mutually exclusive, independently accessible and testable routes:
 
-- `/` **Lobby**: The main entrance. Provides game mode selection (Solo vs AI / Local Two-Player), an interactive scripted tutorial launcher, character lineup setup, and "About & Help".
-- `/play` **Landscape Play Desk**: The formal landscape card desk match interface. Optimized for landscape viewports (displays a "Please rotate to landscape" barrier on portrait viewports), featuring click-to-select hand cards and converged desk controls.
+- `/` **Lobby**: The main entrance. Provides game mode selection (Solo vs AI / Local Two-Player), an interactive scripted tutorial launcher, and "About & Help".
+- `/play` **Landscape Play Desk**: Pre-match lineup and mode confirmation, then the formal landscape card desk. Optimized for landscape viewports (displays a "Please rotate to landscape" barrier on portrait viewports), featuring click-to-select hand cards and converged desk controls.
 - `/debug` **Debug Laboratory**: The developer and rule verification laboratory. Retains full open information (both players' hands face-up, full debug controls, and live state inspection).
 
 ## Game Modes & Hand Visibility

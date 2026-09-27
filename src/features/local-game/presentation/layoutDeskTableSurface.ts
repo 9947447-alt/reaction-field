@@ -29,8 +29,7 @@ function layoutHandRow(
   const regions: DeskCanvasHitRegion[] = [];
   let x = startX;
   for (const card of cards) {
-    const lift = zone === "own" && card.selected ? DESK_CARD_SELECTED_LIFT : 0;
-    const cardY = zone === "own" ? y - lift : y;
+    const cardY = y;
     regions.push({
       cardInstanceId: card.cardInstanceId,
       zone,
@@ -83,15 +82,18 @@ export function hitTestDeskTableSurface(
   layout: DeskCanvasLayout,
   x: number,
   y: number,
+  ownCardLiftPx: (cardInstanceId: string) => number = () => 0,
 ): DeskCanvasHitRegion | undefined {
   for (let index = layout.hitRegions.length - 1; index >= 0; index -= 1) {
     const region = layout.hitRegions[index];
+    const lift = region.zone === "own" ? ownCardLiftPx(region.cardInstanceId) : 0;
+    const regionY = region.y - lift;
     if (
       region.interactive &&
       x >= region.x &&
       x <= region.x + region.width &&
-      y >= region.y &&
-      y <= region.y + region.height
+      y >= regionY &&
+      y <= regionY + region.height
     ) {
       return region;
     }

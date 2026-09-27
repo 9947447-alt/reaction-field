@@ -318,6 +318,7 @@ export function DeskTable({
           <DeskTableSurfaceCanvas
             model={presentationModel}
             onSelectCard={handleSelectCard}
+            revision={session.revision}
             selectedCardId={selectedCardId}
             selectedCardIds={selectedCardIds}
           />

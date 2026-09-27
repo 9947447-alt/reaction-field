@@ -2,7 +2,7 @@
 
 # 反应域
 
-**反应域（REACTION FIELD）** 是一款基于化学主题的开源本地同屏双人策略卡牌游戏，当前以公开 Web Playtest Alpha 分发。当前已公开发布技术版本为 `0.20.0-alpha.1`，发布标签为 `web-playtest-v0.20.0-alpha.1`，规则版本严格保持 `MVP0-P10`，不增加任何游戏规则。这不是 Beta 1。这是一个基于 React、TypeScript、Vite、Vitest 与 Playwright 的本地同屏双人公开试玩版本，不是正式发行版。上一份公开标签 `web-playtest-v0.16.0-alpha.2`（Reaction Field Alpha 6）仍作为历史标签保留。
+**反应域（REACTION FIELD）** 是一款基于化学主题的开源策略卡牌游戏，当前公开发布频道为 **Beta 1**。当前发布技术版本为 `0.20.0-beta.1`，规则版本严格保持 `MVP0-P10`，不增加任何游戏规则。这是一个基于 React、TypeScript、Vite、Vitest 与 Playwright 的横屏卡牌客户端版本（含 `/` 大厅、`/play` 备战确认与横屏桌、单人人机私密视角、本地双人同屏公开手牌与交互式脚本教学；呈现引擎与特效不在本包，改挂 Beta 2 Phase 1）。历史标签包含 `web-playtest-v0.20.0-alpha.1` 与 `web-playtest-v0.16.0-alpha.2`（Reaction Field Alpha 6）。
 
 ## 核心规则书 — 扩展桌面规则参考
 
@@ -26,20 +26,18 @@
 - 新产生的结构化成功反应可显示约 2000ms 的非模态提示；提示只读取 `GameLogEntry.reaction`、复用正式公开反应展示，首次挂载不重播历史 reaction。
 - About 与 `gameOver` 提供普通静态 GitHub 仓库链接；Microsoft Forms 仍是独立、仅由用户点击的静态外链，隐私边界不变。
 
-Web Playtest Alpha 公开双方手牌、牌堆数量、状态与完整日志。没有联网、账号、房间、存档、遥测或远程错误上报；刷新会丢失当前对局并回到默认角色预选。
+Beta 1 在人机模式下提供人类私密视角（对手手牌为牌背与张数），本地双人模式下公开双方手牌。没有联网、账号、房间、存档、遥测或远程错误上报；刷新会丢失当前对局。
 
 ## 公开试玩地址与本轮状态
 
 - 公开试玩入口：[https://9947447-alt.github.io/reaction-field/](https://9947447-alt.github.io/reaction-field/)
-- 当前公开发布频道：**Web Playtest Alpha**
-- 当前已发布技术版本：`0.20.0-alpha.1`
-- 当前已公开发布标签：`web-playtest-v0.20.0-alpha.1`
-- peeled SHA：`8db1e95a3454085f57f5c5ca470b102ac19115c1`
+- 当前公开发布频道：**Beta 1**
+- 当前发布技术版本：`0.20.0-beta.1`
 - 规则版本：`MVP0-P10`
-- GitHub 标签：[web-playtest-v0.20.0-alpha.1](https://github.com/9947447-alt/reaction-field/releases/tag/web-playtest-v0.20.0-alpha.1)
+- 历史发布标签：`web-playtest-v0.20.0-alpha.1`（peeled SHA `8db1e95a3454085f57f5c5ca470b102ac19115c1`）、`web-playtest-v0.16.0-alpha.2`
 - 官方仓库：[https://github.com/9947447-alt/reaction-field](https://github.com/9947447-alt/reaction-field)
 
-当前已公开发布事实为：频道 Web Playtest Alpha，技术版本 `0.20.0-alpha.1`，规则版本 `MVP0-P10`，标签 `web-playtest-v0.20.0-alpha.1`。公开试玩入口是 `https://9947447-alt.github.io/reaction-field/`。这不是 Beta 1。历史标签 `web-playtest-v0.16.0-alpha.2` 与 `web-playtest-v0.13.0-alpha.2`（`57550f70856d5d5e27ac3fcb0fa508cd698d3be6`）保持不变。
+当前发布事实为：频道 Beta 1，技术版本 `0.20.0-beta.1`，规则版本 `MVP0-P10`。公开试玩入口是 `https://9947447-alt.github.io/reaction-field/`。呈现引擎与特效不在本包，改挂 Beta 2 Phase 1。历史标签 `web-playtest-v0.20.0-alpha.1`、`web-playtest-v0.16.0-alpha.2` 与 `web-playtest-v0.13.0-alpha.2`（`57550f70856d5d5e27ac3fcb0fa508cd698d3be6`）保持不变。
 
 ## 国际化试玩与双语游戏日志状态
 
@@ -55,7 +53,7 @@ Web Playtest Alpha 公开双方手牌、牌堆数量、状态与完整日志。�
 
 ## Alpha 6 / Phase 16 & Phase 17 发布状态
 
-Phase 16 完整双语游戏日志与 Phase 17 仓库身份迁移已作为 Reaction Field Alpha 6（`0.16.0-alpha.2`，标签 `web-playtest-v0.16.0-alpha.2`）发布。该标签仍是历史标签。当前公开 Pages 构建是 `0.20.0-alpha.1`。Alpha 6 支持强类型结构化双语游戏日志、伤害与状态本地化展示、统一的 `9947447-alt/reaction-field` 仓库与 Pages 身份及生产端测试覆盖。当前仍是公开试玩版本，不代表完整教程、在线多人、账号、存档、完整移动端兼容、iOS Firefox 修复或 Beta 1。
+Phase 16 完整双语游戏日志与 Phase 17 仓库身份迁移已作为 Reaction Field Alpha 6（`0.16.0-alpha.2`，标签 `web-playtest-v0.16.0-alpha.2`）发布。该标签与 `0.20.0-alpha.1` 均为历史标签。当前代码库已升级至 Beta 1（`0.20.0-beta.1`）。Alpha 6 曾提供强类型结构化双语游戏日志、伤害与状态本地化展示、统一的 `9947447-alt/reaction-field` 仓库与 Pages 身份及生产端测试覆盖。当前版本不含在线多人、账号、存档、通用移动端兼容、iOS Firefox 修复或呈现引擎（呈现引擎与特效改挂 Beta 2 Phase 1）。
 
 ## Feedback / 反馈
 
@@ -133,7 +131,7 @@ fatal 页面可复制的本地安全诊断只包含：
 
 ```text
 名称：反应域
-应用版本：0.20.0-alpha.1
+应用版本：0.20.0-beta.1
 规则版本：MVP0-P10
 Commit：<短 SHA 或 dev/unknown>
 错误码：<稳定错误码>
@@ -144,7 +142,8 @@ Commit：<短 SHA 或 dev/unknown>
 
 ## 当前限制与发布状态
 
-- 仅本地同屏双人公开试玩，无私密手牌和持久化；刷新即丢失进度。
+- 支持单人人机（对手私密手牌）与本地同屏双人（双方公开手牌），无持久化；刷新即丢失进度。
+- 呈现引擎与特效改挂 Beta 2 Phase 1 前瞻探索，本版本不包含。
 - 真实金属卡池及实验反击金属选项、方程式、沉淀、响应 DIY、多人、联网、账号、存档和回放均延期。
 - 当前公开发布使用 GitHub Pages；本地开发与验证不执行部署。
 - Tauri、Electron、PWA、service worker、APP / DMG / EXE / MSI、签名、公证和自动更新均未实现，也不在本阶段范围。

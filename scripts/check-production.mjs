@@ -127,7 +127,7 @@ async function runDefaultCheck() {
   const packageJson = JSON.parse(
     await readFile(new URL("../package.json", import.meta.url), "utf8"),
   );
-  const expectedTitle = `反应域 · REACTION FIELD · Web Playtest Alpha · ${packageJson.version} · MVP0-P10`;
+  const expectedTitle = `反应域 · REACTION FIELD · Beta 1 · ${packageJson.version} · MVP0-P10`;
   await checkProductionArtifact({
     distDirectory: defaultDistDirectory,
     expectedTitle,

@@ -2,7 +2,7 @@ English | [简体中文](./README.zh-CN.md)
 
 # Reaction Field / 反应域
 
-**Reaction Field** is an open-source chemistry-themed local two-player card game with tactical reactions and emergent strategy, built with React and TypeScript and currently distributed as a public Web Playtest Alpha.
+**Reaction Field** is an open-source chemistry-themed strategy card game with tactical reactions and emergent strategy, built with React and TypeScript and currently distributed on the **Beta 1** public channel. The current published technical version is `0.20.0-beta.1` with rules version strictly held at `MVP0-P10`. It delivers the landscape playtable client (including `/` lobby, `/play` preparation and landscape table, private hand view vs AI, and interactive tutorial; presentation engine and visual effects are deferred to Beta 2 Phase 1). Historical tags include `web-playtest-v0.20.0-alpha.1` and `web-playtest-v0.16.0-alpha.2` (Reaction Field Alpha 6).
 
 ## Core Rulebook — Extended Tabletop Reference
 
@@ -13,21 +13,17 @@ The external Core Rulebook is an extended tabletop reference, not the authoritat
 ## Try the Web Playtest
 
 - Play: [https://9947447-alt.github.io/reaction-field/](https://9947447-alt.github.io/reaction-field/)
-- Current public channel: **Web Playtest Alpha**
-- Current published technical version: `0.20.0-alpha.1`
-- Current public tag: `web-playtest-v0.20.0-alpha.1`
-- Peeled SHA: `8db1e95a3454085f57f5c5ca470b102ac19115c1`
+- Current public channel: **Beta 1**
+- Current published technical version: `0.20.0-beta.1`
 - Rules version: `MVP0-P10`
-- GitHub tag: [web-playtest-v0.20.0-alpha.1](https://github.com/9947447-alt/reaction-field/releases/tag/web-playtest-v0.20.0-alpha.1)
+- Historical tags: `web-playtest-v0.20.0-alpha.1` (peeled SHA `8db1e95a3454085f57f5c5ca470b102ac19115c1`), `web-playtest-v0.16.0-alpha.2`
 - Repository: [https://github.com/9947447-alt/reaction-field](https://github.com/9947447-alt/reaction-field)
 
-The current public build is Web Playtest Alpha `0.20.0-alpha.1` with rules version `MVP0-P10` and public tag `web-playtest-v0.20.0-alpha.1`. The live playtest URL is `https://9947447-alt.github.io/reaction-field/`. This is not Beta 1. The earlier Alpha 6 tag `web-playtest-v0.16.0-alpha.2` remains a historical published tag.
+The current release is Beta 1 (`0.20.0-beta.1`) with rules version `MVP0-P10`. The live playtest URL is [https://9947447-alt.github.io/reaction-field/](https://9947447-alt.github.io/reaction-field/). Presentation engine and effects are deferred to Beta 2 Phase 1. The earlier tags `web-playtest-v0.20.0-alpha.1` and `web-playtest-v0.16.0-alpha.2` remain historical published tags.
 
 ## What Is Reaction Field?
 
-Reaction Field is a local, same-screen two-player game with open hands, public deck counts, public status, and a full game log. It has no online multiplayer, accounts, rooms, saves, telemetry, or remote error reporting. Refreshing the page discards the current match and returns to the default character selection.
-
-This is an alpha playtest, not a stable release.
+Reaction Field supports Solo vs AI with a private hand view (opponent cards face down with count) as well as local same-screen two-player with open hands. It includes public deck counts, public status, and a full game log. It has no online multiplayer, accounts, rooms, saves, telemetry, or remote error reporting. Refreshing the page discards the current match.
 
 ## Core Gameplay
 
@@ -39,7 +35,6 @@ This is an alpha playtest, not a stable release.
 ## Current Features
 
 - A 68-card ordinary physical card pool. `event_lab_fire` has zero ordinary `CardInstance` entries at initialization.
-- Public hands, deck counts, status, and the complete game log for both players.
 - Accessible in-page confirmation dialogs for restarting or returning to character selection during a match; after `gameOver`, these actions run directly.
 - One shared About & Help view from character selection, play, and `gameOver`, covering version, capabilities, controls, safety, and deferred scope.
 - Character selection, lineup summary, and the start button appear before detailed guidance; the current goal remains visible while detailed guidance can be collapsed, hidden, and restored.
@@ -49,11 +44,11 @@ This is an alpha playtest, not a stable release.
 - A fatal-session boundary: an unhandled initialization, restart, or engine error stops the old match and removes its `GameState`; recovery must start a new matching lineup or return to character selection.
 - React ErrorBoundary handling, root-level React callbacks, and browser `error` / `unhandledrejection` fallback handling.
 
-## Alpha Status
+## Beta 1 Status
 
-The current public release is Web Playtest Alpha, technical version `0.20.0-alpha.1`, rules version `MVP0-P10`, and tag `web-playtest-v0.20.0-alpha.1` (peeled `8db1e95a3454085f57f5c5ca470b102ac19115c1`). Its public Pages build is served from the live URL; this is not evidence of broad cross-browser compatibility and is not Beta 1.
+The current release is Beta 1, technical version `0.20.0-beta.1`, and rules version `MVP0-P10`. Its public Pages build is served from the live URL; presentation engine and effects are deferred to Beta 2 Phase 1.
 
-The earlier Alpha 6 tag `web-playtest-v0.16.0-alpha.2` remains a historical published tag. The earlier `web-playtest-v0.13.0-alpha.2` tag remains unchanged at `57550f70856d5d5e27ac3fcb0fa508cd698d3be6`. Historical tags remain immutable.
+The earlier tags `web-playtest-v0.20.0-alpha.1` (peeled `8db1e95a3454085f57f5c5ca470b102ac19115c1`), `web-playtest-v0.16.0-alpha.2`, and `web-playtest-v0.13.0-alpha.2` remain historical published tags. Historical tags remain immutable.
 
 ## International Playtest and Bilingual Game Log Status
 
@@ -69,7 +64,7 @@ The international presentation layer provides Simplified Chinese and English mod
 
 ## Alpha 6 / Phase 16 & Phase 17 Release Status
 
-Phase 16 full bilingual game log and Phase 17 repository identity migration were published as Reaction Field Alpha 6 (`0.16.0-alpha.2`) under tag `web-playtest-v0.16.0-alpha.2`. That tag remains historical. The current public Pages build is `0.20.0-alpha.1`. Alpha 6 provided bilingual structured logs, localized damage and status rendering, migrated repository and Pages identity under `9947447-alt/reaction-field`, and production test coverage. This project remains an alpha playtest; it does not include online multiplayer, accounts, persistence, complete mobile compatibility, or an iOS Firefox fix.
+Phase 16 full bilingual game log and Phase 17 repository identity migration were published as Reaction Field Alpha 6 (`0.16.0-alpha.2`) under tag `web-playtest-v0.16.0-alpha.2`. That tag and `0.20.0-alpha.1` remain historical tags. The current codebase is upgraded to Beta 1 (`0.20.0-beta.1`). Alpha 6 provided bilingual structured logs, localized damage and status rendering, migrated repository and Pages identity under `9947447-alt/reaction-field`, and production test coverage. This project does not include online multiplayer, accounts, persistence, complete mobile compatibility, an iOS Firefox fix, or a presentation engine (presentation engine and visual effects are deferred to Beta 2 Phase 1).
 
 ## Feedback
 
@@ -140,11 +135,11 @@ Release and rollback constraints are documented in [`docs/PHASE12_REACTION_FIELD
 
 ## Roadmap
 
-Real metal cards and experiment-counterattack metal options, equations, precipitation, response DIY, multiplayer, networking, accounts, saves, and replays are deferred. Tauri, Electron, PWA, service workers, native installers, signing, notarization, and automatic updates are not implemented and are outside the current phase.
+Real metal cards and experiment-counterattack metal options, equations, precipitation, response DIY, multiplayer, networking, accounts, saves, and replays are deferred. Presentation engine and visual effects are deferred to Beta 2 Phase 1. Tauri, Electron, PWA, service workers, native installers, signing, notarization, and automatic updates are not implemented and are outside the current phase.
 
 ## Known Limitations
 
-- This is a same-screen two-player playtest with public hands and no persistence. Refreshing loses the current match.
+- Supports Solo vs AI (private hand view) and local same-screen two-player (open hands) without persistence. Refreshing loses the current match.
 - In Firefox on iOS 27 beta, opening some modals such as Help or restart confirmation may enter `ROOT_RUNTIME_FAILED`. A previous `requestAnimationFrame` focus experiment did not resolve the issue and was not merged into the stable branch. The issue remains unresolved.
 - Safari and tested Edge paths have existing device/browser test records only; they are not a general compatibility guarantee for all versions.
 - The current public build is hosted on GitHub Pages. Local development and verification do not deploy it.

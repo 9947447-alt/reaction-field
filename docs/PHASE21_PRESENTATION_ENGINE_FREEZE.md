@@ -1,22 +1,22 @@
-# Phase 21 — Presentation Engine Freeze (Draft)
+# Phase 21 — Presentation Engine Freeze (Beta 2 Phase 1 Draft)
 
 > [!WARNING]
-> **文件状态：Draft（前瞻探索草稿）**
-> 当前 Phase 20 Home/Desk 尚未落地。在 20-Home（大厅）与 20-Desk（横屏桌子）合并前，本文档所列原则仅为前瞻路标，原则上不得当作已签署的 Frozen 实现合同，亦不得开启 Phase 21 实现 PR。
+> **文件状态：Beta 2 Phase 1 Draft（前瞻探索草稿）**
+> 呈现引擎与特效不在 Beta 1（`0.20.0-beta.1`）范围，改挂为 Beta 2 Phase 1 前瞻探索。本文档所列原则仅为前瞻路标，严格保持 Draft，严禁当作已签署的 Frozen 实现合同，亦不授权本周期开启实现 PR 或引入渲染引擎代码。
 
-本文档为 Reaction Field Phase 21「呈现引擎架构原则与职责边界」的前瞻冻结草稿（Draft）。
+本文档为 Reaction Field Phase 21「呈现引擎架构原则与职责边界」的前瞻冻结草稿（Beta 2 Phase 1 Draft）。
 
-**当前状态**：草稿 / 原则路标（Draft Roadmap）。本文档只写原则，不写实现，不构成 Phase 20 的实施范围。写明 Phase 20 Home/Desk 尚未落地；在 20-Home 与 20-Desk 合并前，原则不得当作已签署 Frozen 实现合同。
+**当前状态**：草稿 / 原则路标（Beta 2 Phase 1 Draft Roadmap）。本文档只写原则，不写实现，不构成 Beta 1 的实施范围。在 Beta 2 正式启动前，原则不得当作已签署 Frozen 实现合同。
 
-**实施门禁**：**未完成大厅和横屏桌子前，不开 Phase 21 实现 PR。**
+**实施门禁**：**不在 Beta 1 周期内实施，不授权开启 Phase 21 实现 PR，不引入 Canvas / Pixi / Phaser 等新依赖。**
 
 ---
 
 ## 0. 定位与背景
 
-Reaction Field 在 Phase 20 规划了横屏卡牌客户端的三路由拆分（`/` 大厅、`/play` 备战+桌子、`/debug` 调试实验室）与横屏牌桌语义；目前 Phase 20 Home/Desk 尚未落地。
+Reaction Field 在 Phase 20（Beta 1）已落地横屏卡牌客户端的三路由拆分（`/` 大厅、`/play` 备战+桌子、`/debug` 调试实验室）与横屏牌桌体验。
 
-Phase 21 未来将在保留正式产品结构的基础上，探索为 `/play` 对局视口引入独立的呈现/渲染引擎（如 Canvas / WebGL / 轻量 2D 引擎），以提供更细腻的卡牌动画、拖拽操作与视听反馈。
+呈现引擎与特效不在 Beta 1 交付范围，改挂为 Beta 2 Phase 1 前瞻探索。未来将在保留正式产品结构的基础上，探索为 `/play` 对局视口引入独立的呈现/渲染引擎（如 Canvas / WebGL / 轻量 2D 引擎），以提供更细腻的卡牌动画、拖拽操作与视听反馈。
 
 ---
 
@@ -34,7 +34,7 @@ Phase 21 未来将在保留正式产品结构的基础上，探索为 `/play` �
 
 ### 原则 3：只写原则，不写实现
 - 本文档不预设具体的第三方引擎依赖（不锁定 Pixi.js / Phaser / 原生 Canvas），不引入具体 API 实现代码或渲染循环伪代码。
-- 不修改仓库依赖与构建体系；具体的呈现引擎技术选型与性能评估，必须在 Phase 20 全部大厅与横屏桌子完成验收后，单独发起评估与决策。在 20-Home 与 20-Desk 合并前，原则不得当作已签署 Frozen 实现合同。
+- 不修改仓库依赖与构建体系；具体的呈现引擎技术选型与性能评估，必须在 Beta 2 阶段单独发起评估与决策。在签署正式实现合同前，原则不得当作已签署 Frozen 实现合同。
 
 ### 原则 4：与 Beta 2 规则演进正交解耦
 - Phase 21 将是纯表现层/呈现层的架构演进，不与 Beta 2（金属卡池、爱好者反击、氧化还原、水解、新离子等）规则变更绑定。

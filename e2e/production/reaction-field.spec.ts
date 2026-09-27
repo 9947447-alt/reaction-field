@@ -1,6 +1,17 @@
 import { execFileSync } from "node:child_process";
 import { expect, test as base, type Page } from "@playwright/test";
 import {
+  clickDeskCanvasCardByDisplayName,
+  clickDeskCanvasCardByIndex,
+  countDeskCanvasCards,
+  expectDeskTableSurfaceCanvas,
+  expectTutorialOpponentHandHidden,
+  readDeskCanvasCenterSummary,
+  readDeskCanvasHighlightedCardIds,
+  readDeskCanvasSelectedCardId,
+  readHitRegions,
+} from "../deskTableCanvas";
+import {
   expectLandscapeDeskTable,
   expectLandscapePlayShell,
   expectPortraitPlayShell,
@@ -258,9 +269,7 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     await drawer.locator(".game-log-drawer__close").click();
     await expect(drawer).toHaveCount(0);
 
-    const officialCard = page.locator(".official-card").first();
-    await expect(officialCard.locator("button details")).toHaveCount(0);
-    await expect(officialCard.locator("details")).toHaveCount(0);
+    await expectDeskTableSurfaceCanvas(page);
 
     // Action progression log test: click desk action bar button
     await page.getByRole("button", { name: "结束本次行动" }).click();
@@ -307,22 +316,23 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   await page.getByRole("button", { name: "开始游戏" }).click();
 
   // Helper to select the first 10 cards in preparation
-  async function selectFirstTenPreparationCards(zoneLocator: ReturnType<typeof page.locator>) {
-    const cards = zoneLocator.locator(".official-card button.debug-card__select");
-    await expect(cards).toHaveCount(20);
+  async function selectFirstTenPreparationCards(zone: "own" | "opponent") {
+    await expectDeskTableSurfaceCanvas(page);
+    const regions = (await readHitRegions(page)).filter((region) => region.zone === zone);
+    expect(regions).toHaveLength(20);
 
     for (let index = 0; index < 10; index += 1) {
-      await cards.nth(index).click();
+      await clickDeskCanvasCardByIndex(page, zone, index);
     }
 
     await page.getByRole("button", { name: /确认备课/u }).click();
   }
 
   // Player A preparation: keep 10 cards
-  await selectFirstTenPreparationCards(page.locator(".desk-table__own-zone"));
+  await selectFirstTenPreparationCards("own");
 
   // Player B preparation: keep 10 cards
-  await selectFirstTenPreparationCards(page.locator(".desk-table__opponent-zone"));
+  await selectFirstTenPreparationCards("opponent");
 
   await expectLandscapeDeskTable(page);
 
@@ -388,37 +398,32 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   ];
 
   let selectedRecipeInfo = virtualAttackRecipes[0];
-  const candidateButtons = page.locator(".desk-table__own-zone .official-card button.debug-card__select");
-  const candidateCount = await candidateButtons.count();
-  const availableCandidates: { element: ReturnType<typeof candidateButtons.nth>; name: string }[] = [];
-
-  for (let i = 0; i < candidateCount; i += 1) {
-    const card = candidateButtons.nth(i);
-    const name = (await card.locator(".official-card__name").textContent()) ?? "";
-    availableCandidates.push({ element: card, name: name.trim() });
-  }
+  const availableCandidates = (await readHitRegions(page))
+    .filter((region) => region.zone === "own" && region.interactive)
+    .map((region) => ({ name: region.displayName.trim(), displayName: region.displayName }));
 
   for (const recipeInfo of virtualAttackRecipes) {
-    const matchedButtons: (typeof availableCandidates)[0]["element"][] = [];
+    const matchedNames: string[] = [];
     const usedIndices = new Set<number>();
 
     let allFound = true;
     for (const comp of recipeInfo.components) {
       const foundIdx = availableCandidates.findIndex(
-        (c, idx) => !usedIndices.has(idx) && (c.name === comp || c.name.startsWith(comp)),
+        (candidate, idx) =>
+          !usedIndices.has(idx) && (candidate.name === comp || candidate.name.startsWith(comp)),
       );
       if (foundIdx === -1) {
         allFound = false;
         break;
       }
       usedIndices.add(foundIdx);
-      matchedButtons.push(availableCandidates[foundIdx].element);
+      matchedNames.push(availableCandidates[foundIdx].displayName);
     }
 
     if (allFound) {
       selectedRecipeInfo = recipeInfo;
-      for (const btn of matchedButtons) {
-        await btn.click();
+      for (const displayName of matchedNames) {
+        await clickDeskCanvasCardByDisplayName(page, displayName);
       }
       break;
     }
@@ -459,9 +464,11 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   await expect(drawer).toHaveCount(0);
 
   // 2. Formal Response execution triggering Reaction
-  const responseCards = page.locator(".desk-table__opponent-zone .official-card button.debug-card__select:not([disabled])");
-  await expect(responseCards.first()).toBeVisible();
-  await responseCards.first().click();
+  const responseRegion = (await readHitRegions(page)).find(
+    (region) => region.zone === "opponent" && region.interactive,
+  );
+  expect(responseRegion).toBeDefined();
+  await clickDeskCanvasCardByIndex(page, "opponent", 0);
   await page.getByRole("button", { name: "打出响应" }).click();
 
   // Re-open log drawer to verify reaction log
@@ -512,13 +519,11 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌�
   const opponentCountText = await opponent.locator(".hand-count-pill").textContent();
   const opponentCount = Number(opponentCountText?.match(/(\d+)/)?.[1]);
   expect(opponentCount).toBe(14);
-  await expect(opponent.locator(".hand-row-count-badge")).toHaveText("共 14 张");
-  await expect(opponent.locator(".official-hand-row.is-backs")).toBeVisible();
-  await expect(opponent.locator(".card-back.official-card--back")).toHaveCount(opponentCount);
-  await expect(opponent.locator(".card-back img.card-back__image")).toHaveCount(opponentCount);
-  await expect(opponent.locator('.card-back img[src*="card-back.png"]')).toHaveCount(opponentCount);
-  await expect(opponent.locator('.card-back img.card-frame__overlay[src*="card-frame.png"]')).toHaveCount(opponentCount);
-  await expect(opponent.locator(".card-face")).toHaveCount(0);
+  await expectDeskTableSurfaceCanvas(page);
+  expect(await countDeskCanvasCards(page, "opponent")).toBe(opponentCount);
+  expect(
+    (await readHitRegions(page)).filter((region) => region.zone === "opponent" && region.displayName),
+  ).toHaveLength(0);
   await expect(opponent.locator(".debug-card__select")).toHaveCount(0);
   await expect(opponent.locator("button")).toHaveCount(0);
 
@@ -531,28 +536,16 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌�
   await expectLandscapeDeskTable(page);
   await expect(page.locator(".desk-action-bar__phase-tag")).toHaveText("主行动");
 
-  const own = page.locator('[aria-labelledby="player_1-title"]');
-  await expect(own.locator(".official-hand-row")).toBeVisible();
-  const ownCards = own.locator(".official-card.card-face");
-  const ownCardCount = await ownCards.count();
-  expect(ownCardCount).toBe(14);
-  await expect(own.locator('.official-card img.card-frame__overlay[src*="card-frame.png"]')).toHaveCount(ownCardCount);
+  expect(await countDeskCanvasCards(page, "own")).toBe(14);
+  const ownRegions = (await readHitRegions(page)).filter((region) => region.zone === "own" && region.interactive);
+  expect(ownRegions.length).toBe(14);
+  expect(await readDeskCanvasSelectedCardId(page)).toBe("");
 
-  // First card interactive selection
-  const firstCard = ownCards.first();
-  const firstButton = firstCard.locator("button.debug-card__select");
-  await expect(firstCard).not.toHaveClass(/is-selected/);
-  await expect(firstButton).toHaveAttribute("aria-pressed", "false");
+  await clickDeskCanvasCardByIndex(page, "own", 0);
+  expect(await readDeskCanvasSelectedCardId(page)).toBe(ownRegions[0].cardInstanceId);
 
-  // Tap to select (lift up)
-  await firstButton.click();
-  await expect(firstCard).toHaveClass(/is-selected/);
-  await expect(firstButton).toHaveAttribute("aria-pressed", "true");
-
-  // Tap again to cancel selection (lift down)
-  await firstButton.click();
-  await expect(firstCard).not.toHaveClass(/is-selected/);
-  await expect(firstButton).toHaveAttribute("aria-pressed", "false");
+  await clickDeskCanvasCardByIndex(page, "own", 0);
+  expect(await readDeskCanvasSelectedCardId(page)).toBe("");
 
   // 3. Two-player mode: reveals card faces and names for both sides
   await page.getByRole("button", { name: "返回角色选择" }).click();
@@ -563,17 +556,11 @@ test("正式构建人机只显示对手牌背与张数，双人仍公开手牌�
   await page.getByRole("button", { name: "开始游戏" }).click();
   await expect(page.getByRole("heading", { name: "本地双人公开对局" })).toBeVisible();
 
-  const twoPlayerOpponent = page.locator('[aria-labelledby="player_2-title"]');
-  await expect(twoPlayerOpponent.locator(".official-card.card-face")).toHaveCount(10);
-  await expect(twoPlayerOpponent.locator(".card-back")).toHaveCount(0);
-  await expect(twoPlayerOpponent.locator(".debug-card__select")).toHaveCount(10);
-  await expect(twoPlayerOpponent.locator(".official-card__name").first()).toBeVisible();
-
-  const twoPlayerOwn = page.locator('[aria-labelledby="player_1-title"]');
-  await expect(twoPlayerOwn.locator(".official-card.card-face")).toHaveCount(14);
-  await expect(twoPlayerOwn.locator(".card-back")).toHaveCount(0);
-  await expect(twoPlayerOwn.locator(".debug-card__select")).toHaveCount(14);
-  await expect(twoPlayerOwn.locator(".official-card__name").first()).toBeVisible();
+  expect(await countDeskCanvasCards(page, "opponent")).toBe(10);
+  expect(
+    (await readHitRegions(page)).filter((region) => region.zone === "opponent" && region.displayName),
+  ).toHaveLength(10);
+  expect(await countDeskCanvasCards(page, "own")).toBe(14);
 });
 
 test("正式对局壳横屏 844 与 1024 为桌面四件套，竖屏 390 呈现横持遮罩", async ({
@@ -670,23 +657,6 @@ async function openTutorialFromLobby(page: Page) {
   await expect(page.locator("details")).toHaveCount(0);
 }
 
-async function expectTutorialOpponentHandHidden(page: Page) {
-  const opponentZone = page.locator(".desk-table__opponent-zone");
-  await expect(opponentZone.locator(".official-card--back").first()).toBeVisible();
-  await expect(opponentZone.locator(".official-card:not(.official-card--back)")).toHaveCount(0);
-  await expect(opponentZone.locator(".official-card__name")).toHaveCount(0);
-  for (const name of tutorialOpponentHandNames) {
-    await expect(opponentZone).not.toContainText(name);
-  }
-}
-
-function ownCardNamed(page: Page, name: string) {
-  return page
-    .locator(".desk-table__own-zone .official-card")
-    .filter({ has: page.locator(".official-card__name", { hasText: new RegExp(`^${name}$`, "u") }) })
-    .locator("button.official-card__button");
-}
-
 test("生产构建从大厅进入教学并走完备课、稀 NaOH 出牌、AI 公开牌与稀 KOH 响应", async ({
   page,
   externalRequests,
@@ -708,26 +678,25 @@ test("生产构建从大厅进入教学并走完备课、稀 NaOH 出牌、AI �
   await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
   await expect(coachBanner).toBeVisible();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
-  await expectTutorialOpponentHandHidden(page);
+  await expectTutorialOpponentHandHidden(page, tutorialOpponentHandNames);
 
   const confirmPrepButton = page.locator(".desk-action-bar button.coach-highlight");
   await expect(confirmPrepButton).toBeVisible();
   await expect(confirmPrepButton).toContainText("确认备课选择");
-  await ownCardNamed(page, "O2").click();
-  await ownCardNamed(page, "H2O").click();
+  await clickDeskCanvasCardByDisplayName(page, "O2");
+  await clickDeskCanvasCardByDisplayName(page, "H2O");
   await expect(confirmPrepButton).toContainText("10/10");
   await confirmPrepButton.click();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
-  await ownCardNamed(page, "H2O").click();
-  await ownCardNamed(page, "O2").click();
+  await clickDeskCanvasCardByDisplayName(page, "H2O");
+  await clickDeskCanvasCardByDisplayName(page, "O2");
   await confirmPrepButton.click();
 
   await expect(coachBanner).toContainText("步骤 2/4 · 看手牌与选牌");
-  await expectTutorialOpponentHandHidden(page);
-  const naohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
-  await expect(naohCard).toBeVisible();
-  await expect(naohCard).toContainText("稀 NaOH");
-  await naohCard.locator("button.official-card__button").click();
+  await expectTutorialOpponentHandHidden(page, tutorialOpponentHandNames);
+  const highlightedPlay = await readDeskCanvasHighlightedCardIds(page);
+  expect(highlightedPlay.length).toBe(1);
+  await clickDeskCanvasCardByDisplayName(page, "稀 NaOH");
 
   await expect(coachBanner).toContainText("步骤 3/4 · 普通出牌建立基准");
   const playButtons = page.locator(".desk-action-bar button");
@@ -739,17 +708,13 @@ test("生产构建从大厅进入教学并走完备课、稀 NaOH 出牌、AI �
   await playRefButton.click();
 
   await expect(coachBanner).toContainText("步骤 4/4 · 响应酸性伤害");
-  await expectTutorialOpponentHandHidden(page);
-  await expect(page.locator(".table-center-reference .table-reference-card__name")).toHaveText("稀 NaOH");
-  const aiPublicPlay = page.getByLabel("最近公开行动");
-  await expect(aiPublicPlay).toBeVisible();
-  await expect(aiPublicPlay).toContainText("主动 DIY");
-  await expect(aiPublicPlay.locator(".table-reference-card__name")).toHaveText("稀 HCl");
+  await expectTutorialOpponentHandHidden(page, tutorialOpponentHandNames);
+  const centerAfterPlay = await readDeskCanvasCenterSummary(page);
+  expect(centerAfterPlay?.referenceName).toBe("稀 NaOH");
+  expect(centerAfterPlay?.recentTitle).toContain("主动 DIY");
+  expect(centerAfterPlay?.recentName).toBe("稀 HCl");
 
-  const kohCard = page.locator(".desk-table__own-zone .official-card.coach-highlight");
-  await expect(kohCard).toBeVisible();
-  await expect(kohCard).toContainText("稀 KOH");
-  await kohCard.locator("button.official-card__button").click();
+  await clickDeskCanvasCardByDisplayName(page, "稀 KOH");
   const playResponseButton = page.locator(".desk-action-bar button.coach-highlight");
   await expect(playResponseButton).toBeVisible();
   await expect(playResponseButton).toContainText("打出响应");
@@ -758,7 +723,7 @@ test("生产构建从大厅进入教学并走完备课、稀 NaOH 出牌、AI �
   await expect(coachBanner).toContainText("教学完成");
   await expect(coachBanner).toContainText("本局教学已结束");
   await expect(page).toHaveURL(/tutorial=1/);
-  await expectTutorialOpponentHandHidden(page);
+  await expectTutorialOpponentHandHidden(page, tutorialOpponentHandNames);
   const completeButton = page.locator('[data-testid="coach-banner-complete"]');
   await expect(completeButton).toBeVisible();
   await expect(completeButton).toContainText("进入人机对局");
@@ -781,15 +746,13 @@ test("生产构建从大厅进入教学后跳过，地址变为 /play?mode=solo_
   const coachBanner = page.locator('[data-testid="coach-banner"]');
   await expect(coachBanner).toBeVisible();
   await expect(coachBanner).toContainText("步骤 1/4 · 备课阶段");
-  await expectTutorialOpponentHandHidden(page);
+  await expectTutorialOpponentHandHidden(page, tutorialOpponentHandNames);
 
   await page.locator('[data-testid="coach-banner-skip"]').click();
   await expect(page).toHaveURL(/\/play\?mode=solo_ai$/);
   await expect(page).not.toHaveURL(/tutorial=1/);
   await expect(coachBanner).toHaveCount(0);
   await expect(page.locator('[data-testid="desk-table"]')).toBeVisible();
-  const opponentZone = page.locator(".desk-table__opponent-zone");
-  await expect(opponentZone.locator(".official-card--back").first()).toBeVisible();
-  await expect(opponentZone.locator(".official-card__name")).toHaveCount(0);
+  await expectTutorialOpponentHandHidden(page, tutorialOpponentHandNames);
 });
 

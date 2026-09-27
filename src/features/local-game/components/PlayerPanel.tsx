@@ -30,6 +30,7 @@ type PlayerPanelProps = {
   highlightCardId?: CardInstanceId;
   showActivePlayerIndicator?: boolean;
   isDebug?: boolean;
+  hideHandRow?: boolean;
 };
 
 export function PlayerPanel({
@@ -45,6 +46,7 @@ export function PlayerPanel({
   highlightCardId,
   showActivePlayerIndicator = true,
   isDebug = true,
+  hideHandRow = false,
 }: PlayerPanelProps) {
   const character = getCharacterDefinition(player.characterId);
   const { locale } = useLocale();
@@ -163,6 +165,7 @@ export function PlayerPanel({
           </div>
         </>
       ) : null}
+      {hideHandRow ? null : (
       <div className="hand-row-header">
         <span className="hand-row-title">
           {isEnglish ? "Hand cards" : "手牌"}
@@ -171,6 +174,8 @@ export function PlayerPanel({
           {isEnglish ? `${player.hand.length} cards` : `共 ${player.hand.length} 张`}
         </span>
       </div>
+      )}
+      {hideHandRow ? null : (
       <div
         aria-label={isEnglish ? `${getPlayerDisplayName(player, locale)}'s hand` : `${getPlayerDisplayName(player, locale)}的手牌`}
         className={`hand-grid official-hand-row${handReveal === "backs" ? " is-backs" : ""}`}
@@ -222,6 +227,7 @@ export function PlayerPanel({
               );
             })}
       </div>
+      )}
     </section>
   );
 }

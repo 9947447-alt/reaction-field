@@ -1,5 +1,11 @@
+import { lazy } from "react";
 import { LobbyPage } from "../features/lobby/LobbyPage";
-import { LocalGamePage } from "../features/local-game/LocalGamePage";
+
+const LocalGamePage = lazy(() =>
+  import("../features/local-game/LocalGamePage").then((module) => ({
+    default: module.LocalGamePage,
+  })),
+);
 
 export function isDebugRoute(pathname?: string): boolean {
   const currentPath = pathname ?? (typeof window !== "undefined" ? window.location.pathname : "/");

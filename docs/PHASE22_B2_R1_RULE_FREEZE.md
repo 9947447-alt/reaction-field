@@ -253,9 +253,9 @@
 
 | 行 ID | 反应式 | 效果 |
 | --- | --- | --- |
-| OR-KMnO4-HCl-conc | **2KMnO₄ + 16H⁺ + 10Cl⁻ → 2Mn²⁺ + 5Cl₂↑ + 8H₂O** | **浓 HCl** 介质；**Cl₂：目标获得【氯气刺激】或受到 2 点即时伤害（必须实现其一；推荐状态 + 专业吸收响应扩展）** |
-| OR-MnO2-HCl-conc | MnO₂ + 4H⁺ + 2Cl⁻ → Mn²⁺ + Cl₂↑ + 2H₂O | 浓盐酸；Cl₂ 同上 |
-| OR-NaClO-HCl | NaClO + 2H⁺ + Cl⁻ → Na⁺ + Cl₂↑ + H₂O | 漂白液与酸；Cl₂ |
+| OR-KMnO4-HCl-conc | **2KMnO₄ + 16HCl → 2KCl + 2MnCl₂ + 5Cl₂↑ + 8H₂O** | **浓 HCl** 介质；**Cl₂：目标获得【氯气刺激】或受到 2 点即时伤害（必须实现其一；推荐状态 + 专业吸收响应扩展）** |
+| OR-MnO2-HCl-conc | MnO₂ + 4HCl → MnCl₂ + Cl₂↑ + 2H₂O | 浓盐酸；Cl₂ 同上 |
+| OR-NaClO-HCl | NaClO + 2HCl → NaCl + Cl₂↑ + H₂O | 漂白液与酸；Cl₂ |
 | OR-Cl2-H2 | H₂ + Cl₂ —【点燃】→ 2HCl | 生成 HCl 气体/酸卡 |
 | OR-Cl2-H2O | Cl₂ + H₂O ⇌ HCl + HClO | 歧化；弱氧化 [PENDING CHEM 是否入 B2-R1 首包] |
 
@@ -274,7 +274,7 @@
 | OR-KMnO4-Fe2 | MnO₄⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O | 酸性高锰酸根氧化 Fe²⁺ |
 | OR-K2Cr2O7-Fe2 | Cr₂O₇²⁻ + 6Fe²⁺ + 14H⁺ → 2Cr³⁺ + 6Fe³⁺ + 7H₂O | 重铬酸钾氧化 [PENDING CHEM 试剂是否首包进池] |
 | OR-H2O2-Fe2 | H₂O₂ + 2Fe²⁺ + 2H⁺ → 2Fe³⁺ + 2H₂O | 催化分解链 |
-| OR-Na2O2-H2O | 2Na₂O₂ + 2H₂O → 4Na⁺ + 4OH⁻ + O₂↑ | O₂ 释放 |
+| OR-Na2O2-H2O | 2Na₂O₂ + 2H₂O → 4NaOH + O₂↑ | O₂ 释放 |
 | OR-KClO3-MnO2 | 2KClO₃ —【MnO₂催化】→ 2KCl + 3O₂↑ | 氧气制取抽象 |
 | OR-Na2S2O3-I2 | 2S₂O₃²⁻ + I₂ → S₄O₆²⁻ + 2I⁻ | 碘量法抽象；碘参与 |
 

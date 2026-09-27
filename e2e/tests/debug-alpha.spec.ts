@@ -760,8 +760,10 @@ test("成功反应公开摘要不泄漏内部状态标识，调试详情保留�
 test("真实 reducer 长日志可滚动且页面无水平溢出", async ({ page, runtimeErrors }) => {
   void runtimeErrors;
   await page.goto("/debug?scenario=long-log");
+  await expect(page.getByRole("heading", { exact: true, name: "主行动" })).toBeVisible();
   await expectFactoryCount(page, 1);
   const logEntries = page.locator(".game-log li");
+  await expect(logEntries.nth(99)).toBeVisible();
   expect(await logEntries.count()).toBeGreaterThanOrEqual(100);
   const logList = page.locator(".game-log ol");
   const logDimensions = await logList.evaluate((element) => ({

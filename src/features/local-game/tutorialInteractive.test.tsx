@@ -2,7 +2,7 @@
 
 import { StrictMode, act, type MutableRefObject, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LocaleProvider } from "../../app/locale";
 import type { GameAction } from "../../game/engine/actions";
 import { getAIObservation } from "../../game/engine/aiObservation";
@@ -25,6 +25,18 @@ import {
   deriveTutorialStep,
   isAllowedTutorialGameAction,
 } from "./tutorial/tutorialScript";
+import {
+  clickDeskCanvasCard,
+  countDeskCanvasZones,
+  readDeskCanvasHighlightedCardIds,
+  readDeskCanvasHitRegions,
+  readDeskCanvasSelectedCardIds,
+  waitForDeskCanvas,
+} from "./presentation/deskTableCanvasTestHelpers";
+
+beforeEach(async () => {
+  await import("./presentation/DeskTableSurfaceCanvas");
+});
 
 const blockedDiyAction: GameAction = {
   type: "PLAY_DIY_SELECTION",
@@ -312,13 +324,9 @@ describe("Phase 20 Tutorial Dispatch Gate and Interactive Tutorial", () => {
       button?.click();
     };
     const clickOwnCard = async (cardInstanceId: CardInstanceId) => {
-      const name = zhCardName(seedGame, cardInstanceId);
-      const cards = Array.from(
-        container.querySelectorAll(".desk-table__own-zone .official-card"),
-      ).filter((card) => card.querySelector(".official-card__name")?.textContent === name);
-      expect(cards).toHaveLength(1);
       await act(async () => {
-        cards[0].querySelector<HTMLButtonElement>("button.official-card__button")?.click();
+        await waitForDeskCanvas(container);
+        clickDeskCanvasCard(container, cardInstanceId);
       });
     };
     const expectBlocked = async (step: string, attempt: () => void) => {
@@ -331,7 +339,10 @@ describe("Phase 20 Tutorial Dispatch Gate and Interactive Tutorial", () => {
     };
     const expectOpponentHandHidden = () => {
       const opponentZone = container.querySelector(".desk-table__opponent-zone");
-      expect(opponentZone?.querySelectorAll(".official-card--back").length).toBeGreaterThan(0);
+      expect(countDeskCanvasZones(container, "opponent")).toBeGreaterThan(0);
+      expect(
+        readDeskCanvasHitRegions(container).filter((region) => region.zone === "opponent" && region.displayName),
+      ).toHaveLength(0);
       expect(opponentZone?.querySelectorAll(".official-card__name")).toHaveLength(0);
       for (const name of opponentHandNames) {
         expect(opponentZone?.textContent).not.toContain(name);
@@ -352,6 +363,9 @@ describe("Phase 20 Tutorial Dispatch Gate and Interactive Tutorial", () => {
     try {
       // Step 1: preparation, only the scripted 10 cards pass the gate
       expect(container.querySelector('[data-testid="desk-table"]')).not.toBeNull();
+      await act(async () => {
+        await waitForDeskCanvas(container);
+      });
       expect(banner()).toContain("步骤 1/4 · 备课阶段");
       expectOpponentHandHidden();
       const confirmPrepButton = container.querySelector<HTMLButtonElement>(
@@ -359,10 +373,18 @@ describe("Phase 20 Tutorial Dispatch Gate and Interactive Tutorial", () => {
       );
       expect(confirmPrepButton?.classList.contains("coach-highlight")).toBe(true);
 
-      const presetSwap = "substance_o2_02";
-      const outsiderSwap = "substance_h2o_02";
-      await clickOwnCard(presetSwap);
-      await clickOwnCard(outsiderSwap);
+      const outsiderSwap = seedGame.pendingLaboratoryPreparation?.candidateCardInstanceIds.find(
+        (id) => !TUTORIAL_PRESET_PREPARATION_CARD_IDS.includes(id),
+      );
+      const presetSwap = TUTORIAL_PRESET_PREPARATION_CARD_IDS.find(
+        (id) => id !== TUTORIAL_TARGET_RESPONSE_CARD_ID,
+      );
+      expect(outsiderSwap).toBeDefined();
+      expect(presetSwap).toBeDefined();
+      await clickOwnCard(presetSwap!);
+      await clickOwnCard(outsiderSwap!);
+      expect(readDeskCanvasSelectedCardIds(container)).toContain(outsiderSwap!);
+      expect(readDeskCanvasSelectedCardIds(container)).not.toContain(presetSwap!);
       expect(confirmPrepButton?.textContent).toContain("10/10");
       expect(confirmPrepButton?.disabled).toBe(false);
       await expectBlocked("步骤 1/4", () => confirmPrepButton?.click());
@@ -371,8 +393,8 @@ describe("Phase 20 Tutorial Dispatch Gate and Interactive Tutorial", () => {
         dispatchGameActionRef.current?.(blockedStatusAction);
       });
 
-      await clickOwnCard(outsiderSwap);
-      await clickOwnCard(presetSwap);
+      await clickOwnCard(outsiderSwap!);
+      await clickOwnCard(presetSwap!);
       await act(async () => {
         confirmPrepButton?.click();
       });
@@ -387,9 +409,8 @@ describe("Phase 20 Tutorial Dispatch Gate and Interactive Tutorial", () => {
       // Step 2: select dilute NaOH
       expect(banner()).toContain("步骤 2/4 · 看手牌与选牌");
       expectOpponentHandHidden();
-      const highlightedCards = container.querySelectorAll(".desk-table__own-zone .official-card.coach-highlight");
-      expect(highlightedCards).toHaveLength(1);
-      expect(highlightedCards[0].textContent).toContain(zhCardName(seedGame, TUTORIAL_TARGET_PLAY_CARD_ID));
+      const highlightedIds = readDeskCanvasHighlightedCardIds(container);
+      expect(highlightedIds).toEqual([TUTORIAL_TARGET_PLAY_CARD_ID]);
 
       await clickOwnCard("element_c_03");
       await expectBlocked("步骤 2/4", () => clickEnabledAction("普通出牌"));
@@ -416,13 +437,7 @@ describe("Phase 20 Tutorial Dispatch Gate and Interactive Tutorial", () => {
       // Step 4: the AI attacks publicly (aiDelayMs=0), then respond with dilute KOH
       expect(banner()).toContain("步骤 4/4 · 响应酸性伤害");
       expectOpponentHandHidden();
-      const highlightedResponseCards = container.querySelectorAll(
-        ".desk-table__own-zone .official-card.coach-highlight",
-      );
-      expect(highlightedResponseCards).toHaveLength(1);
-      expect(highlightedResponseCards[0].textContent).toContain(
-        zhCardName(seedGame, TUTORIAL_TARGET_RESPONSE_CARD_ID),
-      );
+      expect(readDeskCanvasHighlightedCardIds(container)).toEqual([TUTORIAL_TARGET_RESPONSE_CARD_ID]);
 
       await clickOwnCard("substance_caoh2_limewater_02");
       await expectBlocked("步骤 4/4", () => clickEnabledAction("打出响应"));

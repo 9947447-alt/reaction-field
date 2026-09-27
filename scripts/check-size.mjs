@@ -4,8 +4,8 @@ import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
 const limits = Object.freeze({
-  // Phase 20C Human Play View + opponent card-back UI; Freeze §8 authorizes this raise.
-  javascriptGzip: 120000,
+  // Phase 21 Surface: measured 123371 JS gzip after DeskTableSurfaceCanvas chunk (dist/assets/DeskTableSurfaceCanvas-*.js ~2690 gzip).
+  javascriptGzip: 124000,
   cssGzip: 10 * 1024,
   // Phase 20D official play UI brand assets (21 compressed PNGs in public/brand/play); Freeze §8 authorizes this raise.
   total: 6 * 1024 * 1024,

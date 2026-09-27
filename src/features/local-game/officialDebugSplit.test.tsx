@@ -81,9 +81,11 @@ describe("Phase 20D — Official Play & Debug Lab Split", () => {
       startButton.click();
     });
 
-    // In playing mode, opponent hand shows card-back images
-    const cardBackImages = container.querySelectorAll(".card-back img.card-back__image");
-    expect(cardBackImages.length).toBeGreaterThan(0);
+    await act(async () => {
+      await import("./presentation/DeskTableSurfaceCanvas");
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(container.querySelector('[data-testid="desk-table-surface-canvas"]')).not.toBeNull();
 
     // In official game log, there is no Log ID or JSON debug details
     const logDetails = container.querySelectorAll("details.game-log__details");

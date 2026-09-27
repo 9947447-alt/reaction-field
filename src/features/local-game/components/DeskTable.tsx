@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type MutableRefObject } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type MutableRefObject,
+} from "react";
 import { useLocale } from "../../../app/locale";
 import type { GameAction } from "../../../game/engine/actions";
 import { analyzeDIYSelection } from "../../../game/engine/diy";
@@ -29,7 +37,7 @@ import { GameLogDrawer } from "./GameLogDrawer";
 import { GameSummary } from "./GameSummary";
 import { PlayerPanel } from "./PlayerPanel";
 import { SuccessfulReactionNotice } from "./SuccessfulReactionNotice";
-import { TableReferenceBoard } from "./TableReferenceBoard";
+import { buildPlayPresentationModel } from "../presentation/buildPlayPresentationModel";
 import type { SessionConfirmationKind } from "./ConfirmationDialog";
 import { CoachBanner } from "./CoachBanner";
 import {
@@ -40,6 +48,10 @@ import {
   deriveTutorialStep,
   isAllowedTutorialGameAction,
 } from "../tutorial/tutorialScript";
+
+const deskTableSurfaceCanvasImport = () => import("../presentation/DeskTableSurfaceCanvas");
+void deskTableSurfaceCanvasImport();
+const DeskTableSurfaceCanvas = lazy(deskTableSurfaceCanvasImport);
 
 export type DeskTableProps = Readonly<{
   session: PlayingLocalGameSession;
@@ -219,6 +231,40 @@ export function DeskTable({
     [playGame],
   );
 
+  const presentationModel = useMemo(
+    () =>
+      buildPlayPresentationModel({
+        game,
+        playerControllers,
+        locale,
+        ownPlayerId: ownPlayer.id,
+        opponentPlayerId: opponent.id,
+        opponentHandReveal: "faces",
+        ownHandDisabled: isPlayer1Ai || !isPlayer1Active,
+        opponentHandDisabled: isPlayer2Ai || !isPlayer2Active,
+        ownSelectableCardIds: getSelectableCardIds(ownPlayer),
+        opponentSelectableCardIds: getSelectableCardIds(opponent),
+        selectedCardId,
+        selectedCardIds,
+        highlightCardId,
+      }),
+    [
+      game,
+      playerControllers,
+      locale,
+      ownPlayer,
+      opponent,
+      isPlayer1Ai,
+      isPlayer1Active,
+      isPlayer2Ai,
+      isPlayer2Active,
+      selectedCardId,
+      selectedCardIds,
+      highlightCardId,
+      getSelectableCardIds,
+    ],
+  );
+
   return (
     <main className="local-game-page desk-table-page" data-testid="desk-table">
       {isTutorial && tutorialStepInfo ? (
@@ -252,13 +298,13 @@ export function DeskTable({
       <SuccessfulReactionNotice game={playGame} />
 
       <div className="desk-table__surface">
-        {/* Top: Opponent Zone */}
         <div className="desk-table__opponent-zone">
           <PlayerPanel
             controller={playerControllers[1]}
             game={playGame}
             handReveal={viewerPlayerId !== undefined && opponent.id !== viewerPlayerId ? "backs" : "contents"}
             handSelectionDisabled={isPlayer2Ai || !isPlayer2Active}
+            hideHandRow
             isDebug={false}
             onSelectCard={handleSelectCard}
             player={opponent}
@@ -269,18 +315,22 @@ export function DeskTable({
           />
         </div>
 
-        {/* Center: Public Field and Table Reference */}
-        <div className="desk-table__center-zone">
-          <TableReferenceBoard game={playGame} />
-        </div>
+        <Suspense fallback={<div className="desk-table__canvas-host desk-table__canvas-host--loading" />}>
+          <DeskTableSurfaceCanvas
+            model={presentationModel}
+            onSelectCard={handleSelectCard}
+            selectedCardId={selectedCardId}
+            selectedCardIds={selectedCardIds}
+          />
+        </Suspense>
 
-        {/* Bottom: Own Player Zone */}
         <div className="desk-table__own-zone">
           <PlayerPanel
             controller={playerControllers[0]}
             game={playGame}
             handReveal="contents"
             handSelectionDisabled={isPlayer1Ai || !isPlayer1Active}
+            hideHandRow
             highlightCardId={highlightCardId}
             isDebug={false}
             onSelectCard={handleSelectCard}

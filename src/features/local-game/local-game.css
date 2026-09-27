@@ -2111,7 +2111,7 @@ select {
 }
 
 .desk-table__surface {
-  background: radial-gradient(circle at 50% 50%, #17384d 0%, #0d2230 100%);
+  background: #0d2230;
   border: 2px solid #234e6b;
   border-radius: 16px;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.25);
@@ -2119,9 +2119,30 @@ select {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   justify-content: space-between;
-  padding: 14px 16px;
+  min-height: 0;
+  padding: 10px 12px;
+}
+
+.desk-table__canvas-host {
+  flex: 1 1 auto;
+  min-height: 280px;
+  position: relative;
+  width: 100%;
+}
+
+.desk-table__canvas-host--loading {
+  background: radial-gradient(circle at 50% 50%, #17384d 0%, #0d2230 100%);
+  border-radius: 12px;
+}
+
+.desk-table__surface-canvas {
+  cursor: pointer;
+  display: block;
+  height: 100%;
+  touch-action: manipulation;
+  width: 100%;
 }
 
 .desk-table__opponent-zone,

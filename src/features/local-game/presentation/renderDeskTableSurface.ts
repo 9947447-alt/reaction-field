@@ -1,11 +1,21 @@
 import { PLAY_BRAND_ASSETS } from "../playBrandAssets";
+import type { CardInstanceId } from "../../../game/engine/types";
 import {
   DESK_CARD_HEIGHT,
-  DESK_CARD_SELECTED_LIFT,
   DESK_CARD_WIDTH,
   type DeskCanvasLayout,
   type PlayPresentationModel,
+  type PresentationCardSlot,
 } from "./playPresentationTypes";
+
+export type DeskSurfaceRenderMotion = Readonly<{
+  ownCardLiftPx: (cardInstanceId: CardInstanceId) => number;
+  playFly?: Readonly<{
+    slot: PresentationCardSlot;
+    x: number;
+    y: number;
+  }>;
+}>;
 
 export type DeskTableBrandImages = Readonly<{
   cardBack: CanvasImageSource;
@@ -160,7 +170,9 @@ export function renderDeskTableSurface(
   model: PlayPresentationModel,
   layout: DeskCanvasLayout,
   images: DeskTableBrandImages,
+  motion?: DeskSurfaceRenderMotion,
 ) {
+  const ownCardLiftPx = motion?.ownCardLiftPx ?? (() => 0);
   const { width, height } = layout;
   ctx.clearRect(0, 0, width, height);
   drawDeskBackground(ctx, width, height);
@@ -180,8 +192,13 @@ export function renderDeskTableSurface(
 
     const slot = model.ownHand.find((card) => card.cardInstanceId === region.cardInstanceId);
     if (!slot) continue;
-    const lift = slot.selected ? DESK_CARD_SELECTED_LIFT : 0;
+    const lift = ownCardLiftPx(region.cardInstanceId);
     drawCardFace(ctx, slot, region.x, region.y - lift, images);
+  }
+
+  const fly = motion?.playFly;
+  if (fly) {
+    drawCardFace(ctx, fly.slot, fly.x, fly.y, images);
   }
 }
 

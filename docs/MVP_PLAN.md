@@ -19,6 +19,7 @@
 - `docs/PHASE15_FIRST_GAME_CONVERSION_FREEZE.md`：Phase 15 配置页信息层级、静态示例、非模态成功反应提示和 GitHub 入口边界；不改写现有规则冻结。
 - `docs/PHASE16_BILINGUAL_GAME_LOG_FREEZE.md`：Phase 16 双语结构化游戏日志冻结合同；不改写现有规则冻结。
 - `docs/PHASE17_BRAND_IDENTITY_FREEZE.md`：Phase 17 反应域品牌统一与仓库身份迁移冻结方案；不改写现有规则冻结。
+- `docs/PHASE22_B2_R1_RULE_FREEZE.md`：**B2-R1 Draft 路标**（目标规则版本自 `MVP0-P10` 升级的化学规则与卡池合同草案；未落地，现网仍以 MVP0-P10 为准）。
 
 ## Phase 16 完整双语游戏日志（已公开发布；Reaction Field Alpha 6）
 

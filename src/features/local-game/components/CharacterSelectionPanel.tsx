@@ -1,5 +1,6 @@
 import { characterDefinitions, getCharacterDefinition } from "../../../game/data/characterDefinitions";
 import { useLocale } from "../../../app/locale";
+import { releaseMetadata } from "../../../app/releaseMetadata";
 import type { CharacterId } from "../../../game/engine/types";
 import {
   formatSkillDebugText,
@@ -96,7 +97,7 @@ export function CharacterSelectionPanel({
             width="72"
           />
           <div>
-            <p className="debug-kicker">{isEnglish ? "REACTION FIELD · Web Playtest Alpha · MVP0-P10" : "反应域 · Web Playtest Alpha · MVP0-P10"}</p>
+            <p className="debug-kicker">{isEnglish ? `REACTION FIELD · ${releaseMetadata.channel} · ${releaseMetadata.rulesVersion}` : `反应域 · ${releaseMetadata.channel} · ${releaseMetadata.rulesVersion}`}</p>
             <h1 id="character-selection-title">
               {isEnglish
                 ? (isSoloVsAi ? "REACTION FIELD · Solo vs AI character selection" : "REACTION FIELD · Local two-player character selection")

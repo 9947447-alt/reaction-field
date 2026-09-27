@@ -5,7 +5,7 @@ declare const __APP_COMMIT__: string;
 export type ReleaseMetadata = Readonly<{
   displayName: "反应域";
   secondaryName: "REACTION FIELD";
-  channel: "Web Playtest Alpha";
+  channel: "Beta 1";
   version: string;
   rulesVersion: "MVP0-P10";
   commit: string;
@@ -22,7 +22,7 @@ function readCommit(): string {
 export const releaseMetadata: ReleaseMetadata = Object.freeze({
   displayName: "反应域",
   secondaryName: "REACTION FIELD",
-  channel: "Web Playtest Alpha",
+  channel: "Beta 1",
   version: packageMetadata.version,
   rulesVersion: "MVP0-P10",
   commit: readCommit(),

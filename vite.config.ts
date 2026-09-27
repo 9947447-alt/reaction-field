@@ -21,7 +21,7 @@ export function releaseHtmlPlugin(): Plugin {
   const releaseTitle = [
     "反应域",
     "REACTION FIELD",
-    "Web Playtest Alpha",
+    "Beta 1",
     packageMetadata.version,
     "MVP0-P10",
   ].join(" · ");

@@ -12,12 +12,10 @@ Phase 20 **不改写** MVP0-P10 规则、卡池、技能数值、DIY 配方或 N
 
 - 仓库：`9947447-alt/reaction-field`
 - Canonical trunk：`main`
-- 本次 Freeze 修正起草基线：`cc8446af8bfb4d5af95200d6234274abaa8feaa3`（Phase 20-Table 横排手牌合并后）
-- 公开试玩身份：Reaction Field Alpha 6，已发布 `0.16.0-alpha.2`，标签 `web-playtest-v0.16.0-alpha.2`，规则 `MVP0-P10`。应用版本 `0.20.0-alpha.1` 待发布 / 待打 tag，Pages 尚未按该版本部署
-- 已落地：20A 桌面壳、20B 默认人机、20C Human Play View 与公开最近行动、20D 入口分离初版、20-Table 手牌横排初版
-- 未合并：教学 dispatch 总闸（`feat/phase20-tut-interactive`）
-- 当前性质：**内部试玩 / Alpha**。缺少成品插画与独立正式大厅/横屏桌子的建造不得称 Beta
-- 目标产品身份：**Beta 1**（技术版本号由 20G 收口时锚定，本 Freeze 不预先写死版本号；严禁在本阶段或提交说明宣称 Beta 1 完成）
+- 发布身份：**Beta 1**，发布技术版本 `0.20.0-beta.1`，规则版本保持 `MVP0-P10`
+- 历史标签：`web-playtest-v0.20.0-alpha.1`、`web-playtest-v0.16.0-alpha.2`
+- 已落地：20A 桌面壳、20B 默认人机、20C Human Play View 与公开最近行动、20D 入口分离、20E 教学 dispatch、20F 交互式脚本教学、20-Table 手牌横排
+- 产品身份：**Beta 1**（技术版本 `0.20.0-beta.1`）。Beta 1 覆盖已落地的正式桌与大厅（`/` 大厅无阵容配置、`/play` 备战确认与横屏桌子、人机私密视角、双人同屏公开、交互式脚本教学），不含 Canvas / Pixi / 飞牌等呈现引擎特效（呈现引擎与特效不在本包，改挂 Beta 2 Phase 1）。
 
 ---
 

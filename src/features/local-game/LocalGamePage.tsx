@@ -1,5 +1,5 @@
 import "./local-game.css";
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { FeedbackLink } from "../../app/feedback";
 import { LocaleSwitch, useLocale } from "../../app/locale";
 import { ProjectRepositoryLink } from "../../app/projectRepository";
@@ -12,7 +12,6 @@ import { ActionPanel } from "./components/ActionPanel";
 import { AboutDialog } from "./components/AboutDialog";
 import { CharacterSelectionPanel } from "./components/CharacterSelectionPanel";
 import { ConfirmationDialog, type SessionConfirmationKind } from "./components/ConfirmationDialog";
-import { DeskTable } from "./components/DeskTable";
 import { DiyPanel } from "./components/DiyPanel";
 import { ExperimentCounterattackPanel } from "./components/ExperimentCounterattackPanel";
 import { FatalSessionPage } from "./components/FatalSessionPage";
@@ -46,6 +45,10 @@ import {
   deriveTutorialStep,
   isAllowedTutorialGameAction,
 } from "./tutorial/tutorialScript";
+
+const DeskTable = lazy(() =>
+  import("./components/DeskTable").then((module) => ({ default: module.DeskTable })),
+);
 
 type PlayingGameProps = Readonly<{
   session: PlayingLocalGameSession;
@@ -417,15 +420,17 @@ export function LocalGamePage({
               session={session}
             />
           ) : (
-            <DeskTable
-              dispatch={dispatch}
-              dispatchGameActionRef={dispatchGameActionRef}
-              isTutorial={isTutorial}
-              onCompleteTutorial={handleSkipTutorial}
-              onRequestSessionExit={requestSessionExit}
-              onSkipTutorial={handleSkipTutorial}
-              session={session}
-            />
+            <Suspense fallback={null}>
+              <DeskTable
+                dispatch={dispatch}
+                dispatchGameActionRef={dispatchGameActionRef}
+                isTutorial={isTutorial}
+                onCompleteTutorial={handleSkipTutorial}
+                onRequestSessionExit={requestSessionExit}
+                onSkipTutorial={handleSkipTutorial}
+                session={session}
+              />
+            </Suspense>
           )
         ) : (
           <FatalSessionPage dispatch={dispatch} session={session} />

@@ -1,8 +1,5 @@
-import { useEffect, useState } from "react";
-import {
-  LocalGamePage,
-  type LocalGamePageProps,
-} from "../features/local-game/LocalGamePage";
+import { lazy, Suspense, useEffect, useState } from "react";
+import type { LocalGamePageProps } from "../features/local-game/LocalGamePage";
 import {
   createConfiguringLocalGameSession,
   defaultCharacterSelection,
@@ -10,6 +7,12 @@ import {
 import { LobbyPage } from "../features/lobby/LobbyPage";
 import { LandscapeOrientationBarrier } from "./LandscapeOrientationBarrier";
 import { getAppRoute, isDebugRoute } from "./routes";
+
+const LocalGamePage = lazy(() =>
+  import("../features/local-game/LocalGamePage").then((module) => ({
+    default: module.LocalGamePage,
+  })),
+);
 
 export function App(props: LocalGamePageProps) {
   const [currentPath, setCurrentPath] = useState(() =>
@@ -29,7 +32,11 @@ export function App(props: LocalGamePageProps) {
   const isDebug = props.isDebug ?? (typeof window !== "undefined" && isDebugRoute(currentPath));
 
   if (isDebug) {
-    return <LocalGamePage {...props} isDebug={true} />;
+    return (
+      <Suspense fallback={null}>
+        <LocalGamePage {...props} isDebug={true} />
+      </Suspense>
+    );
   }
 
   const route = getAppRoute(currentPath);
@@ -57,12 +64,14 @@ export function App(props: LocalGamePageProps) {
   return (
     <>
       <LandscapeOrientationBarrier />
-      <LocalGamePage
-        {...props}
-        createSession={effectiveCreateSession}
-        initialTutorial={props.initialTutorial ?? isTutorialFromUrl}
-        isDebug={false}
-      />
+      <Suspense fallback={null}>
+        <LocalGamePage
+          {...props}
+          createSession={effectiveCreateSession}
+          initialTutorial={props.initialTutorial ?? isTutorialFromUrl}
+          isDebug={false}
+        />
+      </Suspense>
     </>
   );
 }

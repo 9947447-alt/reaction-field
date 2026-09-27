@@ -179,6 +179,7 @@ function assertNoOpponentCardLeak(scope: ParentNode) {
 
 describe("Phase 20C — Solo private human play view", () => {
   beforeEach(async () => {
+    await import("./components/DeskTable");
     await import("./presentation/DeskTableSurfaceCanvas");
   });
 

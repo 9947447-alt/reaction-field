@@ -50,7 +50,6 @@ import {
 } from "../tutorial/tutorialScript";
 
 const deskTableSurfaceCanvasImport = () => import("../presentation/DeskTableSurfaceCanvas");
-void deskTableSurfaceCanvasImport();
 const DeskTableSurfaceCanvas = lazy(deskTableSurfaceCanvasImport);
 
 export type DeskTableProps = Readonly<{

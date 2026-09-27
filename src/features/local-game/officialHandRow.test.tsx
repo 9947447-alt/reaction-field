@@ -8,6 +8,7 @@ import { LocalGamePage } from "./LocalGamePage";
 import { deterministicFixtureFactory } from "../../../e2e/fixtureScenarios";
 import { LocaleProvider } from "../../app/locale";
 import {
+  clickDeskCanvasCard,
   countDeskCanvasZones,
   readDeskCanvasHitRegions,
   waitForDeskCanvas,
@@ -16,6 +17,7 @@ import {
 describe("Phase 21 Table — Canvas hand row and interactive selection", () => {
   beforeEach(async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    await import("./components/DeskTable");
     await import("./presentation/DeskTableSurfaceCanvas");
   });
 

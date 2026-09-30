@@ -2,6 +2,7 @@ import "./local-game.css";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { FeedbackLink } from "../../app/feedback";
 import { LocaleSwitch, useLocale } from "../../app/locale";
+import { useReleaseBarOffset } from "../../app/useReleaseBarOffset";
 import { ProjectRepositoryLink } from "../../app/projectRepository";
 import { releaseMetadata } from "../../app/releaseMetadata";
 import type { GameAction } from "../../game/engine/actions";
@@ -49,6 +50,18 @@ import {
 const DeskTable = lazy(() =>
   import("./components/DeskTable").then((module) => ({ default: module.DeskTable })),
 );
+
+function DeskTableFallback() {
+  return (
+    <main className="local-game-page desk-table-page" data-testid="desk-table-fallback">
+      <div className="desk-table__top-bar" />
+      <div className="desk-table__surface">
+        <div className="desk-table__canvas-host desk-table__canvas-host--loading" />
+      </div>
+      <div aria-hidden="true" className="desk-action-bar" />
+    </main>
+  );
+}
 
 type PlayingGameProps = Readonly<{
   session: PlayingLocalGameSession;
@@ -301,6 +314,8 @@ export function LocalGamePage({
     }
   }, [session.mode]);
 
+  const releaseBarRef = useRef<HTMLElement>(null);
+  useReleaseBarOffset(releaseBarRef);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<PendingSessionConfirmation | null>(null);
   const [guidanceVisible, setGuidanceVisible] = useState(true);
@@ -370,7 +385,7 @@ export function LocalGamePage({
         className="application-shell"
         inert={modalOpen}
       >
-        <header className="release-bar">
+        <header className="release-bar" ref={releaseBarRef}>
           <div>
             <strong>
               {releaseMetadata.displayName}
@@ -420,7 +435,7 @@ export function LocalGamePage({
               session={session}
             />
           ) : (
-            <Suspense fallback={null}>
+            <Suspense fallback={<DeskTableFallback />}>
               <DeskTable
                 dispatch={dispatch}
                 dispatchGameActionRef={dispatchGameActionRef}

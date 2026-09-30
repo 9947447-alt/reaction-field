@@ -50,7 +50,10 @@ export async function clickDeskCanvasCardByIndex(
 
 export async function clickDeskCanvasCardByDisplayName(page: Page, displayName: string) {
   const regions = await readHitRegions(page);
-  const region = regions.find((entry) => entry.displayName === displayName);
+  const matches = regions.filter((entry) => entry.displayName === displayName);
+  const region = matches.find((entry) => entry.interactive && entry.zone === "own")
+    ?? matches.find((entry) => entry.interactive)
+    ?? matches[0];
   if (!region) {
     throw new Error(`No canvas card named ${displayName}`);
   }

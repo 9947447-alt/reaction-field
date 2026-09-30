@@ -79,7 +79,7 @@ export function PlayerPanel({
             <h2 id={`${player.id}-title`}>{getPlayerDisplayName(player, locale)}</h2>
             <p>
               {getCharacterDisplayName(character.id, locale)}
-              {controller ? ` · ${getPlayerControllerDisplayName(controller, locale)}` : ""}
+              {isDebug && controller ? ` · ${getPlayerControllerDisplayName(controller, locale)}` : ""}
             </p>
           </div>
         </div>

@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { FeedbackLink } from "./feedback";
 import { LocaleSwitch, useLocale } from "./locale";
 import { releaseMetadata } from "./releaseMetadata";
+import { useReleaseBarOffset } from "./useReleaseBarOffset";
 
 export type RootFailureCode = "UI_RENDER_FAILED" | "ROOT_RUNTIME_FAILED";
 
@@ -11,10 +13,12 @@ type RootFailurePageProps = Readonly<{
 export function RootFailurePage({ code }: RootFailurePageProps) {
   const { locale } = useLocale();
   const isEnglish = locale === "en";
+  const releaseBarRef = useRef<HTMLElement>(null);
+  useReleaseBarOffset(releaseBarRef);
 
   return (
     <main className="root-failure-page">
-      <header className="release-bar">
+      <header className="release-bar" ref={releaseBarRef}>
         <div>
           <strong>{releaseMetadata.displayName} · {releaseMetadata.secondaryName}</strong>
           <span>{releaseMetadata.channel} · v{releaseMetadata.version} · {releaseMetadata.rulesVersion}</span>

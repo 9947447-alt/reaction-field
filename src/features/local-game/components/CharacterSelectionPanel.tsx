@@ -12,7 +12,7 @@ import {
   type LocalGameSessionCommand,
 } from "../localGameSession";
 import { NewPlayerGuidance } from "./NewPlayerGuidance";
-import { getCharacterDisplayName, getPlayerControllerDisplayName } from "../presentationLocale";
+import { getCharacterDisplayName, getPlayerControllerDisplayName, localizeSessionError } from "../presentationLocale";
 import { FirstGameExample } from "./FirstGameExample";
 import { getCharacterPlayIcon } from "../playBrandAssets";
 
@@ -219,7 +219,7 @@ export function CharacterSelectionPanel({
             <span className="ok-pill">{isEnglish ? "Mirrored lineup is valid" : "镜像阵容合法"}</span>
           ) : null}
         </div>
-        {session.error ? <p className="error-banner">{session.error}</p> : null}
+        {session.error ? <p className="error-banner">{localizeSessionError(session.error, locale)}</p> : null}
         <button
           className="primary-button start-game-button"
           disabled={!canStart}

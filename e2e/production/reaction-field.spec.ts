@@ -207,6 +207,9 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     const barrier = page.locator('[data-testid="orientation-barrier"]');
     await expect(barrier).toBeVisible();
     await expect(barrier).toContainText("请横持设备");
+    const officialContent = page.getByTestId("official-route-content");
+    await expect(officialContent).toHaveAttribute("aria-hidden", "true");
+    await expect(officialContent).toHaveAttribute("inert", "");
 
     // Tapping button is blocked by barrier overlay
     const soloButton = soloCard.getByRole("button", { name: "进入人机对局" });
@@ -221,6 +224,8 @@ for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/asset
     // Rotate back to landscape
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(barrier).not.toBeVisible();
+    await expect(officialContent).not.toHaveAttribute("aria-hidden");
+    await expect(officialContent).not.toHaveAttribute("inert");
 
     // 3. Click Duo button to navigate to /play
     const duoButton = duoCard.getByRole("button", { name: "进入双人对局" });
@@ -464,11 +469,10 @@ test("正式构建在 /play 验证 Phase 16 双语游戏日志、反应日志与
   await expect(drawer).toHaveCount(0);
 
   // 2. Formal Response execution triggering Reaction
-  const responseRegion = (await readHitRegions(page)).find(
-    (region) => region.zone === "opponent" && region.interactive,
-  );
-  expect(responseRegion).toBeDefined();
-  await clickDeskCanvasCardByIndex(page, "opponent", 0);
+  const opponentRegions = (await readHitRegions(page)).filter((region) => region.zone === "opponent");
+  const responseIndex = opponentRegions.findIndex((region) => region.interactive);
+  expect(responseIndex).toBeGreaterThanOrEqual(0);
+  await clickDeskCanvasCardByIndex(page, "opponent", responseIndex);
   await page.getByRole("button", { name: "打出响应" }).click();
 
   // Re-open log drawer to verify reaction log

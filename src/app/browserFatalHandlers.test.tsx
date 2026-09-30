@@ -55,4 +55,17 @@ describe("Phase 11 browser fatal handlers", () => {
 
     expect(callback).not.toHaveBeenCalled();
   });
+
+  it("restores fatal handlers when the page returns from the back-forward cache", () => {
+    const callback = vi.fn();
+    installBrowserFatalHandlers(callback);
+
+    window.dispatchEvent(new Event("pagehide"));
+    const restored = new Event("pageshow");
+    Object.defineProperty(restored, "persisted", { value: true });
+    window.dispatchEvent(restored);
+    window.dispatchEvent(new ErrorEvent("error", { error: new Error("after restore") }));
+
+    expect(callback).toHaveBeenCalledOnce();
+  });
 });

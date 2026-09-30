@@ -28,14 +28,24 @@ export type DeskTableSurfaceCanvasProps = Readonly<{
   revision?: number;
 }>;
 
-function scalePointerPosition(
+function cssPixelLength(styleValue: string, fallback: number): number {
+  if (!styleValue || styleValue.endsWith("%")) {
+    return fallback;
+  }
+  const parsed = Number.parseFloat(styleValue);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function scalePointerPosition(
   canvas: HTMLCanvasElement,
   clientX: number,
   clientY: number,
 ): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
+  const logicalWidth = cssPixelLength(canvas.style.width, rect.width);
+  const logicalHeight = cssPixelLength(canvas.style.height, rect.height);
+  const scaleX = rect.width > 0 ? logicalWidth / rect.width : 1;
+  const scaleY = rect.height > 0 ? logicalHeight / rect.height : 1;
   return {
     x: (clientX - rect.left) * scaleX,
     y: (clientY - rect.top) * scaleY,
@@ -52,7 +62,7 @@ export default function DeskTableSurfaceCanvas({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [images, setImages] = useState<DeskTableBrandImages | null>(null);
-  const [size, setSize] = useState({ width: 1, height: 1 });
+  const [size, setSize] = useState<{ width: number; height: number } | null>({ width: 900, height: 280 });
 
   const liftByCardRef = useRef<Map<string, number>>(new Map());
   const playFlyRef = useRef<DeskPlayFlyMotion | null>(null);
@@ -85,25 +95,44 @@ export default function DeskTableSurfaceCanvas({
     if (!host) {
       return undefined;
     }
+    let frame = 0;
     const applySize = (width: number, height: number) => {
-      setSize({
-        width: Math.max(1, Math.floor(width)),
-        height: Math.max(1, Math.floor(height)),
-      });
+      const nextWidth = Math.floor(width);
+      const nextHeight = Math.floor(height);
+      if (nextWidth < 1 || nextHeight < 1) {
+        return false;
+      }
+      setSize((current) =>
+        current?.width === nextWidth && current?.height === nextHeight
+          ? current
+          : { width: nextWidth, height: nextHeight },
+      );
+      return true;
     };
-    applySize(host.clientWidth || 900, host.clientHeight || 320);
+    const measureHost = () => applySize(host.clientWidth, host.clientHeight);
+    if (!measureHost()) {
+      applySize(900, 320);
+      frame = requestAnimationFrame(() => {
+        measureHost();
+      });
+    }
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
       applySize(entry.contentRect.width, entry.contentRect.height);
     });
     observer.observe(host);
-    return () => observer.disconnect();
+    return () => {
+      if (frame !== 0) {
+        cancelAnimationFrame(frame);
+      }
+      observer.disconnect();
+    };
   }, []);
 
   const layout = useMemo(
-    () => layoutDeskTableSurface(model, size.width, size.height),
-    [model, size.height, size.width],
+    () => (size ? layoutDeskTableSurface(model, size.width, size.height) : null),
+    [model, size],
   );
 
   const ariaSummary = useMemo(() => {
@@ -121,13 +150,13 @@ export default function DeskTableSurfaceCanvas({
 
   const paintSurface = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !images) {
+    if (!canvas || !images || !layout) {
       return;
     }
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
     const pixelWidth = Math.floor(layout.width * dpr);
     const pixelHeight = Math.floor(layout.height * dpr);
-    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight || canvas.style.width !== `${layout.width}px`) {
       canvas.width = pixelWidth;
       canvas.height = pixelHeight;
       canvas.style.width = `${layout.width}px`;
@@ -203,6 +232,9 @@ export default function DeskTableSurfaceCanvas({
   }, [model.ownHand, needsMotionFrame, paintSurface, selectedCardId, selectedCardIds]);
 
   useEffect(() => {
+    if (!layout) {
+      return;
+    }
     const prevLayout = layoutSnapshotRef.current;
     if (revision > prevRevisionRef.current) {
       const removed = inferSingleOwnHandCardRemoved(prevModelRef.current, model);
@@ -247,7 +279,7 @@ export default function DeskTableSurfaceCanvas({
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
+    if (!canvas || !layout) {
       return;
     }
     canvas.dataset.hitRegions = JSON.stringify(layout.hitRegions);
@@ -286,7 +318,7 @@ export default function DeskTableSurfaceCanvas({
   const handleCanvasActivate = useCallback(
     (clientX: number, clientY: number) => {
       const canvas = canvasRef.current;
-      if (!canvas) {
+      if (!canvas || !layout) {
         return;
       }
       const { x, y } = scalePointerPosition(canvas, clientX, clientY);

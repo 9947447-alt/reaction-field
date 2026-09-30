@@ -286,6 +286,31 @@ export const getPlayerControllerDisplayName = (controller: PlayerController, loc
 export const getAiAutoActionNote = (locale: DisplayLocale): string =>
   locale === "en" ? "NATBA AI is taking action..." : "NATBA AI 正在自动行动...";
 
+const sessionErrorLabels: Readonly<Record<string, LocalizedLabel>> = {
+  "操作不合法": ["操作不合法", "That action is not legal."],
+  "未知角色不能用于创建本地对局。": [
+    "未知角色不能用于创建本地对局。",
+    "An unknown character cannot start a local match.",
+  ],
+  "未知控制方类型。": ["未知控制方类型。", "Unknown controller type."],
+};
+
+export const localizeSessionError = (error: string, locale: DisplayLocale): string =>
+  lookup(sessionErrorLabels, error, locale, undefined, error);
+
+export const localizeRuntimeEnvironment = (environment: string, locale: DisplayLocale): string => {
+  if (locale !== "en") {
+    return environment;
+  }
+  if (environment === "浏览器 Web 运行环境") {
+    return "Browser web runtime";
+  }
+  if (environment === "非浏览器测试环境") {
+    return "Non-browser test runtime";
+  }
+  return environment;
+};
+
 const diyBlockerNames: Readonly<Record<string, LocalizedLabel>> = {
   NOT_ACTIVE_PLAYER: ["非当前行动玩家", "Not active player"],
   INVALID_PHASE: ["当前阶段不可使用主动 DIY", "Active DIY is not allowed in current phase"],

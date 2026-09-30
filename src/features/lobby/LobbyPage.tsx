@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { FeedbackLink } from "../../app/feedback";
 import { LocaleSwitch, useLocale } from "../../app/locale";
+import { useReleaseBarOffset } from "../../app/useReleaseBarOffset";
 import { ProjectRepositoryLink } from "../../app/projectRepository";
 import { releaseMetadata } from "../../app/releaseMetadata";
 import { resolveAppRoutePath, navigateTo } from "../../app/routes";
@@ -12,6 +13,8 @@ export function LobbyPage() {
   const isEnglish = locale === "en";
   const [aboutOpen, setAboutOpen] = useState(false);
   const aboutTriggerRef = useRef<HTMLButtonElement>(null);
+  const releaseBarRef = useRef<HTMLElement>(null);
+  useReleaseBarOffset(releaseBarRef);
 
   const restoreFocus = useCallback((target: HTMLElement | null) => {
     queueMicrotask(() => {
@@ -39,8 +42,14 @@ export function LobbyPage() {
   };
 
   return (
-    <div className="lobby-page" data-testid="lobby-page">
-      <header className="release-bar">
+    <>
+    <div
+      aria-hidden={aboutOpen ? "true" : undefined}
+      className="lobby-page"
+      data-testid="lobby-page"
+      inert={aboutOpen ? true : undefined}
+    >
+      <header className="release-bar" ref={releaseBarRef}>
         <div>
           <strong>
             {releaseMetadata.displayName}
@@ -202,8 +211,8 @@ export function LobbyPage() {
           </div>
         </footer>
       </main>
-
-      {aboutOpen ? <AboutDialog isDebug={false} onClose={closeAbout} /> : null}
     </div>
+    {aboutOpen ? <AboutDialog isDebug={false} onClose={closeAbout} /> : null}
+    </>
   );
 }

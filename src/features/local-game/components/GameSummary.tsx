@@ -6,7 +6,7 @@ import {
   describeTableReference,
   getTotalCardCount,
 } from "../localGameView";
-import { getPlayerDisplayName } from "../presentationLocale";
+import { getPlayerDisplayName, localizeSessionError } from "../presentationLocale";
 
 type GameSummaryProps = {
   game: GameState;
@@ -90,7 +90,7 @@ export function GameSummary({
       ) : null}
 
       <div className="summary-actions">
-        {error ? <p className="error-banner">{error}</p> : <p className="quiet-banner">{isEnglish ? "Awaiting action" : "等待操作"}</p>}
+        {error ? <p className="error-banner">{localizeSessionError(error, locale)}</p> : <p className="quiet-banner">{isEnglish ? "Awaiting action" : "等待操作"}</p>}
         <div className="session-actions">
           <button
             className="secondary-button"

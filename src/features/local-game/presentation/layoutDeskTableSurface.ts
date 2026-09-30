@@ -66,7 +66,7 @@ export function layoutDeskTableSurface(
   const ownRow = layoutHandRow(
     model.ownHand,
     "own",
-    safeHeight - DESK_CARD_HEIGHT - ZONE_PADDING,
+    Math.max(ZONE_PADDING, safeHeight - DESK_CARD_HEIGHT - DESK_CARD_SELECTED_LIFT - ZONE_PADDING),
     safeWidth,
     "start",
   );

@@ -184,8 +184,12 @@ export function DeskTable({
     return initial;
   }, [activePlayer, isDiyMode, playGame, selectedCardIds, targets]);
 
-  const opponent = playGame.players[1];
-  const ownPlayer = playGame.players[0];
+  const ownPlayer = (viewerPlayerId
+    ? playGame.players.find((player) => player.id === viewerPlayerId)
+    : undefined) ?? playGame.players[0];
+  const opponent = playGame.players.find((player) => player.id !== ownPlayer.id) ?? playGame.players[1];
+  const ownControllerIndex: 0 | 1 = playGame.players[1]?.id === ownPlayer.id ? 1 : 0;
+  const opponentControllerIndex: 0 | 1 = ownControllerIndex === 0 ? 1 : 0;
 
   const currentActingPlayerId =
     playGame.phase === "preparationSelection"
@@ -201,8 +205,8 @@ export function DeskTable({
   const isPlayer1Active = currentActingPlayerId === ownPlayer.id;
   const isPlayer2Active = currentActingPlayerId === opponent.id;
 
-  const isPlayer1Ai = playerControllers[0] === "ai";
-  const isPlayer2Ai = playerControllers[1] === "ai";
+  const isPlayer1Ai = playerControllers[ownControllerIndex] === "ai";
+  const isPlayer2Ai = playerControllers[opponentControllerIndex] === "ai";
 
   const getSelectableCardIds = useCallback(
     (targetPlayer: Player): readonly CardInstanceId[] | undefined => {
@@ -299,7 +303,7 @@ export function DeskTable({
       <div className="desk-table__surface">
         <div className="desk-table__opponent-zone">
           <PlayerPanel
-            controller={playerControllers[1]}
+            controller={playerControllers[opponentControllerIndex]}
             game={playGame}
             handReveal={viewerPlayerId !== undefined && opponent.id !== viewerPlayerId ? "backs" : "contents"}
             handSelectionDisabled={isPlayer2Ai || !isPlayer2Active}
@@ -326,7 +330,7 @@ export function DeskTable({
 
         <div className="desk-table__own-zone">
           <PlayerPanel
-            controller={playerControllers[0]}
+            controller={playerControllers[ownControllerIndex]}
             game={playGame}
             handReveal="contents"
             handSelectionDisabled={isPlayer1Ai || !isPlayer1Active}

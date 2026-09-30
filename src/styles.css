@@ -1,4 +1,8 @@
+@import "./app/shell.css";
 @import "./features/lobby/lobby.css";
+
+/* Entry-owned shell styles. The lobby must not depend on the lazy game chunk. */
+
 
 :root {
   color: #182026;

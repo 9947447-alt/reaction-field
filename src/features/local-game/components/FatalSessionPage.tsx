@@ -5,7 +5,7 @@ import {
   type FatalLocalGameSession,
   type LocalGameSessionCommand,
 } from "../localGameSession";
-import { getFatalMessageDisplayName } from "../presentationLocale";
+import { getFatalMessageDisplayName, localizeRuntimeEnvironment } from "../presentationLocale";
 
 type FatalSessionPageProps = Readonly<{
   session: FatalLocalGameSession;
@@ -19,7 +19,7 @@ export function FatalSessionPage({ session, dispatch }: FatalSessionPageProps) {
 
   async function copyDiagnostics() {
     try {
-      await navigator.clipboard.writeText(formatFatalDiagnostics(session.error));
+      await navigator.clipboard.writeText(formatFatalDiagnostics(session.error, locale));
       setCopyStatus("copied");
     } catch {
       setCopyStatus("failed");
@@ -44,7 +44,7 @@ export function FatalSessionPage({ session, dispatch }: FatalSessionPageProps) {
             [isEnglish ? "App version" : "应用版本", session.error.diagnostics.version],
             [isEnglish ? "Rules version" : "规则版本", session.error.diagnostics.rulesVersion],
             ["Commit", session.error.diagnostics.commit],
-            [isEnglish ? "Environment" : "运行环境", session.error.diagnostics.environment],
+            [isEnglish ? "Environment" : "运行环境", localizeRuntimeEnvironment(session.error.diagnostics.environment, locale)],
           ] as const).map(([label, value]) => (
             <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
           ))}

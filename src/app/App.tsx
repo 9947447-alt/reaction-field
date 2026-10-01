@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import type { LocalGamePageProps } from "../features/local-game/LocalGamePage";
 import {
   createConfiguringLocalGameSession,
@@ -13,6 +13,46 @@ const LocalGamePage = lazy(() =>
     default: module.LocalGamePage,
   })),
 );
+
+function AppShellFallback() {
+  return (
+    <div className="application-shell" data-testid="app-shell-fallback">
+      <header className="release-bar" />
+    </div>
+  );
+}
+
+function OfficialRouteFrame({
+  blocked,
+  children,
+}: Readonly<{ blocked: boolean; children: ReactNode }>) {
+  return (
+    <>
+      {blocked ? <LandscapeOrientationBarrier /> : null}
+      <div
+        aria-hidden={blocked ? "true" : undefined}
+        data-testid="official-route-content"
+        inert={blocked ? true : undefined}
+      >
+        {children}
+      </div>
+    </>
+  );
+}
+
+function usePortraitBlocked() {
+  const [blocked, setBlocked] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(orientation: portrait)");
+    const update = () => setBlocked(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return blocked;
+}
 
 export function App(props: LocalGamePageProps) {
   const [currentPath, setCurrentPath] = useState(() =>
@@ -30,10 +70,11 @@ export function App(props: LocalGamePageProps) {
   }, []);
 
   const isDebug = props.isDebug ?? (typeof window !== "undefined" && isDebugRoute(currentPath));
+  const portraitBlocked = usePortraitBlocked();
 
   if (isDebug) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppShellFallback />}>
         <LocalGamePage {...props} isDebug={true} />
       </Suspense>
     );
@@ -43,10 +84,9 @@ export function App(props: LocalGamePageProps) {
 
   if (route === "lobby") {
     return (
-      <>
-        <LandscapeOrientationBarrier />
+      <OfficialRouteFrame blocked={portraitBlocked}>
         <LobbyPage />
-      </>
+      </OfficialRouteFrame>
     );
   }
 
@@ -62,9 +102,8 @@ export function App(props: LocalGamePageProps) {
   }
 
   return (
-    <>
-      <LandscapeOrientationBarrier />
-      <Suspense fallback={null}>
+    <OfficialRouteFrame blocked={portraitBlocked}>
+      <Suspense fallback={<AppShellFallback />}>
         <LocalGamePage
           {...props}
           createSession={effectiveCreateSession}
@@ -72,7 +111,7 @@ export function App(props: LocalGamePageProps) {
           isDebug={false}
         />
       </Suspense>
-    </>
+    </OfficialRouteFrame>
   );
 }
 

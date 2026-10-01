@@ -1,6 +1,6 @@
 # Codex 踩坑与保护边界
 
-本文件只记录可复核的信息。历史事故、根因和修复结果必须有代码、测试、日志、CI 或可复现步骤证据；推测只能放入“待验证候选”。最近核验日期：2026-08-11。
+本文件只记录可复核的信息。历史事故、根因和修复结果必须有代码、测试、日志、CI 或可复现步骤证据；推测只能放入“待验证候选”。最近核验日期：2026-09-30。
 
 ## A. 已确认踩坑
 
@@ -33,6 +33,20 @@
 - 最近核验日期：2026-08-11
 
 本项中关于 alpha.2 的历史描述不用于推断 alpha.3 的当前状态；alpha.3 的公开发布、Pages 部署和 URL 事实见上文记录。
+
+### PIT-003：卡面单行截断把末字换成省略号后长度不变，英文牌名会卡死主线程
+
+- ID：`PIT-003`
+- 标题：`drawCardFace` 的宽度收缩循环不减少字符数
+- 状态：已确认并已修复
+- 适用范围：桌面 Canvas 2D 卡面牌名；打开对局日志后切换 English
+- 症状：生产端到端在日志抽屉打开时点击 English，Playwright 停在 performing click action，页面后续 evaluate 也不再返回
+- 根因：`while` 用 `` `${line.slice(0, -1)}…` `` 替换末尾字符。省略号不比被删掉的拉丁字母窄时，字符串长度不变且宽度不下降，循环不结束。`Limewater Ca(OH)2` 在 12px 粗体、最大宽度 92px 下会触发。中文短牌名通常第一次测量就放得下，所以只在切到英文后卡死
+- 错误做法：在循环里删一个字符再补一个省略号，并指望长度自然下降
+- 正确做法：按源字符串前缀缩短，再追加省略号；`fitCanvasLabel` 每次都让源下标减一
+- 验证方法：`src/features/local-game/presentation/fitCanvasLabel.test.tsx`；生产构建点击 English 后日志变为 “Game started; entering experiment cycle 1.”
+- 证据文件/测试/提交：`renderDeskTableSurface.ts`、`fitCanvasLabel.test.tsx`、`e2e/production/reaction-field.spec.ts`
+- 最近核验日期：2026-09-30
 
 ## B. 项目保护性不变量
 

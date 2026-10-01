@@ -22,6 +22,28 @@ export type DeskTableBrandImages = Readonly<{
   cardFrame: CanvasImageSource;
 }>;
 
+export function fitCanvasLabel(
+  text: string,
+  maxWidth: number,
+  measure: (value: string) => number,
+): string {
+  if (measure(text) <= maxWidth) {
+    return text;
+  }
+
+  const ellipsis = "…";
+  let end = text.length;
+  while (end > 0 && measure(`${text.slice(0, end)}${ellipsis}`) > maxWidth) {
+    end -= 1;
+  }
+
+  if (end === 0) {
+    return measure(ellipsis) <= maxWidth ? ellipsis : "";
+  }
+
+  return `${text.slice(0, end)}${ellipsis}`;
+}
+
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -91,12 +113,8 @@ function drawCardFace(
 
   ctx.fillStyle = "#0b1b2b";
   ctx.font = "bold 12px system-ui, sans-serif";
-  const name = slot.displayName;
   const maxWidth = DESK_CARD_WIDTH - 16;
-  let line = name;
-  while (ctx.measureText(line).width > maxWidth && line.length > 1) {
-    line = `${line.slice(0, -1)}…`;
-  }
+  const line = fitCanvasLabel(slot.displayName, maxWidth, (value) => ctx.measureText(value).width);
   ctx.fillText(line, x + 8, y + DESK_CARD_HEIGHT / 2 + 4);
 
   ctx.drawImage(images.cardFrame, x, y, DESK_CARD_WIDTH, DESK_CARD_HEIGHT);
@@ -130,7 +148,7 @@ function drawCenterPanel(
   const center = model.center;
   ctx.fillStyle = "#94a3b8";
   ctx.font = "600 11px system-ui, sans-serif";
-  ctx.fillText(center.referenceEmptyLabel ? "Table Reference" : "Table Reference", x + 12, y + 20);
+  ctx.fillText(center.referenceHeading ?? "Table Reference", x + 12, y + 20);
 
   ctx.fillStyle = "#f8fafc";
   ctx.font = "bold 14px system-ui, sans-serif";

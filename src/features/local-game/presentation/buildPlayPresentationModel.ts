@@ -172,6 +172,7 @@ export function buildPlayPresentationModel(input: BuildPlayPresentationModelInpu
         ? getCardTypeDisplayName(refDefinition.type, locale)
         : undefined,
       referenceIsIon: refDefinition?.type === "ion",
+      referenceHeading: isEnglish ? "Table reference" : "场面基准",
       referenceEmptyLabel: isEnglish ? "No reference card yet" : "暂无场面基准牌",
       referenceHintLabel: isEnglish
         ? "Play any eligible card to set the first reference"

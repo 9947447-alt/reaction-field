@@ -21,6 +21,7 @@ export type PlayPresentationCenter = Readonly<{
   referenceName?: string;
   referenceTypeLabel?: string;
   referenceIsIon?: boolean;
+  referenceHeading?: string;
   referenceEmptyLabel: string;
   referenceHintLabel: string;
   cycleRoundLabel?: string;

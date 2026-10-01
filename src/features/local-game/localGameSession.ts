@@ -204,15 +204,26 @@ export function createFatalLocalGameSession(
   };
 }
 
-export function formatFatalDiagnostics(error: FatalLocalGameError): string {
+export function formatFatalDiagnostics(
+  error: FatalLocalGameError,
+  locale: "zh-CN" | "en" = "zh-CN",
+): string {
   const { diagnostics } = error;
+  const isEnglish = locale === "en";
+  const environment = isEnglish
+    ? diagnostics.environment === "浏览器 Web 运行环境"
+      ? "Browser web runtime"
+      : diagnostics.environment === "非浏览器测试环境"
+        ? "Non-browser test runtime"
+        : diagnostics.environment
+    : diagnostics.environment;
   return [
-    `名称：${diagnostics.displayName}`,
-    `应用版本：${diagnostics.version}`,
-    `规则版本：${diagnostics.rulesVersion}`,
-    `Commit：${diagnostics.commit}`,
-    `错误码：${error.code}`,
-    `运行环境：${diagnostics.environment}`,
+    isEnglish ? `Name: ${diagnostics.displayName}` : `名称：${diagnostics.displayName}`,
+    isEnglish ? `App version: ${diagnostics.version}` : `应用版本：${diagnostics.version}`,
+    isEnglish ? `Rules version: ${diagnostics.rulesVersion}` : `规则版本：${diagnostics.rulesVersion}`,
+    isEnglish ? `Commit: ${diagnostics.commit}` : `Commit：${diagnostics.commit}`,
+    isEnglish ? `Error code: ${error.code}` : `错误码：${error.code}`,
+    isEnglish ? `Environment: ${environment}` : `运行环境：${environment}`,
   ].join("\n");
 }
 

@@ -24,16 +24,30 @@ export function installBrowserFatalHandlers(
     event.preventDefault();
     reportOnce();
   };
-  const handlePageHide = () => cleanup();
-
-  window.addEventListener("error", handleError);
-  window.addEventListener("unhandledrejection", handleUnhandledRejection);
-  window.addEventListener("pagehide", handlePageHide, { once: true });
-
-  function cleanup() {
+  const detachFatalListeners = () => {
     window.removeEventListener("error", handleError);
     window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+  };
+  const attachFatalListeners = () => {
+    detachFatalListeners();
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+  };
+  const handlePageHide = () => detachFatalListeners();
+  const handlePageShow = (event: PageTransitionEvent) => {
+    if (event.persisted) {
+      attachFatalListeners();
+    }
+  };
+
+  attachFatalListeners();
+  window.addEventListener("pagehide", handlePageHide);
+  window.addEventListener("pageshow", handlePageShow);
+
+  function cleanup() {
+    detachFatalListeners();
     window.removeEventListener("pagehide", handlePageHide);
+    window.removeEventListener("pageshow", handlePageShow);
     if (activeCleanup === cleanup) {
       activeCleanup = undefined;
     }

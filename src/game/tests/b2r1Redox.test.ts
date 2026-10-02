@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   B2R1_CONDITION_OXIDE_FILM_REMOVED,
+  B2R1_DISPLACEMENT_EFFECT_TAG_DEFINITIONS,
+  B2R1_DISPLACEMENT_EFFECT_TAGS,
+  B2R1_EFFECT_TAG_AGNO3_CL_TEST,
+  B2R1_EFFECT_TAG_DEFINITION_AGNO3_CL_TEST,
+  B2R1_EFFECT_TAG_DEFINITION_SEIZE_CU,
+  B2R1_EFFECT_TAG_DEFINITION_SILVER_MIRROR,
+  B2R1_EFFECT_TAG_SEIZE_CU,
+  B2R1_EFFECT_TAG_SILVER_MIRROR,
   B2R1_GAS_TAG_DEFINITION_FLAMMABLE,
   B2R1_GAS_TAG_DEFINITIONS,
   B2R1_GAS_TAG_FLAMMABLE,
@@ -78,9 +86,9 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
     });
   });
 
-  describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.7, §3.8, §3.10, §3.11)", () => {
-    it("恰好收录本刀锁定的九条反应行", () => {
-      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(9);
+  describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.3, §3.7, §3.8, §3.10, §3.11)", () => {
+    it("恰好收录本刀锁定的十六条反应行（旧九行 + §3.3 七行金属置换）", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(16);
       const rowIds = B2R1_REDOX_REACTION_ROWS.map((r) => r.id);
       expect(rowIds).toEqual([
         "OR-KMnO4-HCl-conc",
@@ -92,6 +100,13 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         "OR-Al-H",
         "OR-Cu-H",
         "OR-Ag-H",
+        "OR-Mg-Cu",
+        "OR-Zn-Cu",
+        "OR-Fe-Cu",
+        "OR-Mg-Ag",
+        "OR-Zn-Ag",
+        "OR-Fe-Ag",
+        "OR-Cu-Ag",
       ]);
     });
 
@@ -395,6 +410,311 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       expect(input.reactants).toEqual(["Al"]);
       expect(input.medium).toBe("dil_non_oxidizing_acid");
       expect(input.conditions).toEqual(["oxide_film_removed"]);
+    });
+
+    it("传入带 solutionIons 的 Object.freeze 冻结入参不会被篡改", () => {
+      const reactants = Object.freeze(["Mg"]);
+      const solutionIons = Object.freeze(["Cu2+"]);
+      const input = Object.freeze({
+        reactants,
+        solutionIons,
+        medium: "water",
+      });
+
+      const res = matchB2R1RedoxReaction(input);
+      expect(res.matched).toBe(true);
+      expect(res.rowId).toBe("OR-Mg-Cu");
+      expect(input.reactants).toEqual(["Mg"]);
+      expect(input.solutionIons).toEqual(["Cu2+"]);
+      expect(input.medium).toBe("water");
+    });
+  });
+
+  describe("7. §3.3 金属置换反应、效果标签与严格负例加锁", () => {
+    describe("7.1 效果标签定义与反应行只读数据冻结", () => {
+      it("收录三个金属置换效果标签定义且均被冻结", () => {
+        expect(B2R1_DISPLACEMENT_EFFECT_TAGS).toHaveLength(3);
+        expect(B2R1_DISPLACEMENT_EFFECT_TAGS).toEqual([
+          "seize_cu2_produce_cu",
+          "silver_mirror_precipitation_entry",
+          "agno3_cl_test_linkage",
+        ]);
+
+        // 夺取 Cu²⁺；生成 Cu 资源/打断
+        expect(B2R1_EFFECT_TAG_SEIZE_CU).toBe("seize_cu2_produce_cu");
+        expect(B2R1_EFFECT_TAG_DEFINITION_SEIZE_CU.id).toBe("seize_cu2_produce_cu");
+        expect(B2R1_EFFECT_TAG_DEFINITION_SEIZE_CU.nameZh).toBe("夺取 Cu²⁺；生成 Cu 资源/打断");
+        expect(Object.isFrozen(B2R1_EFFECT_TAG_DEFINITION_SEIZE_CU)).toBe(true);
+
+        // 银镜/沉淀链入口
+        expect(B2R1_EFFECT_TAG_SILVER_MIRROR).toBe("silver_mirror_precipitation_entry");
+        expect(B2R1_EFFECT_TAG_DEFINITION_SILVER_MIRROR.id).toBe("silver_mirror_precipitation_entry");
+        expect(B2R1_EFFECT_TAG_DEFINITION_SILVER_MIRROR.nameZh).toBe("银镜/沉淀链入口");
+        expect(Object.isFrozen(B2R1_EFFECT_TAG_DEFINITION_SILVER_MIRROR)).toBe(true);
+
+        // AgNO₃ / Cl⁻ 检验联动
+        expect(B2R1_EFFECT_TAG_AGNO3_CL_TEST).toBe("agno3_cl_test_linkage");
+        expect(B2R1_EFFECT_TAG_DEFINITION_AGNO3_CL_TEST.id).toBe("agno3_cl_test_linkage");
+        expect(B2R1_EFFECT_TAG_DEFINITION_AGNO3_CL_TEST.nameZh).toBe("AgNO₃ / Cl⁻ 检验联动");
+        expect(Object.isFrozen(B2R1_EFFECT_TAG_DEFINITION_AGNO3_CL_TEST)).toBe(true);
+
+        expect(Object.isFrozen(B2R1_DISPLACEMENT_EFFECT_TAG_DEFINITIONS)).toBe(true);
+      });
+
+      it("§3.3 七条反应行均收录且未收录禁止行（OR-Fe-Cu2, OR-Zn-Cu2, OR-Al-Cu2, OR-Mg-Fe2）", () => {
+        const requiredDisplacementRows = [
+          "OR-Mg-Cu",
+          "OR-Zn-Cu",
+          "OR-Fe-Cu",
+          "OR-Mg-Ag",
+          "OR-Zn-Ag",
+          "OR-Fe-Ag",
+          "OR-Cu-Ag",
+        ] as const;
+
+        for (const id of requiredDisplacementRows) {
+          const row = getB2R1RedoxReaction(id);
+          expect(row).toBeDefined();
+          expect(row?.medium).toBe("water");
+          expect(Object.isFrozen(row)).toBe(true);
+          // 效果只记标签，不实现演出或打断结算
+          expect((row as unknown as Record<string, unknown>).animation).toBeUndefined();
+          expect((row as unknown as Record<string, unknown>).interruptEffect).toBeUndefined();
+          expect((row as unknown as Record<string, unknown>).resourceGain).toBeUndefined();
+        }
+
+        // 禁止新增行验证
+        expect(getB2R1RedoxReaction("OR-Fe-Cu2")).toBeUndefined();
+        expect(getB2R1RedoxReaction("OR-Zn-Cu2")).toBeUndefined();
+        expect(getB2R1RedoxReaction("OR-Al-Cu2")).toBeUndefined();
+        expect(getB2R1RedoxReaction("OR-Mg-Fe2")).toBeUndefined();
+      });
+    });
+
+    describe("7.2 七条金属置换正例匹配与效果标签验证", () => {
+      it("1) OR-Mg-Cu: Mg + Cu²⁺ → Mg²⁺ + Cu (标签：夺取 Cu²⁺；生成 Cu 资源/打断)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Mg"],
+          solutionIons: ["Cu2+"],
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Mg-Cu");
+        expect(res.effectTags).toContain("seize_cu2_produce_cu");
+        expect(res.effectZh).toBe("夺取 Cu²⁺；生成 Cu 资源/打断");
+        expect(res.effectTagZh).toBe("夺取 Cu²⁺；生成 Cu 资源/打断");
+
+        // 支持 Unicode 离子下标与中文反应物别名
+        const resAlias = matchB2R1RedoxReaction({
+          reactants: ["镁"],
+          solutionIons: ["Cu²⁺"],
+        });
+        expect(resAlias.matched).toBe(true);
+        expect(resAlias.rowId).toBe("OR-Mg-Cu");
+
+        // 支持 solutionIon 单数入参
+        const resSingleIon = matchB2R1RedoxReaction({
+          reactants: ["Mg"],
+          solutionIon: "Cu2+",
+        });
+        expect(resSingleIon.matched).toBe(true);
+        expect(resSingleIon.rowId).toBe("OR-Mg-Cu");
+      });
+
+      it("2) OR-Zn-Cu: Zn + Cu²⁺ → Zn²⁺ + Cu (标签：夺取 Cu²⁺；生成 Cu 资源/打断)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Zn"],
+          solutionIons: ["Cu2+"],
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Zn-Cu");
+        expect(res.effectTags).toContain("seize_cu2_produce_cu");
+        expect(res.effectZh).toBe("夺取 Cu²⁺；生成 Cu 资源/打断");
+      });
+
+      it("3) OR-Fe-Cu: Fe + Cu²⁺ → Fe²⁺ + Cu (标签：夺取 Cu²⁺；生成 Cu 资源/打断，rowId 必为 OR-Fe-Cu)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Fe"],
+          solutionIons: ["Cu2+"],
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Fe-Cu");
+        expect(res.rowId).not.toBe("OR-Fe-Cu2");
+        expect(res.effectTags).toContain("seize_cu2_produce_cu");
+        expect(res.effectZh).toBe("夺取 Cu²⁺；生成 Cu 资源/打断");
+      });
+
+      it("4) OR-Mg-Ag: Mg + 2Ag⁺ → Mg²⁺ + 2Ag (标签：银镜/沉淀链入口)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Mg"],
+          solutionIons: ["Ag+"],
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Mg-Ag");
+        expect(res.effectTags).toContain("silver_mirror_precipitation_entry");
+        expect(res.effectZh).toBe("银镜/沉淀链入口");
+        expect(res.effectTagZh).toBe("银镜/沉淀链入口");
+      });
+
+      it("5) OR-Zn-Ag: Zn + 2Ag⁺ → Zn²⁺ + 2Ag (标签：银镜/沉淀链入口)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Zn"],
+          solutionIons: ["Ag+"],
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Zn-Ag");
+        expect(res.effectTags).toContain("silver_mirror_precipitation_entry");
+        expect(res.effectZh).toBe("银镜/沉淀链入口");
+      });
+
+      it("6) OR-Fe-Ag: Fe + 2Ag⁺ → Fe²⁺ + 2Ag (标签：银镜/沉淀链入口)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Fe"],
+          solutionIons: ["Ag+"],
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Fe-Ag");
+        expect(res.effectTags).toContain("silver_mirror_precipitation_entry");
+        expect(res.effectZh).toBe("银镜/沉淀链入口");
+      });
+
+      it("7) OR-Cu-Ag: Cu + 2Ag⁺ → Cu²⁺ + 2Ag (标签：AgNO₃ / Cl⁻ 检验联动，不实现检验)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Cu"],
+          solutionIons: ["Ag+"],
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Cu-Ag");
+        expect(res.effectTags).toContain("agno3_cl_test_linkage");
+        expect(res.effectZh).toBe("AgNO₃ / Cl⁻ 检验联动");
+        expect(res.effectTagZh).toBe("AgNO₃ / Cl⁻ 检验联动");
+        // 不实现 Cl- 检验联动逻辑
+        expect((res as unknown as Record<string, unknown>).testResult).toBeUndefined();
+      });
+
+      it("多参数形式调用 matchB2R1RedoxReaction 也可正确匹配金属置换", () => {
+        const res = matchB2R1RedoxReaction("Mg", "water", undefined, "Cu2+");
+        expect(res.matched).toBe(true);
+        expect(res.rowId).toBe("OR-Mg-Cu");
+      });
+    });
+
+    describe("7.3 严格负例拦截锁（验收标准要求）", () => {
+      it("负例 1: 只有金属没有离子，不可靠金属单质自己配对成功", () => {
+        // 在水介质中只有金属
+        expect(matchB2R1RedoxReaction({ reactants: ["Mg"], medium: "water" }).matched).toBe(false);
+        expect(matchB2R1RedoxReaction({ reactants: ["Zn"], medium: "water" }).matched).toBe(false);
+        expect(matchB2R1RedoxReaction({ reactants: ["Fe"], medium: "water" }).matched).toBe(false);
+        expect(matchB2R1RedoxReaction({ reactants: ["Cu"], medium: "water" }).matched).toBe(false);
+
+        // 未传 medium 且无 solutionIons
+        expect(matchB2R1RedoxReaction({ reactants: ["Mg"] }).matched).toBe(false);
+
+        // 两个金属单质放入 reactants，无显式溶液离子入参
+        const resTwoMetals = matchB2R1RedoxReaction({
+          reactants: ["Mg", "Cu"],
+          medium: "water",
+        });
+        expect(resTwoMetals.matched).toBe(false);
+      });
+
+      it("负例 2: Ag 金属置换 Cu²⁺ 判定失败（Ag 活动性低于 Cu）", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Ag"],
+          solutionIons: ["Cu2+"],
+        });
+        expect(res.matched).toBe(false);
+        expect(res.success).toBe(false);
+
+        const resAlias = matchB2R1RedoxReaction({
+          reactants: ["银"],
+          solutionIons: ["Cu²⁺"],
+        });
+        expect(resAlias.matched).toBe(false);
+      });
+
+      it("负例 3: Cu 金属置换 Cu²⁺ 判定失败（同种金属不可置换）", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Cu"],
+          solutionIons: ["Cu2+"],
+        });
+        expect(res.matched).toBe(false);
+        expect(res.success).toBe(false);
+      });
+
+      it("负例 4: Al 置换 Cu²⁺ 判定失败（OR-Al-Cu2 不在 §3.3 白名单内）", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Al"],
+          solutionIons: ["Cu2+"],
+        });
+        expect(res.matched).toBe(false);
+        expect(res.success).toBe(false);
+      });
+
+      it("负例 5: 未列组合判定失败（未列出的组合不因现实化学常识成立）", () => {
+        // Al 置换 Ag⁺（未列入 §3.3）
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Al"],
+            solutionIons: ["Ag+"],
+          }).matched
+        ).toBe(false);
+
+        // Mg 置换 Fe²⁺（OR-Mg-Fe2 本刀禁止新增）
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Mg"],
+            solutionIons: ["Fe2+"],
+          }).matched
+        ).toBe(false);
+
+        // Zn 置换 Zn²⁺
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Zn"],
+            solutionIons: ["Zn2+"],
+          }).matched
+        ).toBe(false);
+
+        // 未收录单质金属（如 Au）置换 Cu²⁺
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Au"],
+            solutionIons: ["Cu2+"],
+          }).matched
+        ).toBe(false);
+      });
+    });
+
+    describe("7.4 旧行不回归锁（验收标准要求）", () => {
+      it("Cu + dil_hno3 必须仍是 OR-Cu-HNO3-dil (matched=true, 氮氧化物刺激)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Cu"],
+          medium: "dil_hno3",
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Cu-HNO3-dil");
+        expect(res.statusNameZh).toBe("氮氧化物刺激");
+      });
+
+      it("Cu + dil_non_oxidizing_acid 必须仍是 OR-Cu-H 不反应 (matched=false, isNoReaction=true)", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Cu"],
+          medium: "dil_non_oxidizing_acid",
+        });
+        expect(res.matched).toBe(false);
+        expect(res.success).toBe(false);
+        expect(res.rowId).toBe("OR-Cu-H");
+        expect(res.isNoReaction).toBe(true);
+        expect(res.effectZh).toBe("不反应");
+      });
     });
   });
 });

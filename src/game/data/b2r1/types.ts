@@ -133,11 +133,27 @@ export interface B2R1StimulusStatusDefinition {
 }
 
 /**
+ * B2-R1 金属置换效果标签枚举
+ * §3.3 金属置换效果标签
+ */
+export type B2R1DisplacementEffectTag =
+  | "seize_cu2_produce_cu"
+  | "silver_mirror_precipitation_entry"
+  | "agno3_cl_test_linkage";
+
+export interface B2R1DisplacementEffectTagDefinition {
+  readonly id: B2R1DisplacementEffectTag;
+  readonly nameZh: string;
+  readonly nameEn: string;
+}
+
+/**
  * 本刀冻结的氧化还原反应行 ID
  * §3.8: OR-KMnO4-HCl-conc
  * §3.7: OR-Cu-HNO3-dil
  * §3.10: OR-Na2FeO4-purify
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
+ * §3.3: OR-Mg-Cu, OR-Zn-Cu, OR-Fe-Cu, OR-Mg-Ag, OR-Zn-Ag, OR-Fe-Ag, OR-Cu-Ag
  */
 export type B2R1RedoxRowId =
   | "OR-KMnO4-HCl-conc"
@@ -148,7 +164,14 @@ export type B2R1RedoxRowId =
   | "OR-Fe-H"
   | "OR-Al-H"
   | "OR-Cu-H"
-  | "OR-Ag-H";
+  | "OR-Ag-H"
+  | "OR-Mg-Cu"
+  | "OR-Zn-Cu"
+  | "OR-Fe-Cu"
+  | "OR-Mg-Ag"
+  | "OR-Zn-Ag"
+  | "OR-Fe-Ag"
+  | "OR-Cu-Ag";
 
 /**
  * B2-R1 气体标签枚举（§3.2 H₂ 标注可燃气体标签）
@@ -180,6 +203,10 @@ export interface B2R1RedoxReactionDefinition {
   readonly gasTags?: readonly B2R1GasTag[];
   readonly conditions?: readonly B2R1ReactionCondition[];
   readonly isNoReaction?: boolean;
+  readonly solutionIon?: B2R1CationId;
+  readonly solutionIons?: readonly B2R1CationId[];
+  readonly effectTags?: readonly B2R1DisplacementEffectTag[];
+  readonly effectTagZh?: string;
 }
 
 /**
@@ -188,9 +215,11 @@ export interface B2R1RedoxReactionDefinition {
 export interface B2R1RedoxMatchInput {
   readonly reactants?: readonly string[];
   readonly reactant?: string;
-  readonly medium: string;
+  readonly medium?: string;
   readonly conditions?: readonly string[];
   readonly condition?: string;
+  readonly solutionIons?: readonly string[];
+  readonly solutionIon?: string;
 }
 
 /**
@@ -208,6 +237,10 @@ export interface B2R1RedoxMatchSuccess {
   readonly effectZh: string;
   readonly gasTags?: readonly B2R1GasTag[];
   readonly isNoReaction?: false;
+  readonly solutionIon?: B2R1CationId;
+  readonly solutionIons?: readonly B2R1CationId[];
+  readonly effectTags?: readonly B2R1DisplacementEffectTag[];
+  readonly effectTagZh?: string;
 }
 
 /**
@@ -226,6 +259,10 @@ export interface B2R1RedoxMatchFailure {
   readonly gasTags?: undefined;
   readonly isNoReaction?: boolean;
   readonly reason: string;
+  readonly solutionIon?: undefined;
+  readonly solutionIons?: undefined;
+  readonly effectTags?: undefined;
+  readonly effectTagZh?: undefined;
 }
 
 export type B2R1RedoxMatchResult = B2R1RedoxMatchSuccess | B2R1RedoxMatchFailure;

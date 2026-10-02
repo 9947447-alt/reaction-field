@@ -91,3 +91,105 @@ export type SaltGenerationResult =
       readonly success: false;
       readonly reason: string;
     };
+
+/**
+ * B2-R1 金属单质标识枚举
+ * §3.2, §3.3 至少包含 Cu, Mg, Zn, Fe, Al, Ag
+ */
+export type B2R1MetalElementId = "Cu" | "Mg" | "Zn" | "Fe" | "Al" | "Ag";
+
+export interface B2R1MetalDefinition {
+  readonly id: B2R1MetalElementId;
+  readonly symbol: string;
+  readonly nameZh: string;
+  readonly nameEn: string;
+}
+
+/**
+ * B2-R1 反应介质标识枚举
+ * 至少包含浓 HCl、稀 HNO₃、浓 HNO₃、稀非氧化性酸、水
+ */
+export type B2R1MediumId =
+  | "conc_hcl"
+  | "dil_hno3"
+  | "conc_hno3"
+  | "dil_non_oxidizing_acid"
+  | "water";
+
+export interface B2R1MediumDefinition {
+  readonly id: B2R1MediumId;
+  readonly nameZh: string;
+  readonly nameEn: string;
+}
+
+/**
+ * B2-R1 气体刺激持续状态定义
+ * 双语展示名：zh 与 en
+ */
+export interface B2R1StimulusStatusDefinition {
+  readonly id: string;
+  readonly nameZh: string;
+  readonly nameEn: string;
+}
+
+/**
+ * 本刀冻结的三条氧化还原反应行 ID
+ */
+export type B2R1RedoxRowId =
+  | "OR-KMnO4-HCl-conc"
+  | "OR-Cu-HNO3-dil"
+  | "OR-Na2FeO4-purify";
+
+/**
+ * 氧化还原反应行静态定义
+ */
+export interface B2R1RedoxReactionDefinition {
+  readonly id: B2R1RedoxRowId;
+  readonly equation: string;
+  readonly medium: B2R1MediumId;
+  readonly reactants: readonly string[];
+  readonly effectZh: string;
+  readonly stimulusStatus?: B2R1StimulusStatusDefinition;
+}
+
+/**
+ * 氧化还原纯函数匹配入参
+ */
+export interface B2R1RedoxMatchInput {
+  readonly reactants?: readonly string[];
+  readonly reactant?: string;
+  readonly medium: string;
+}
+
+/**
+ * 氧化还原匹配成功结果
+ */
+export interface B2R1RedoxMatchSuccess {
+  readonly matched: true;
+  readonly success: true;
+  readonly rowId: B2R1RedoxRowId;
+  readonly reaction: B2R1RedoxReactionDefinition;
+  readonly stimulusStatus?: B2R1StimulusStatusDefinition;
+  readonly statusNameZh?: string;
+  readonly statusNameEn?: string;
+  readonly statusId?: string;
+  readonly effectZh: string;
+}
+
+/**
+ * 氧化还原匹配失败结果
+ */
+export interface B2R1RedoxMatchFailure {
+  readonly matched: false;
+  readonly success: false;
+  readonly rowId?: undefined;
+  readonly stimulusStatus?: undefined;
+  readonly statusNameZh?: undefined;
+  readonly statusNameEn?: undefined;
+  readonly statusId?: undefined;
+  readonly effectZh?: undefined;
+  readonly reason: string;
+}
+
+export type B2R1RedoxMatchResult = B2R1RedoxMatchSuccess | B2R1RedoxMatchFailure;
+

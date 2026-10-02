@@ -258,6 +258,7 @@ const ALIAS_MAP: Record<string, B2R1IonId> = {
   "CO3^2-": "CO32-",
   "SO4^2-": "SO42-",
   "CO3²⁻": "CO32-",
+  "CO₃²⁻": "CO32-",
   "SO₄²⁻": "SO42-",
   "H⁺": "H+",
   "NH₄⁺": "NH4+",

@@ -4,6 +4,9 @@
  */
 
 import type {
+  B2R1CationId,
+  B2R1DisplacementEffectTag,
+  B2R1DisplacementEffectTagDefinition,
   B2R1GasTag,
   B2R1GasTagDefinition,
   B2R1MediumDefinition,
@@ -17,6 +20,7 @@ import type {
   B2R1RedoxRowId,
   B2R1StimulusStatusDefinition,
 } from "./types";
+import { normalizeIonId } from "./ions";
 
 /**
  * 金属单质枚举标识列表（§3.2, §3.3 至少包含 Cu, Mg, Zn, Fe, Al, Ag）
@@ -194,11 +198,72 @@ export function normalizeReactionCondition(condition: string): B2R1ReactionCondi
 }
 
 /**
+ * 金属置换效果标签：夺取 Cu²⁺；生成 Cu 资源/打断
+ */
+export const B2R1_EFFECT_TAG_SEIZE_CU: B2R1DisplacementEffectTag = "seize_cu2_produce_cu";
+
+export const B2R1_EFFECT_TAG_DEFINITION_SEIZE_CU: B2R1DisplacementEffectTagDefinition = Object.freeze({
+  id: "seize_cu2_produce_cu",
+  nameZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+  nameEn: "seize Cu2+; produce Cu resource/interrupt",
+});
+
+/**
+ * 金属置换效果标签：银镜/沉淀链入口
+ */
+export const B2R1_EFFECT_TAG_SILVER_MIRROR: B2R1DisplacementEffectTag = "silver_mirror_precipitation_entry";
+
+export const B2R1_EFFECT_TAG_DEFINITION_SILVER_MIRROR: B2R1DisplacementEffectTagDefinition = Object.freeze({
+  id: "silver_mirror_precipitation_entry",
+  nameZh: "银镜/沉淀链入口",
+  nameEn: "silver mirror / precipitation chain entry",
+});
+
+/**
+ * 金属置换效果标签：AgNO₃ / Cl⁻ 检验联动
+ */
+export const B2R1_EFFECT_TAG_AGNO3_CL_TEST: B2R1DisplacementEffectTag = "agno3_cl_test_linkage";
+
+export const B2R1_EFFECT_TAG_DEFINITION_AGNO3_CL_TEST: B2R1DisplacementEffectTagDefinition = Object.freeze({
+  id: "agno3_cl_test_linkage",
+  nameZh: "AgNO₃ / Cl⁻ 检验联动",
+  nameEn: "AgNO3 / Cl- test linkage",
+});
+
+export const B2R1_DISPLACEMENT_EFFECT_TAG_DEFINITIONS: Record<
+  B2R1DisplacementEffectTag,
+  B2R1DisplacementEffectTagDefinition
+> = Object.freeze({
+  seize_cu2_produce_cu: B2R1_EFFECT_TAG_DEFINITION_SEIZE_CU,
+  silver_mirror_precipitation_entry: B2R1_EFFECT_TAG_DEFINITION_SILVER_MIRROR,
+  agno3_cl_test_linkage: B2R1_EFFECT_TAG_DEFINITION_AGNO3_CL_TEST,
+});
+
+export const B2R1_DISPLACEMENT_EFFECT_TAGS: readonly B2R1DisplacementEffectTag[] = Object.freeze([
+  B2R1_EFFECT_TAG_SEIZE_CU,
+  B2R1_EFFECT_TAG_SILVER_MIRROR,
+  B2R1_EFFECT_TAG_AGNO3_CL_TEST,
+]);
+
+const SEIZE_CU_EFFECT_TAGS: readonly B2R1DisplacementEffectTag[] = Object.freeze([
+  B2R1_EFFECT_TAG_SEIZE_CU,
+]);
+const SILVER_MIRROR_EFFECT_TAGS: readonly B2R1DisplacementEffectTag[] = Object.freeze([
+  B2R1_EFFECT_TAG_SILVER_MIRROR,
+]);
+const AGNO3_CL_TEST_EFFECT_TAGS: readonly B2R1DisplacementEffectTag[] = Object.freeze([
+  B2R1_EFFECT_TAG_AGNO3_CL_TEST,
+]);
+const CU2_SOLUTION_IONS: readonly B2R1CationId[] = Object.freeze(["Cu2+"]);
+const AG_SOLUTION_IONS: readonly B2R1CationId[] = Object.freeze(["Ag+"]);
+
+/**
  * 本刀冻结的氧化还原反应行静态数据
  * §3.8: OR-KMnO4-HCl-conc
  * §3.7: OR-Cu-HNO3-dil
  * §3.10: OR-Na2FeO4-purify
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
+ * §3.3: OR-Mg-Cu, OR-Zn-Cu, OR-Fe-Cu, OR-Mg-Ag, OR-Zn-Ag, OR-Fe-Ag, OR-Cu-Ag
  */
 export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = Object.freeze([
   Object.freeze({
@@ -280,6 +345,83 @@ export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = 
     isNoReaction: true,
     stimulusStatus: undefined,
   }),
+  Object.freeze({
+    id: "OR-Mg-Cu",
+    equation: "Mg + Cu²⁺ → Mg²⁺ + Cu",
+    medium: "water",
+    reactants: Object.freeze(["Mg"]),
+    solutionIon: "Cu2+",
+    solutionIons: CU2_SOLUTION_IONS,
+    effectZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+    effectTags: SEIZE_CU_EFFECT_TAGS,
+    effectTagZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+  }),
+  Object.freeze({
+    id: "OR-Zn-Cu",
+    equation: "Zn + Cu²⁺ → Zn²⁺ + Cu",
+    medium: "water",
+    reactants: Object.freeze(["Zn"]),
+    solutionIon: "Cu2+",
+    solutionIons: CU2_SOLUTION_IONS,
+    effectZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+    effectTags: SEIZE_CU_EFFECT_TAGS,
+    effectTagZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+  }),
+  Object.freeze({
+    id: "OR-Fe-Cu",
+    equation: "Fe + Cu²⁺ → Fe²⁺ + Cu",
+    medium: "water",
+    reactants: Object.freeze(["Fe"]),
+    solutionIon: "Cu2+",
+    solutionIons: CU2_SOLUTION_IONS,
+    effectZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+    effectTags: SEIZE_CU_EFFECT_TAGS,
+    effectTagZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+  }),
+  Object.freeze({
+    id: "OR-Mg-Ag",
+    equation: "Mg + 2Ag⁺ → Mg²⁺ + 2Ag",
+    medium: "water",
+    reactants: Object.freeze(["Mg"]),
+    solutionIon: "Ag+",
+    solutionIons: AG_SOLUTION_IONS,
+    effectZh: "银镜/沉淀链入口",
+    effectTags: SILVER_MIRROR_EFFECT_TAGS,
+    effectTagZh: "银镜/沉淀链入口",
+  }),
+  Object.freeze({
+    id: "OR-Zn-Ag",
+    equation: "Zn + 2Ag⁺ → Zn²⁺ + 2Ag",
+    medium: "water",
+    reactants: Object.freeze(["Zn"]),
+    solutionIon: "Ag+",
+    solutionIons: AG_SOLUTION_IONS,
+    effectZh: "银镜/沉淀链入口",
+    effectTags: SILVER_MIRROR_EFFECT_TAGS,
+    effectTagZh: "银镜/沉淀链入口",
+  }),
+  Object.freeze({
+    id: "OR-Fe-Ag",
+    equation: "Fe + 2Ag⁺ → Fe²⁺ + 2Ag",
+    medium: "water",
+    reactants: Object.freeze(["Fe"]),
+    solutionIon: "Ag+",
+    solutionIons: AG_SOLUTION_IONS,
+    effectZh: "银镜/沉淀链入口",
+    effectTags: SILVER_MIRROR_EFFECT_TAGS,
+    effectTagZh: "银镜/沉淀链入口",
+  }),
+  Object.freeze({
+    id: "OR-Cu-Ag",
+    equation: "Cu + 2Ag⁺ → Cu²⁺ + 2Ag",
+    medium: "water",
+    reactants: Object.freeze(["Cu"]),
+    solutionIon: "Ag+",
+    solutionIons: AG_SOLUTION_IONS,
+    effectZh: "AgNO₃ / Cl⁻ 检验联动",
+    effectTags: AGNO3_CL_TEST_EFFECT_TAGS,
+    effectTagZh: "AgNO₃ / Cl⁻ 检验联动",
+  }),
 ]);
 
 const REDOX_ROW_MAP = new Map<B2R1RedoxRowId, B2R1RedoxReactionDefinition>(
@@ -335,22 +477,27 @@ export function matchB2R1RedoxReaction(input: B2R1RedoxMatchInput): B2R1RedoxMat
 export function matchB2R1RedoxReaction(
   reactants: readonly string[] | string,
   medium: string,
-  conditions?: readonly string[] | string
+  conditions?: readonly string[] | string,
+  solutionIons?: readonly string[] | string
 ): B2R1RedoxMatchResult;
 export function matchB2R1RedoxReaction(
   inputOrReactants: B2R1RedoxMatchInput | readonly string[] | string,
   mediumArg?: string,
-  conditionsArg?: readonly string[] | string
+  conditionsArg?: readonly string[] | string,
+  solutionIonsArg?: readonly string[] | string
 ): B2R1RedoxMatchResult {
   let rawReactants: readonly string[];
   let rawMedium: string | undefined;
   let rawConditions: readonly string[];
+  let rawSolutionIons: readonly string[];
 
   if (typeof inputOrReactants === "object" && !Array.isArray(inputOrReactants)) {
     const input = inputOrReactants as B2R1RedoxMatchInput;
     rawReactants = input.reactants ?? (input.reactant !== undefined ? [input.reactant] : []);
     rawMedium = input.medium;
     rawConditions = input.conditions ?? (input.condition !== undefined ? [input.condition] : []);
+    rawSolutionIons =
+      input.solutionIons ?? (input.solutionIon !== undefined ? [input.solutionIon] : []);
   } else if (typeof inputOrReactants === "string") {
     rawReactants = [inputOrReactants];
     rawMedium = mediumArg;
@@ -358,6 +505,11 @@ export function matchB2R1RedoxReaction(
       ? conditionsArg
       : conditionsArg !== undefined
       ? [conditionsArg]
+      : [];
+    rawSolutionIons = Array.isArray(solutionIonsArg)
+      ? solutionIonsArg
+      : solutionIonsArg !== undefined
+      ? [solutionIonsArg]
       : [];
   } else {
     rawReactants = inputOrReactants;
@@ -367,6 +519,24 @@ export function matchB2R1RedoxReaction(
       : conditionsArg !== undefined
       ? [conditionsArg]
       : [];
+    rawSolutionIons = Array.isArray(solutionIonsArg)
+      ? solutionIonsArg
+      : solutionIonsArg !== undefined
+      ? [solutionIonsArg]
+      : [];
+  }
+
+  // 溶液离子标准化
+  const normalizedSolutionIons = rawSolutionIons
+    .map((ion) => normalizeIonId(ion.trim()))
+    .filter((ion): ion is B2R1CationId => ion !== undefined);
+
+  // 若未显式提供介质，但提供了溶液离子，则在水溶液环境下进行
+  if (
+    (!rawMedium || typeof rawMedium !== "string" || rawMedium.trim() === "") &&
+    rawSolutionIons.length > 0
+  ) {
+    rawMedium = "water";
   }
 
   if (!rawMedium || typeof rawMedium !== "string") {
@@ -451,8 +621,148 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  // 3. 水介质分叉 (§3.10)
+  // 3. 水介质分叉 (§3.10 高铁酸钠 & §3.3 金属置换)
   if (normalizedMedium === "water") {
+    // 3.1 溶液离子分叉 (§3.3 金属置换)
+    if (rawSolutionIons.length > 0) {
+      if (normalizedReactants.length === 1 && normalizedSolutionIons.length === 1) {
+        const reactant = normalizedReactants[0];
+        const targetIon = normalizedSolutionIons[0];
+
+        // 置换 Cu²⁺（白名单仅收录 Mg, Zn, Fe）
+        if (targetIon === "Cu2+") {
+          if (reactant === "Mg") {
+            const reaction = REDOX_ROW_MAP.get("OR-Mg-Cu")!;
+            return {
+              matched: true,
+              success: true,
+              rowId: reaction.id,
+              reaction,
+              effectZh: reaction.effectZh,
+              effectTags: reaction.effectTags,
+              effectTagZh: reaction.effectTagZh,
+              solutionIon: reaction.solutionIon,
+              solutionIons: reaction.solutionIons,
+            };
+          }
+          if (reactant === "Zn") {
+            const reaction = REDOX_ROW_MAP.get("OR-Zn-Cu")!;
+            return {
+              matched: true,
+              success: true,
+              rowId: reaction.id,
+              reaction,
+              effectZh: reaction.effectZh,
+              effectTags: reaction.effectTags,
+              effectTagZh: reaction.effectTagZh,
+              solutionIon: reaction.solutionIon,
+              solutionIons: reaction.solutionIons,
+            };
+          }
+          if (reactant === "Fe") {
+            const reaction = REDOX_ROW_MAP.get("OR-Fe-Cu")!;
+            return {
+              matched: true,
+              success: true,
+              rowId: reaction.id,
+              reaction,
+              effectZh: reaction.effectZh,
+              effectTags: reaction.effectTags,
+              effectTagZh: reaction.effectTagZh,
+              solutionIon: reaction.solutionIon,
+              solutionIons: reaction.solutionIons,
+            };
+          }
+          // 负例拦截：Ag、Cu、Al 及未列金属单质置换 Cu²⁺ 均不成立
+          return {
+            matched: false,
+            success: false,
+            reason: `未收录的金属置换 Cu²⁺ 组合: 金属 [${reactant}]`,
+          };
+        }
+
+        // 置换 Ag⁺（白名单仅收录 Mg, Zn, Fe, Cu）
+        if (targetIon === "Ag+") {
+          if (reactant === "Mg") {
+            const reaction = REDOX_ROW_MAP.get("OR-Mg-Ag")!;
+            return {
+              matched: true,
+              success: true,
+              rowId: reaction.id,
+              reaction,
+              effectZh: reaction.effectZh,
+              effectTags: reaction.effectTags,
+              effectTagZh: reaction.effectTagZh,
+              solutionIon: reaction.solutionIon,
+              solutionIons: reaction.solutionIons,
+            };
+          }
+          if (reactant === "Zn") {
+            const reaction = REDOX_ROW_MAP.get("OR-Zn-Ag")!;
+            return {
+              matched: true,
+              success: true,
+              rowId: reaction.id,
+              reaction,
+              effectZh: reaction.effectZh,
+              effectTags: reaction.effectTags,
+              effectTagZh: reaction.effectTagZh,
+              solutionIon: reaction.solutionIon,
+              solutionIons: reaction.solutionIons,
+            };
+          }
+          if (reactant === "Fe") {
+            const reaction = REDOX_ROW_MAP.get("OR-Fe-Ag")!;
+            return {
+              matched: true,
+              success: true,
+              rowId: reaction.id,
+              reaction,
+              effectZh: reaction.effectZh,
+              effectTags: reaction.effectTags,
+              effectTagZh: reaction.effectTagZh,
+              solutionIon: reaction.solutionIon,
+              solutionIons: reaction.solutionIons,
+            };
+          }
+          if (reactant === "Cu") {
+            const reaction = REDOX_ROW_MAP.get("OR-Cu-Ag")!;
+            return {
+              matched: true,
+              success: true,
+              rowId: reaction.id,
+              reaction,
+              effectZh: reaction.effectZh,
+              effectTags: reaction.effectTags,
+              effectTagZh: reaction.effectTagZh,
+              solutionIon: reaction.solutionIon,
+              solutionIons: reaction.solutionIons,
+            };
+          }
+          // 负例拦截：Al、Ag 及其他未列金属置换 Ag⁺ 均不成立
+          return {
+            matched: false,
+            success: false,
+            reason: `未收录的金属置换 Ag⁺ 组合: 金属 [${reactant}]`,
+          };
+        }
+
+        // 其他溶液离子未列入 §3.3 置换白名单
+        return {
+          matched: false,
+          success: false,
+          reason: `未收录的金属置换反应: 金属 [${reactant}], 溶液离子 [${rawSolutionIons.join(", ")}]`,
+        };
+      }
+
+      return {
+        matched: false,
+        success: false,
+        reason: `金属置换反应物或离子不合法: 金属 [${normalizedReactants.join(", ")}], 离子 [${rawSolutionIons.join(", ")}]`,
+      };
+    }
+
+    // 3.2 无溶液离子的水介质反应 (§3.10 高铁酸钠)
     if (normalizedReactants.length === 1 && normalizedReactants[0] === "Na2FeO4") {
       const reaction = REDOX_ROW_MAP.get("OR-Na2FeO4-purify")!;
       return {

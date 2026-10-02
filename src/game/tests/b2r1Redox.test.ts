@@ -12,10 +12,16 @@ import {
   B2R1_GAS_TAG_DEFINITION_FLAMMABLE,
   B2R1_GAS_TAG_DEFINITIONS,
   B2R1_GAS_TAG_FLAMMABLE,
+  B2R1_HALOGEN_PRODUCT_TAG_DEFINITIONS,
+  B2R1_HALOGEN_PRODUCT_TAGS,
   B2R1_MEDIUM_DEFINITIONS,
   B2R1_MEDIUM_IDS,
   B2R1_METAL_DEFINITIONS,
   B2R1_METAL_ELEMENT_IDS,
+  B2R1_PRODUCT_TAG_BR2,
+  B2R1_PRODUCT_TAG_DEFINITION_BR2,
+  B2R1_PRODUCT_TAG_DEFINITION_I2,
+  B2R1_PRODUCT_TAG_I2,
   B2R1_REACTION_CONDITIONS,
   B2R1_REDOX_REACTION_ROWS,
   B2R1_STIMULUS_STATUS_CHLORINE,
@@ -87,8 +93,8 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
   });
 
   describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.3, §3.7, §3.8, §3.10, §3.11)", () => {
-    it("恰好收录本刀锁定的十六条反应行（旧九行 + §3.3 七行金属置换）", () => {
-      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(16);
+    it("恰好收录本刀锁定的二十条反应行（旧十六行 + §3.4 四行卤素置换）", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(20);
       const rowIds = B2R1_REDOX_REACTION_ROWS.map((r) => r.id);
       expect(rowIds).toEqual([
         "OR-KMnO4-HCl-conc",
@@ -107,6 +113,10 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         "OR-Zn-Ag",
         "OR-Fe-Ag",
         "OR-Cu-Ag",
+        "OR-Cl2-Br",
+        "OR-Cl2-I",
+        "OR-Br2-I",
+        "OR-Cl2-F",
       ]);
     });
 
@@ -777,6 +787,123 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         expect(res.isNoReaction).toBe(true);
         expect(res.effectZh).toBe("不反应");
       });
+    });
+  });
+
+  describe("8. §3.4 卤素置换数据合同", () => {
+    it("独立产物标签、定义和嵌套数组均为冻结的静态数据", () => {
+      expect(B2R1_HALOGEN_PRODUCT_TAGS).toEqual(["produce_br2_card_or_status", "produce_i2"]);
+      expect(B2R1_HALOGEN_PRODUCT_TAGS).toEqual([B2R1_PRODUCT_TAG_BR2, B2R1_PRODUCT_TAG_I2]);
+      expect(Object.isFrozen(B2R1_HALOGEN_PRODUCT_TAGS)).toBe(true);
+      expect(Object.isFrozen(B2R1_HALOGEN_PRODUCT_TAG_DEFINITIONS)).toBe(true);
+      expect(B2R1_HALOGEN_PRODUCT_TAG_DEFINITIONS).toEqual({
+        produce_br2_card_or_status: B2R1_PRODUCT_TAG_DEFINITION_BR2,
+        produce_i2: B2R1_PRODUCT_TAG_DEFINITION_I2,
+      });
+      for (const definition of Object.values(B2R1_HALOGEN_PRODUCT_TAG_DEFINITIONS)) {
+        expect(Object.isFrozen(definition)).toBe(true);
+        expect(definition.nameZh.length).toBeGreaterThan(0);
+        expect(definition.nameEn.length).toBeGreaterThan(0);
+      }
+      expect(Object.isFrozen(B2R1_REDOX_REACTION_ROWS)).toBe(true);
+      for (const row of B2R1_REDOX_REACTION_ROWS.slice(16)) {
+        expect(Object.isFrozen(row)).toBe(true);
+        expect(Object.isFrozen(row.reactants)).toBe(true);
+        expect(Object.isFrozen(row.solutionIons)).toBe(true);
+        expect(row.medium).toBe("water");
+        expect(row.effectTags).toBeUndefined();
+        expect(row.effectTagZh).toBeUndefined();
+        if (!row.isNoReaction) {
+          expect(row.productTags).toHaveLength(1);
+          expect(Object.isFrozen(row.productTags)).toBe(true);
+        } else {
+          expect(row.productTags).toBeUndefined();
+        }
+        for (const field of ["deck", "drawPile", "hand", "cardInstance", "generateCard", "status"]) {
+          expect(row).not.toHaveProperty(field);
+        }
+      }
+    });
+
+    it.each([
+      ["Cl2", "Br-", "OR-Cl2-Br", "Cl₂ + 2Br⁻ → 2Cl⁻ + Br₂", "produce_br2_card_or_status", "生成 Br₂ 卡或状态"],
+      ["Cl₂", "I⁻", "OR-Cl2-I", "Cl₂ + 2I⁻ → 2Cl⁻ + I₂", "produce_i2", "生成 I₂"],
+      ["Br2", "I-", "OR-Br2-I", "Br₂ + 2I⁻ → 2Br⁻ + I₂", "produce_i2", "生成 I₂"],
+      ["Br₂", "I⁻", "OR-Br2-I", "Br₂ + 2I⁻ → 2Br⁻ + I₂", "produce_i2", "生成 I₂"],
+    ])("%s + %s 只返回静态产物 metadata", (reactant, ion, rowId, equation, tag, label) => {
+      const input = Object.freeze({
+        reactants: Object.freeze([reactant]),
+        medium: "water",
+        solutionIons: Object.freeze([ion]),
+      });
+      const result = matchB2R1RedoxReaction(input);
+      expect(result).toMatchObject({
+        matched: true, success: true, rowId,
+        solutionIon: normalizeIonId(ion), solutionIons: [normalizeIonId(ion)],
+        productTags: [tag], productTagZh: label, effectZh: label,
+        reaction: { equation },
+      });
+      expect(result.reaction).toBe(getB2R1RedoxReaction(rowId));
+      expect(result.effectTags).toBeUndefined();
+      expect(matchB2R1RedoxReaction(reactant, "water", undefined, ion)).toEqual(result);
+      expect(matchB2R1RedoxReaction({ reactant, solutionIon: ion })).toEqual(result);
+      expect(input.reactants).toEqual([reactant]);
+      expect(input.solutionIons).toEqual([ion]);
+    });
+
+    it.each(["Cl2", "Cl₂"])("%s + F⁻ 保留显式不反应且 overload 一致", (reactant) => {
+      const result = matchB2R1RedoxReaction({ reactant, solutionIon: "F⁻" });
+      expect(result).toMatchObject({
+        matched: false, success: false, rowId: "OR-Cl2-F", isNoReaction: true,
+        reaction: { equation: "Cl₂ + F⁻", solutionIon: "F-", isNoReaction: true },
+      });
+      expect(result.reaction).toBe(getB2R1RedoxReaction("OR-Cl2-F"));
+      expect(matchB2R1RedoxReaction(reactant, "water", undefined, "F-")).toEqual(result);
+    });
+
+    it.each([
+      ["Cl2", "Cl-"], ["Br2", "Br-"], ["Br2", "F-"], ["Br2", "Cl-"],
+      ["I2", "Br-"], ["I2", "Cl-"], ["I2", "F-"], ["I2", "I-"],
+      ["F2", "Cl-"], ["F2", "Br-"], ["F2", "I-"], ["F2", "F-"],
+      ["Mg", "Br-"], ["Cl-", "Br-"], ["Cl2", "Cu2+"],
+    ])("未冻结组合 %s + %s 不得泛化", (reactant, solutionIon) => {
+      const result = matchB2R1RedoxReaction({ reactant, solutionIon });
+      expect(result).toMatchObject({ matched: false, success: false });
+      expect(result.rowId).toBeUndefined();
+      expect(result.reaction).toBeUndefined();
+    });
+
+    it.each([
+      ["Br-", "Unknown+"], ["Br-", ""], ["Br-", "   "],
+      ["Br-", "I-"], ["Br-", "Br-"],
+    ])("拒绝完整多组件输入 %j / %j", (...solutionIons) => {
+      const input = Object.freeze({
+        reactant: "Cl2", solutionIons: Object.freeze(solutionIons),
+      });
+      for (const result of [
+        matchB2R1RedoxReaction(input),
+        matchB2R1RedoxReaction("Cl2", "water", undefined, solutionIons),
+      ]) {
+        expect(result).toMatchObject({ matched: false, success: false });
+        expect(result.rowId).toBeUndefined();
+        expect(result.reaction).toBeUndefined();
+      }
+    });
+
+    it("同时检查单数和复数离子字段，空数组仍为零额外组件", () => {
+      const result = matchB2R1RedoxReaction({
+        reactant: "Cl2", solutionIon: "Br-", solutionIons: ["I-"],
+      });
+      expect(result).toMatchObject({ matched: false, success: false });
+      expect(result.rowId).toBeUndefined();
+      expect(matchB2R1RedoxReaction({
+        reactant: "Cl2", solutionIon: "Br-", solutionIons: [],
+      }).rowId).toBe("OR-Cl2-Br");
+      expect(matchB2R1RedoxReaction({ reactant: "Cl2", solutionIons: [] }).rowId).toBeUndefined();
+    });
+
+    it.each(["Br-", "Br⁻", "I-", "I⁻", "F-", "F⁻"])("复用 normalizeIonId: %s", (ion) => {
+      expect(normalizeIonId(ion)).toBe(ion.replace("⁻", "-"));
     });
   });
 });

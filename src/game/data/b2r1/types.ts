@@ -148,12 +148,27 @@ export interface B2R1DisplacementEffectTagDefinition {
 }
 
 /**
+ * B2-R1 卤素置换产物效果标签枚举
+ * §3.4 卤素置换产物标签
+ */
+export type B2R1HalogenProductTag =
+  | "produce_br2_card_or_status"
+  | "produce_i2";
+
+export interface B2R1HalogenProductTagDefinition {
+  readonly id: B2R1HalogenProductTag;
+  readonly nameZh: string;
+  readonly nameEn: string;
+}
+
+/**
  * 本刀冻结的氧化还原反应行 ID
  * §3.8: OR-KMnO4-HCl-conc
  * §3.7: OR-Cu-HNO3-dil
  * §3.10: OR-Na2FeO4-purify
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
  * §3.3: OR-Mg-Cu, OR-Zn-Cu, OR-Fe-Cu, OR-Mg-Ag, OR-Zn-Ag, OR-Fe-Ag, OR-Cu-Ag
+ * §3.4: OR-Cl2-Br, OR-Cl2-I, OR-Br2-I, OR-Cl2-F
  */
 export type B2R1RedoxRowId =
   | "OR-KMnO4-HCl-conc"
@@ -171,7 +186,11 @@ export type B2R1RedoxRowId =
   | "OR-Mg-Ag"
   | "OR-Zn-Ag"
   | "OR-Fe-Ag"
-  | "OR-Cu-Ag";
+  | "OR-Cu-Ag"
+  | "OR-Cl2-Br"
+  | "OR-Cl2-I"
+  | "OR-Br2-I"
+  | "OR-Cl2-F";
 
 /**
  * B2-R1 气体标签枚举（§3.2 H₂ 标注可燃气体标签）
@@ -203,10 +222,12 @@ export interface B2R1RedoxReactionDefinition {
   readonly gasTags?: readonly B2R1GasTag[];
   readonly conditions?: readonly B2R1ReactionCondition[];
   readonly isNoReaction?: boolean;
-  readonly solutionIon?: B2R1CationId;
-  readonly solutionIons?: readonly B2R1CationId[];
+  readonly solutionIon?: B2R1IonId;
+  readonly solutionIons?: readonly B2R1IonId[];
   readonly effectTags?: readonly B2R1DisplacementEffectTag[];
   readonly effectTagZh?: string;
+  readonly productTags?: readonly B2R1HalogenProductTag[];
+  readonly productTagZh?: string;
 }
 
 /**
@@ -237,10 +258,12 @@ export interface B2R1RedoxMatchSuccess {
   readonly effectZh: string;
   readonly gasTags?: readonly B2R1GasTag[];
   readonly isNoReaction?: false;
-  readonly solutionIon?: B2R1CationId;
-  readonly solutionIons?: readonly B2R1CationId[];
+  readonly solutionIon?: B2R1IonId;
+  readonly solutionIons?: readonly B2R1IonId[];
   readonly effectTags?: readonly B2R1DisplacementEffectTag[];
   readonly effectTagZh?: string;
+  readonly productTags?: readonly B2R1HalogenProductTag[];
+  readonly productTagZh?: string;
 }
 
 /**
@@ -263,6 +286,8 @@ export interface B2R1RedoxMatchFailure {
   readonly solutionIons?: undefined;
   readonly effectTags?: undefined;
   readonly effectTagZh?: undefined;
+  readonly productTags?: undefined;
+  readonly productTagZh?: undefined;
 }
 
 export type B2R1RedoxMatchResult = B2R1RedoxMatchSuccess | B2R1RedoxMatchFailure;

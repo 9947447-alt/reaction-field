@@ -4,10 +4,13 @@
  */
 
 import type {
+  B2R1GasTag,
+  B2R1GasTagDefinition,
   B2R1MediumDefinition,
   B2R1MediumId,
   B2R1MetalDefinition,
   B2R1MetalElementId,
+  B2R1ReactionCondition,
   B2R1RedoxMatchInput,
   B2R1RedoxMatchResult,
   B2R1RedoxReactionDefinition,
@@ -149,10 +152,53 @@ export const B2R1_STIMULUS_STATUSES: readonly B2R1StimulusStatusDefinition[] = O
 ]);
 
 /**
- * 本刀冻结的三条氧化还原反应行静态数据
+ * 气体标签：可燃气体（§3.2 H₂ 标注）
+ */
+export const B2R1_GAS_TAG_FLAMMABLE: B2R1GasTag = "flammable_gas";
+
+export const B2R1_GAS_TAG_DEFINITION_FLAMMABLE: B2R1GasTagDefinition = Object.freeze({
+  id: "flammable_gas",
+  nameZh: "可燃气体",
+  nameEn: "flammable gas",
+});
+
+export const B2R1_GAS_TAG_DEFINITIONS: Record<B2R1GasTag, B2R1GasTagDefinition> = Object.freeze({
+  flammable_gas: B2R1_GAS_TAG_DEFINITION_FLAMMABLE,
+});
+
+/**
+ * 反应条件：去氧化膜（§3.2 铝产氢条件）
+ */
+export const B2R1_CONDITION_OXIDE_FILM_REMOVED: B2R1ReactionCondition = "oxide_film_removed";
+
+export const B2R1_REACTION_CONDITIONS: readonly B2R1ReactionCondition[] = Object.freeze([
+  B2R1_CONDITION_OXIDE_FILM_REMOVED,
+]);
+
+const FLAMMABLE_GAS_TAGS: readonly B2R1GasTag[] = Object.freeze([B2R1_GAS_TAG_FLAMMABLE]);
+const OXIDE_FILM_REMOVED_CONDITIONS: readonly B2R1ReactionCondition[] = Object.freeze([
+  B2R1_CONDITION_OXIDE_FILM_REMOVED,
+]);
+
+export function normalizeReactionCondition(condition: string): B2R1ReactionCondition | undefined {
+  const trimmed = condition.trim();
+  if (
+    trimmed === "oxide_film_removed" ||
+    trimmed === "去氧化膜" ||
+    trimmed === "remove_oxide_film" ||
+    trimmed === "氧化膜已去除"
+  ) {
+    return "oxide_film_removed";
+  }
+  return undefined;
+}
+
+/**
+ * 本刀冻结的氧化还原反应行静态数据
  * §3.8: OR-KMnO4-HCl-conc
  * §3.7: OR-Cu-HNO3-dil
  * §3.10: OR-Na2FeO4-purify
+ * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
  */
 export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = Object.freeze([
   Object.freeze({
@@ -177,6 +223,61 @@ export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = 
     medium: "water",
     reactants: Object.freeze(["Na2FeO4"]),
     effectZh: "移除一项浑浊/有机污染",
+    stimulusStatus: undefined,
+  }),
+  Object.freeze({
+    id: "OR-Mg-H",
+    equation: "Mg + 2H⁺ → Mg²⁺ + H₂↑",
+    medium: "dil_non_oxidizing_acid",
+    reactants: Object.freeze(["Mg"]),
+    effectZh: "生成 H₂，具有【可燃气体】标签",
+    stimulusStatus: undefined,
+    gasTags: FLAMMABLE_GAS_TAGS,
+  }),
+  Object.freeze({
+    id: "OR-Zn-H",
+    equation: "Zn + 2H⁺ → Zn²⁺ + H₂↑",
+    medium: "dil_non_oxidizing_acid",
+    reactants: Object.freeze(["Zn"]),
+    effectZh: "生成 H₂，具有【可燃气体】标签",
+    stimulusStatus: undefined,
+    gasTags: FLAMMABLE_GAS_TAGS,
+  }),
+  Object.freeze({
+    id: "OR-Fe-H",
+    equation: "Fe + 2H⁺ → Fe²⁺ + H₂↑",
+    medium: "dil_non_oxidizing_acid",
+    reactants: Object.freeze(["Fe"]),
+    effectZh: "生成 H₂，具有【可燃气体】标签",
+    stimulusStatus: undefined,
+    gasTags: FLAMMABLE_GAS_TAGS,
+  }),
+  Object.freeze({
+    id: "OR-Al-H",
+    equation: "2Al + 6H⁺ → 2Al³⁺ + 3H₂↑",
+    medium: "dil_non_oxidizing_acid",
+    reactants: Object.freeze(["Al"]),
+    effectZh: "生成 H₂，具有【可燃气体】标签",
+    stimulusStatus: undefined,
+    conditions: OXIDE_FILM_REMOVED_CONDITIONS,
+    gasTags: FLAMMABLE_GAS_TAGS,
+  }),
+  Object.freeze({
+    id: "OR-Cu-H",
+    equation: "Cu + H⁺（稀）",
+    medium: "dil_non_oxidizing_acid",
+    reactants: Object.freeze(["Cu"]),
+    effectZh: "不反应",
+    isNoReaction: true,
+    stimulusStatus: undefined,
+  }),
+  Object.freeze({
+    id: "OR-Ag-H",
+    equation: "Ag + H⁺（稀）",
+    medium: "dil_non_oxidizing_acid",
+    reactants: Object.freeze(["Ag"]),
+    effectZh: "不反应",
+    isNoReaction: true,
     stimulusStatus: undefined,
   }),
 ]);
@@ -204,6 +305,21 @@ const REACTANT_NORMALIZATION_MAP: Record<string, string> = {
   "Na₂FeO₄": "Na2FeO4",
   na2feo4: "Na2FeO4",
   高铁酸钠: "Na2FeO4",
+  Mg: "Mg",
+  mg: "Mg",
+  镁: "Mg",
+  Zn: "Zn",
+  zn: "Zn",
+  锌: "Zn",
+  Fe: "Fe",
+  fe: "Fe",
+  铁: "Fe",
+  Al: "Al",
+  al: "Al",
+  铝: "Al",
+  Ag: "Ag",
+  ag: "Ag",
+  银: "Ag",
 };
 
 function normalizeReactantKey(item: string): string {
@@ -213,30 +329,44 @@ function normalizeReactantKey(item: string): string {
 
 /**
  * 纯函数匹配 B2-R1 氧化还原反应
- * 仅在满足三条冻结完整条件时返回对应 row id 与状态名；不修改入参
+ * 先看介质分叉，严格遵循白名单表；不修改入参
  */
 export function matchB2R1RedoxReaction(input: B2R1RedoxMatchInput): B2R1RedoxMatchResult;
 export function matchB2R1RedoxReaction(
   reactants: readonly string[] | string,
-  medium: string
+  medium: string,
+  conditions?: readonly string[] | string
 ): B2R1RedoxMatchResult;
 export function matchB2R1RedoxReaction(
   inputOrReactants: B2R1RedoxMatchInput | readonly string[] | string,
-  mediumArg?: string
+  mediumArg?: string,
+  conditionsArg?: readonly string[] | string
 ): B2R1RedoxMatchResult {
   let rawReactants: readonly string[];
   let rawMedium: string | undefined;
+  let rawConditions: readonly string[];
 
   if (typeof inputOrReactants === "object" && !Array.isArray(inputOrReactants)) {
     const input = inputOrReactants as B2R1RedoxMatchInput;
     rawReactants = input.reactants ?? (input.reactant !== undefined ? [input.reactant] : []);
     rawMedium = input.medium;
+    rawConditions = input.conditions ?? (input.condition !== undefined ? [input.condition] : []);
   } else if (typeof inputOrReactants === "string") {
     rawReactants = [inputOrReactants];
     rawMedium = mediumArg;
+    rawConditions = Array.isArray(conditionsArg)
+      ? conditionsArg
+      : conditionsArg !== undefined
+      ? [conditionsArg]
+      : [];
   } else {
     rawReactants = inputOrReactants;
     rawMedium = mediumArg;
+    rawConditions = Array.isArray(conditionsArg)
+      ? conditionsArg
+      : conditionsArg !== undefined
+      ? [conditionsArg]
+      : [];
   }
 
   if (!rawMedium || typeof rawMedium !== "string") {
@@ -268,32 +398,16 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  // 1. OR-KMnO4-HCl-conc: KMnO4 + 浓 HCl
-  if (normalizedReactants.length === 1 && normalizedReactants[0] === "KMnO4") {
-    if (normalizedMedium === "conc_hcl") {
-      const reaction = REDOX_ROW_MAP.get("OR-KMnO4-HCl-conc")!;
-      return {
-        matched: true,
-        success: true,
-        rowId: reaction.id,
-        reaction,
-        stimulusStatus: reaction.stimulusStatus,
-        statusNameZh: reaction.stimulusStatus?.nameZh,
-        statusNameEn: reaction.stimulusStatus?.nameEn,
-        statusId: reaction.stimulusStatus?.id,
-        effectZh: reaction.effectZh,
-      };
-    }
-    return {
-      matched: false,
-      success: false,
-      reason: `KMnO₄ 氧化反应介质必须为浓 HCl，当前介质为 "${rawMedium}"`,
-    };
-  }
+  const normalizedConditions = new Set<B2R1ReactionCondition>(
+    rawConditions
+      .map(normalizeReactionCondition)
+      .filter((c): c is B2R1ReactionCondition => c !== undefined)
+  );
+  const hasOxideFilmRemoved = normalizedConditions.has("oxide_film_removed");
 
-  // 2. OR-Cu-HNO3-dil: Cu + 稀 HNO₃
-  if (normalizedReactants.length === 1 && normalizedReactants[0] === "Cu") {
-    if (normalizedMedium === "dil_hno3") {
+  // 1. 稀硝酸介质分叉 (§3.7)
+  if (normalizedMedium === "dil_hno3") {
+    if (normalizedReactants.length === 1 && normalizedReactants[0] === "Cu") {
       const reaction = REDOX_ROW_MAP.get("OR-Cu-HNO3-dil")!;
       return {
         matched: true,
@@ -310,13 +424,36 @@ export function matchB2R1RedoxReaction(
     return {
       matched: false,
       success: false,
-      reason: `Cu 与硝酸反应（稀）必须在稀 HNO₃ 介质中，当前介质为 "${rawMedium}"`,
+      reason: `未收录的稀硝酸氧化还原反应: 反应物 [${normalizedReactants.join(", ")}]`,
     };
   }
 
-  // 3. OR-Na2FeO4-purify: Na2FeO4 + 水
-  if (normalizedReactants.length === 1 && normalizedReactants[0] === "Na2FeO4") {
-    if (normalizedMedium === "water") {
+  // 2. 浓盐酸介质分叉 (§3.8)
+  if (normalizedMedium === "conc_hcl") {
+    if (normalizedReactants.length === 1 && normalizedReactants[0] === "KMnO4") {
+      const reaction = REDOX_ROW_MAP.get("OR-KMnO4-HCl-conc")!;
+      return {
+        matched: true,
+        success: true,
+        rowId: reaction.id,
+        reaction,
+        stimulusStatus: reaction.stimulusStatus,
+        statusNameZh: reaction.stimulusStatus?.nameZh,
+        statusNameEn: reaction.stimulusStatus?.nameEn,
+        statusId: reaction.stimulusStatus?.id,
+        effectZh: reaction.effectZh,
+      };
+    }
+    return {
+      matched: false,
+      success: false,
+      reason: `未收录的浓盐酸氧化还原反应: 反应物 [${normalizedReactants.join(", ")}]`,
+    };
+  }
+
+  // 3. 水介质分叉 (§3.10)
+  if (normalizedMedium === "water") {
+    if (normalizedReactants.length === 1 && normalizedReactants[0] === "Na2FeO4") {
       const reaction = REDOX_ROW_MAP.get("OR-Na2FeO4-purify")!;
       return {
         matched: true,
@@ -330,6 +467,126 @@ export function matchB2R1RedoxReaction(
         effectZh: reaction.effectZh,
       };
     }
+    return {
+      matched: false,
+      success: false,
+      reason: `未收录的水介质反应: 反应物 [${normalizedReactants.join(", ")}]`,
+    };
+  }
+
+  // 4. 稀非氧化性酸介质分叉 (§3.2 金属在稀非氧化性酸)
+  if (normalizedMedium === "dil_non_oxidizing_acid") {
+    if (normalizedReactants.length === 1) {
+      const reactant = normalizedReactants[0];
+
+      // OR-Mg-H
+      if (reactant === "Mg") {
+        const reaction = REDOX_ROW_MAP.get("OR-Mg-H")!;
+        return {
+          matched: true,
+          success: true,
+          rowId: reaction.id,
+          reaction,
+          effectZh: reaction.effectZh,
+          gasTags: reaction.gasTags,
+        };
+      }
+
+      // OR-Zn-H
+      if (reactant === "Zn") {
+        const reaction = REDOX_ROW_MAP.get("OR-Zn-H")!;
+        return {
+          matched: true,
+          success: true,
+          rowId: reaction.id,
+          reaction,
+          effectZh: reaction.effectZh,
+          gasTags: reaction.gasTags,
+        };
+      }
+
+      // OR-Fe-H
+      if (reactant === "Fe") {
+        const reaction = REDOX_ROW_MAP.get("OR-Fe-H")!;
+        return {
+          matched: true,
+          success: true,
+          rowId: reaction.id,
+          reaction,
+          effectZh: reaction.effectZh,
+          gasTags: reaction.gasTags,
+        };
+      }
+
+      // OR-Al-H: 仅当牌面【去氧化膜】或指定条件牌
+      if (reactant === "Al") {
+        const reaction = REDOX_ROW_MAP.get("OR-Al-H")!;
+        if (hasOxideFilmRemoved) {
+          return {
+            matched: true,
+            success: true,
+            rowId: reaction.id,
+            reaction,
+            effectZh: reaction.effectZh,
+            gasTags: reaction.gasTags,
+          };
+        }
+        return {
+          matched: false,
+          success: false,
+          rowId: reaction.id,
+          reaction,
+          isNoReaction: true,
+          effectZh: "不反应（表面存在氧化膜）",
+          reason: "Al 表面有致密氧化膜，未满足【去氧化膜】条件，不反应",
+        };
+      }
+
+      // OR-Cu-H: Cu + 稀非氧化性酸 明确不反应
+      if (reactant === "Cu") {
+        const reaction = REDOX_ROW_MAP.get("OR-Cu-H")!;
+        return {
+          matched: false,
+          success: false,
+          rowId: reaction.id,
+          reaction,
+          isNoReaction: true,
+          effectZh: reaction.effectZh,
+          reason: "Cu 与稀非氧化性酸不反应",
+        };
+      }
+
+      // OR-Ag-H: Ag + 稀非氧化性酸 明确不反应
+      if (reactant === "Ag") {
+        const reaction = REDOX_ROW_MAP.get("OR-Ag-H")!;
+        return {
+          matched: false,
+          success: false,
+          rowId: reaction.id,
+          reaction,
+          isNoReaction: true,
+          effectZh: reaction.effectZh,
+          reason: "Ag 与稀非氧化性酸不反应",
+        };
+      }
+    }
+
+    return {
+      matched: false,
+      success: false,
+      reason: `未收录的稀非氧化性酸反应组合: 反应物 [${normalizedReactants.join(", ")}]`,
+    };
+  }
+
+  // 5. 其他介质下的未收录组合与友好提示
+  if (normalizedReactants.length === 1 && normalizedReactants[0] === "KMnO4") {
+    return {
+      matched: false,
+      success: false,
+      reason: `KMnO₄ 氧化反应介质必须为浓 HCl，当前介质为 "${rawMedium}"`,
+    };
+  }
+  if (normalizedReactants.length === 1 && normalizedReactants[0] === "Na2FeO4") {
     return {
       matched: false,
       success: false,

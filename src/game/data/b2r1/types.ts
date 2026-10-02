@@ -133,12 +133,39 @@ export interface B2R1StimulusStatusDefinition {
 }
 
 /**
- * 本刀冻结的三条氧化还原反应行 ID
+ * 本刀冻结的氧化还原反应行 ID
+ * §3.8: OR-KMnO4-HCl-conc
+ * §3.7: OR-Cu-HNO3-dil
+ * §3.10: OR-Na2FeO4-purify
+ * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
  */
 export type B2R1RedoxRowId =
   | "OR-KMnO4-HCl-conc"
   | "OR-Cu-HNO3-dil"
-  | "OR-Na2FeO4-purify";
+  | "OR-Na2FeO4-purify"
+  | "OR-Mg-H"
+  | "OR-Zn-H"
+  | "OR-Fe-H"
+  | "OR-Al-H"
+  | "OR-Cu-H"
+  | "OR-Ag-H";
+
+/**
+ * B2-R1 气体标签枚举（§3.2 H₂ 标注可燃气体标签）
+ */
+export type B2R1GasTag = "flammable_gas";
+
+export interface B2R1GasTagDefinition {
+  readonly id: B2R1GasTag;
+  readonly nameZh: string;
+  readonly nameEn: string;
+}
+
+/**
+ * B2-R1 反应条件枚举
+ * §3.2 本刀仅包含去氧化膜
+ */
+export type B2R1ReactionCondition = "oxide_film_removed";
 
 /**
  * 氧化还原反应行静态定义
@@ -150,6 +177,9 @@ export interface B2R1RedoxReactionDefinition {
   readonly reactants: readonly string[];
   readonly effectZh: string;
   readonly stimulusStatus?: B2R1StimulusStatusDefinition;
+  readonly gasTags?: readonly B2R1GasTag[];
+  readonly conditions?: readonly B2R1ReactionCondition[];
+  readonly isNoReaction?: boolean;
 }
 
 /**
@@ -159,6 +189,8 @@ export interface B2R1RedoxMatchInput {
   readonly reactants?: readonly string[];
   readonly reactant?: string;
   readonly medium: string;
+  readonly conditions?: readonly string[];
+  readonly condition?: string;
 }
 
 /**
@@ -174,20 +206,25 @@ export interface B2R1RedoxMatchSuccess {
   readonly statusNameEn?: string;
   readonly statusId?: string;
   readonly effectZh: string;
+  readonly gasTags?: readonly B2R1GasTag[];
+  readonly isNoReaction?: false;
 }
 
 /**
- * 氧化还原匹配失败结果
+ * 氧化还原匹配失败或显式不反应结果
  */
 export interface B2R1RedoxMatchFailure {
   readonly matched: false;
   readonly success: false;
-  readonly rowId?: undefined;
+  readonly rowId?: B2R1RedoxRowId;
+  readonly reaction?: B2R1RedoxReactionDefinition;
   readonly stimulusStatus?: undefined;
   readonly statusNameZh?: undefined;
   readonly statusNameEn?: undefined;
   readonly statusId?: undefined;
-  readonly effectZh?: undefined;
+  readonly effectZh?: string;
+  readonly gasTags?: undefined;
+  readonly isNoReaction?: boolean;
   readonly reason: string;
 }
 

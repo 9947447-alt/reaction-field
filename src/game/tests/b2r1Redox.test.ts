@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  B2R1_CONDITION_OXIDE_FILM_REMOVED,
+  B2R1_GAS_TAG_DEFINITION_FLAMMABLE,
+  B2R1_GAS_TAG_DEFINITIONS,
+  B2R1_GAS_TAG_FLAMMABLE,
   B2R1_MEDIUM_DEFINITIONS,
   B2R1_MEDIUM_IDS,
   B2R1_METAL_DEFINITIONS,
   B2R1_METAL_ELEMENT_IDS,
+  B2R1_REACTION_CONDITIONS,
   B2R1_REDOX_REACTION_ROWS,
   B2R1_STIMULUS_STATUS_CHLORINE,
   B2R1_STIMULUS_STATUS_NITROGEN_OXIDE,
@@ -13,6 +18,7 @@ import {
   matchB2R1RedoxReaction,
   normalizeIonId,
   normalizeMediumId,
+  normalizeReactionCondition,
 } from "../data/b2r1";
 
 describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
@@ -72,14 +78,20 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
     });
   });
 
-  describe("3. 三条氧化还原反应行与双语气体刺激状态 (§3.7, §3.8, §3.10, §3.11)", () => {
-    it("恰好收录本刀锁定的三条反应行", () => {
-      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(3);
+  describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.7, §3.8, §3.10, §3.11)", () => {
+    it("恰好收录本刀锁定的九条反应行", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(9);
       const rowIds = B2R1_REDOX_REACTION_ROWS.map((r) => r.id);
       expect(rowIds).toEqual([
         "OR-KMnO4-HCl-conc",
         "OR-Cu-HNO3-dil",
         "OR-Na2FeO4-purify",
+        "OR-Mg-H",
+        "OR-Zn-H",
+        "OR-Fe-H",
+        "OR-Al-H",
+        "OR-Cu-H",
+        "OR-Ag-H",
       ]);
     });
 
@@ -97,83 +109,226 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       expect(B2R1_STIMULUS_STATUS_NITROGEN_OXIDE.nameEn).toBe("nitrogen-oxide stimulus");
     });
 
-    it("各反应行包含完整方程式、介质及效果定义", () => {
-      const kmno4Row = getB2R1RedoxReaction("OR-KMnO4-HCl-conc");
-      expect(kmno4Row).toBeDefined();
-      expect(kmno4Row?.medium).toBe("conc_hcl");
-      expect(kmno4Row?.stimulusStatus?.nameZh).toBe("氯气刺激");
-      expect(kmno4Row?.stimulusStatus?.nameEn).toBe("chlorine-gas stimulus");
+    it("可燃气体标签定义与反应条件常量冻结", () => {
+      expect(B2R1_GAS_TAG_FLAMMABLE).toBe("flammable_gas");
+      expect(B2R1_GAS_TAG_DEFINITION_FLAMMABLE.id).toBe("flammable_gas");
+      expect(B2R1_GAS_TAG_DEFINITION_FLAMMABLE.nameZh).toBe("可燃气体");
+      expect(B2R1_GAS_TAG_DEFINITION_FLAMMABLE.nameEn).toBe("flammable gas");
+      expect(Object.isFrozen(B2R1_GAS_TAG_DEFINITION_FLAMMABLE)).toBe(true);
+      expect(B2R1_GAS_TAG_DEFINITIONS[B2R1_GAS_TAG_FLAMMABLE]).toBe(B2R1_GAS_TAG_DEFINITION_FLAMMABLE);
 
-      const cuRow = getB2R1RedoxReaction("OR-Cu-HNO3-dil");
+      expect(B2R1_CONDITION_OXIDE_FILM_REMOVED).toBe("oxide_film_removed");
+      expect(B2R1_REACTION_CONDITIONS).toContain("oxide_film_removed");
+      expect(normalizeReactionCondition("去氧化膜")).toBe("oxide_film_removed");
+      expect(normalizeReactionCondition("oxide_film_removed")).toBe("oxide_film_removed");
+      expect(normalizeReactionCondition("未知条件")).toBeUndefined();
+    });
+
+    it("§3.2 产氢行包含可燃标签，且不包含即时伤害数值", () => {
+      const h2Rows = ["OR-Mg-H", "OR-Zn-H", "OR-Fe-H", "OR-Al-H"] as const;
+      for (const id of h2Rows) {
+        const row = getB2R1RedoxReaction(id);
+        expect(row).toBeDefined();
+        expect(row?.medium).toBe("dil_non_oxidizing_acid");
+        expect(row?.gasTags).toContain("flammable_gas");
+        // 绝不包含伤害数值字段
+        expect((row as unknown as Record<string, unknown>).damage).toBeUndefined();
+        expect((row as unknown as Record<string, unknown>).instantDamage).toBeUndefined();
+        expect((row as unknown as Record<string, unknown>).duration).toBeUndefined();
+      }
+    });
+
+    it("§3.2 Cu 与 Ag 行明确定义为不反应", () => {
+      const cuRow = getB2R1RedoxReaction("OR-Cu-H");
       expect(cuRow).toBeDefined();
-      expect(cuRow?.medium).toBe("dil_hno3");
-      expect(cuRow?.stimulusStatus?.nameZh).toBe("氮氧化物刺激");
-      expect(cuRow?.stimulusStatus?.nameEn).toBe("nitrogen-oxide stimulus");
+      expect(cuRow?.medium).toBe("dil_non_oxidizing_acid");
+      expect(cuRow?.isNoReaction).toBe(true);
+      expect(cuRow?.effectZh).toBe("不反应");
 
-      const purifyRow = getB2R1RedoxReaction("OR-Na2FeO4-purify");
-      expect(purifyRow).toBeDefined();
-      expect(purifyRow?.medium).toBe("water");
-      expect(purifyRow?.stimulusStatus).toBeUndefined();
-      expect(purifyRow?.effectZh).toBe("移除一项浑浊/有机污染");
+      const agRow = getB2R1RedoxReaction("OR-Ag-H");
+      expect(agRow).toBeDefined();
+      expect(agRow?.medium).toBe("dil_non_oxidizing_acid");
+      expect(agRow?.isNoReaction).toBe(true);
+      expect(agRow?.effectZh).toBe("不反应");
     });
   });
 
-  describe("4. 纯函数匹配正确识别三种完整条件", () => {
-    it("1) OR-KMnO4-HCl-conc: 2KMnO₄ + 16HCl → 2KCl + 2MnCl₂ + 5Cl₂↑ + 8H₂O", () => {
-      const res1 = matchB2R1RedoxReaction({
-        reactants: ["KMnO4"],
-        medium: "conc_hcl",
-      });
-      expect(res1.matched).toBe(true);
-      expect(res1.rowId).toBe("OR-KMnO4-HCl-conc");
-      expect(res1.statusNameZh).toBe("氯气刺激");
-      expect(res1.statusNameEn).toBe("chlorine-gas stimulus");
-      expect(res1.statusId).toBe("chlorine_gas_stimulus");
+  describe("4. 纯函数匹配正确识别旧三条与新六行", () => {
+    describe("旧三条氧化还原反应保持不变", () => {
+      it("1) OR-KMnO4-HCl-conc: 2KMnO₄ + 16HCl → 2KCl + 2MnCl₂ + 5Cl₂↑ + 8H₂O", () => {
+        const res1 = matchB2R1RedoxReaction({
+          reactants: ["KMnO4"],
+          medium: "conc_hcl",
+        });
+        expect(res1.matched).toBe(true);
+        expect(res1.rowId).toBe("OR-KMnO4-HCl-conc");
+        expect(res1.statusNameZh).toBe("氯气刺激");
+        expect(res1.statusNameEn).toBe("chlorine-gas stimulus");
+        expect(res1.statusId).toBe("chlorine_gas_stimulus");
 
-      // 支持双参调用及别名
-      const res2 = matchB2R1RedoxReaction("KMnO₄", "浓 HCl");
-      expect(res2.matched).toBe(true);
-      expect(res2.rowId).toBe("OR-KMnO4-HCl-conc");
-      expect(res2.statusNameZh).toBe("氯气刺激");
+        const res2 = matchB2R1RedoxReaction("KMnO₄", "浓 HCl");
+        expect(res2.matched).toBe(true);
+        expect(res2.rowId).toBe("OR-KMnO4-HCl-conc");
+        expect(res2.statusNameZh).toBe("氯气刺激");
+      });
+
+      it("2) OR-Cu-HNO3-dil: 3Cu + 8H⁺ + 2NO₃⁻ → 3Cu²⁺ + 2NO↑ + 4H₂O", () => {
+        const res1 = matchB2R1RedoxReaction({
+          reactants: ["Cu"],
+          medium: "dil_hno3",
+        });
+        expect(res1.matched).toBe(true);
+        expect(res1.rowId).toBe("OR-Cu-HNO3-dil");
+        expect(res1.statusNameZh).toBe("氮氧化物刺激");
+        expect(res1.statusNameEn).toBe("nitrogen-oxide stimulus");
+        expect(res1.statusId).toBe("nitrogen_oxide_stimulus");
+
+        const res2 = matchB2R1RedoxReaction("铜", "稀硝酸");
+        expect(res2.matched).toBe(true);
+        expect(res2.rowId).toBe("OR-Cu-HNO3-dil");
+        expect(res2.statusNameZh).toBe("氮氧化物刺激");
+      });
+
+      it("3) OR-Na2FeO4-purify: 4Na₂FeO₄ + 10H₂O → 4Fe(OH)₃↓ + 3O₂↑ + 8NaOH", () => {
+        const res1 = matchB2R1RedoxReaction({
+          reactants: ["Na2FeO4"],
+          medium: "water",
+        });
+        expect(res1.matched).toBe(true);
+        expect(res1.rowId).toBe("OR-Na2FeO4-purify");
+        expect(res1.stimulusStatus).toBeUndefined();
+        expect(res1.statusNameZh).toBeUndefined();
+        expect(res1.effectZh).toBe("移除一项浑浊/有机污染");
+
+        const res2 = matchB2R1RedoxReaction("Na₂FeO₄", "水");
+        expect(res2.matched).toBe(true);
+        expect(res2.rowId).toBe("OR-Na2FeO4-purify");
+      });
     });
 
-    it("2) OR-Cu-HNO3-dil: 3Cu + 8H⁺ + 2NO₃⁻ → 3Cu²⁺ + 2NO↑ + 4H₂O", () => {
-      const res1 = matchB2R1RedoxReaction({
+    describe("§3.2 金属在稀非氧化性酸中产氢与不反应", () => {
+      it("Mg 加稀非氧化性酸返回 OR-Mg-H，带可燃气体标签，无伤害数值", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Mg"],
+          medium: "dil_non_oxidizing_acid",
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Mg-H");
+        expect(res.gasTags).toContain("flammable_gas");
+        expect((res as unknown as Record<string, unknown>).damage).toBeUndefined();
+
+        const resAlias = matchB2R1RedoxReaction("镁", "稀非氧化性酸");
+        expect(resAlias.matched).toBe(true);
+        expect(resAlias.rowId).toBe("OR-Mg-H");
+      });
+
+      it("Zn 加稀非氧化性酸返回 OR-Zn-H，带可燃气体标签，无伤害数值", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Zn"],
+          medium: "dil_non_oxidizing_acid",
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Zn-H");
+        expect(res.gasTags).toContain("flammable_gas");
+        expect((res as unknown as Record<string, unknown>).damage).toBeUndefined();
+
+        const resAlias = matchB2R1RedoxReaction("锌", "稀非氧化性酸");
+        expect(resAlias.matched).toBe(true);
+        expect(resAlias.rowId).toBe("OR-Zn-H");
+      });
+
+      it("Fe 加稀非氧化性酸返回 OR-Fe-H，带可燃气体标签，无伤害数值且不接沉淀链", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Fe"],
+          medium: "dil_non_oxidizing_acid",
+        });
+        expect(res.matched).toBe(true);
+        expect(res.success).toBe(true);
+        expect(res.rowId).toBe("OR-Fe-H");
+        expect(res.gasTags).toContain("flammable_gas");
+        expect((res as unknown as Record<string, unknown>).damage).toBeUndefined();
+
+        const resAlias = matchB2R1RedoxReaction("铁", "稀非氧化性酸");
+        expect(resAlias.matched).toBe(true);
+        expect(resAlias.rowId).toBe("OR-Fe-H");
+      });
+
+      it("Al 无去氧化膜返回不反应；有去氧化膜返回 OR-Al-H", () => {
+        // 无去氧化膜：不反应
+        const resWithoutCondition = matchB2R1RedoxReaction({
+          reactants: ["Al"],
+          medium: "dil_non_oxidizing_acid",
+        });
+        expect(resWithoutCondition.matched).toBe(false);
+        expect(resWithoutCondition.success).toBe(false);
+        expect(resWithoutCondition.rowId).toBe("OR-Al-H");
+        expect(resWithoutCondition.isNoReaction).toBe(true);
+
+        // 有去氧化膜：成功匹配 OR-Al-H
+        const resWithCondition = matchB2R1RedoxReaction({
+          reactants: ["Al"],
+          medium: "dil_non_oxidizing_acid",
+          conditions: ["oxide_film_removed"],
+        });
+        expect(resWithCondition.matched).toBe(true);
+        expect(resWithCondition.success).toBe(true);
+        expect(resWithCondition.rowId).toBe("OR-Al-H");
+        expect(resWithCondition.gasTags).toContain("flammable_gas");
+        expect((resWithCondition as unknown as Record<string, unknown>).damage).toBeUndefined();
+
+        // 别名调用支持：中文去氧化膜
+        const resWithAlias = matchB2R1RedoxReaction("铝", "稀非氧化性酸", "去氧化膜");
+        expect(resWithAlias.matched).toBe(true);
+        expect(resWithAlias.rowId).toBe("OR-Al-H");
+      });
+
+      it("Cu + dil_non_oxidizing_acid 返回 OR-Cu-H，matched 为 false 且显式标记不反应", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Cu"],
+          medium: "dil_non_oxidizing_acid",
+        });
+        expect(res.matched).toBe(false);
+        expect(res.success).toBe(false);
+        expect(res.rowId).toBe("OR-Cu-H");
+        expect(res.isNoReaction).toBe(true);
+
+        const resAlias = matchB2R1RedoxReaction("铜", "稀非氧化性酸");
+        expect(resAlias.matched).toBe(false);
+        expect(resAlias.rowId).toBe("OR-Cu-H");
+        expect(resAlias.isNoReaction).toBe(true);
+      });
+
+      it("Ag + dil_non_oxidizing_acid 返回 OR-Ag-H，matched 为 false 且显式标记不反应", () => {
+        const res = matchB2R1RedoxReaction({
+          reactants: ["Ag"],
+          medium: "dil_non_oxidizing_acid",
+        });
+        expect(res.matched).toBe(false);
+        expect(res.success).toBe(false);
+        expect(res.rowId).toBe("OR-Ag-H");
+        expect(res.isNoReaction).toBe(true);
+
+        const resAlias = matchB2R1RedoxReaction("银", "稀非氧化性酸");
+        expect(resAlias.matched).toBe(false);
+        expect(resAlias.rowId).toBe("OR-Ag-H");
+        expect(resAlias.isNoReaction).toBe(true);
+      });
+    });
+  });
+
+  describe("5. 介质分叉与严格负例拦截回归测试", () => {
+    it("P0: Cu + dil_hno3 仍返回 OR-Cu-HNO3-dil (matched=true, 氮氧化物刺激)，绝不落入 §3.2 或判为不反应", () => {
+      const res = matchB2R1RedoxReaction({
         reactants: ["Cu"],
         medium: "dil_hno3",
       });
-      expect(res1.matched).toBe(true);
-      expect(res1.rowId).toBe("OR-Cu-HNO3-dil");
-      expect(res1.statusNameZh).toBe("氮氧化物刺激");
-      expect(res1.statusNameEn).toBe("nitrogen-oxide stimulus");
-      expect(res1.statusId).toBe("nitrogen_oxide_stimulus");
-
-      // 支持双参调用及别名
-      const res2 = matchB2R1RedoxReaction("铜", "稀硝酸");
-      expect(res2.matched).toBe(true);
-      expect(res2.rowId).toBe("OR-Cu-HNO3-dil");
-      expect(res2.statusNameZh).toBe("氮氧化物刺激");
+      expect(res.matched).toBe(true);
+      expect(res.rowId).toBe("OR-Cu-HNO3-dil");
+      expect(res.statusNameZh).toBe("氮氧化物刺激");
     });
 
-    it("3) OR-Na2FeO4-purify: 4Na₂FeO₄ + 10H₂O → 4Fe(OH)₃↓ + 3O₂↑ + 8NaOH", () => {
-      const res1 = matchB2R1RedoxReaction({
-        reactants: ["Na2FeO4"],
-        medium: "water",
-      });
-      expect(res1.matched).toBe(true);
-      expect(res1.rowId).toBe("OR-Na2FeO4-purify");
-      expect(res1.stimulusStatus).toBeUndefined();
-      expect(res1.statusNameZh).toBeUndefined();
-      expect(res1.effectZh).toBe("移除一项浑浊/有机污染");
-
-      // 支持双参调用及别名
-      const res2 = matchB2R1RedoxReaction("Na₂FeO₄", "水");
-      expect(res2.matched).toBe(true);
-      expect(res2.rowId).toBe("OR-Na2FeO4-purify");
-    });
-  });
-
-  describe("5. 负例拦截回归测试（必须全部失败）", () => {
     it("负例 1: KMnO₄ 无浓 HCl（如介质为稀盐酸、水、稀硝酸、稀非氧化性酸）", () => {
       expect(matchB2R1RedoxReaction("KMnO4", "water").matched).toBe(false);
       expect(matchB2R1RedoxReaction("KMnO4", "dil_non_oxidizing_acid").matched).toBe(false);
@@ -181,16 +336,7 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       expect(matchB2R1RedoxReaction("KMnO4", "conc_hno3").matched).toBe(false);
     });
 
-    it("负例 2: Cu + 稀非氧化性酸（根据 §3.2 Cu + H⁺ 不反应）", () => {
-      const res = matchB2R1RedoxReaction({
-        reactants: ["Cu"],
-        medium: "dil_non_oxidizing_acid",
-      });
-      expect(res.matched).toBe(false);
-      expect(res.rowId).toBeUndefined();
-    });
-
-    it("负例 3: Cu + 浓 HNO₃（本刀只锁三条，不实现 OR-Cu-HNO3-conc）", () => {
+    it("负例 2: Cu + 浓 HNO₃（本刀只锁 §3.2 与旧三行，不实现 OR-Cu-HNO3-conc）返回未知失败", () => {
       const res = matchB2R1RedoxReaction({
         reactants: ["Cu"],
         medium: "conc_hno3",
@@ -199,19 +345,30 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       expect(res.rowId).toBeUndefined();
     });
 
-    it("负例 4: Na₂FeO₄ 无水（如介质非水）", () => {
+    it("负例 3: Na₂FeO₄ 无水（如介质非水）", () => {
       expect(matchB2R1RedoxReaction("Na2FeO4", "conc_hcl").matched).toBe(false);
       expect(matchB2R1RedoxReaction("Na2FeO4", "dil_hno3").matched).toBe(false);
       expect(matchB2R1RedoxReaction("Na2FeO4", "dil_non_oxidizing_acid").matched).toBe(false);
     });
 
-    it("负例 5: 任意未列组合（未实现金属、多反应物、未知试剂等）", () => {
+    it("负例 4: 未知组合返回 matched=false 且 rowId 为 undefined，与显式不反应（带 rowId）严格区分", () => {
       // 未列出金属与酸
-      expect(matchB2R1RedoxReaction("Fe", "dil_hno3").matched).toBe(false);
-      expect(matchB2R1RedoxReaction("Mg", "dil_non_oxidizing_acid").matched).toBe(false);
-      expect(matchB2R1RedoxReaction("Zn", "dil_non_oxidizing_acid").matched).toBe(false);
-      expect(matchB2R1RedoxReaction("Al", "conc_hcl").matched).toBe(false);
-      expect(matchB2R1RedoxReaction("Ag", "dil_hno3").matched).toBe(false);
+      const resFeHno3 = matchB2R1RedoxReaction("Fe", "dil_hno3");
+      expect(resFeHno3.matched).toBe(false);
+      expect(resFeHno3.rowId).toBeUndefined();
+
+      const resAlHCl = matchB2R1RedoxReaction("Al", "conc_hcl");
+      expect(resAlHCl.matched).toBe(false);
+      expect(resAlHCl.rowId).toBeUndefined();
+
+      const resAgHno3 = matchB2R1RedoxReaction("Ag", "dil_hno3");
+      expect(resAgHno3.matched).toBe(false);
+      expect(resAgHno3.rowId).toBeUndefined();
+
+      // 未收录单质金属（如 Au）在稀非氧化性酸中
+      const resAu = matchB2R1RedoxReaction("Au", "dil_non_oxidizing_acid");
+      expect(resAu.matched).toBe(false);
+      expect(resAu.rowId).toBeUndefined();
 
       // 杂合多反应物
       expect(matchB2R1RedoxReaction(["Cu", "KMnO4"], "conc_hcl").matched).toBe(false);
@@ -225,16 +382,19 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
 
   describe("6. 纯函数不修改入参", () => {
     it("传入被 Object.freeze 冻结的对象与数组不会被篡改", () => {
-      const reactants = Object.freeze(["Cu"]);
+      const reactants = Object.freeze(["Al"]);
+      const conditions = Object.freeze(["oxide_film_removed"]);
       const input = Object.freeze({
         reactants,
-        medium: "dil_hno3",
+        medium: "dil_non_oxidizing_acid",
+        conditions,
       });
 
       const res = matchB2R1RedoxReaction(input);
       expect(res.matched).toBe(true);
-      expect(input.reactants).toEqual(["Cu"]);
-      expect(input.medium).toBe("dil_hno3");
+      expect(input.reactants).toEqual(["Al"]);
+      expect(input.medium).toBe("dil_non_oxidizing_acid");
+      expect(input.conditions).toEqual(["oxide_film_removed"]);
     });
   });
 });

@@ -9,6 +9,8 @@ import type {
   B2R1DisplacementEffectTagDefinition,
   B2R1GasTag,
   B2R1GasTagDefinition,
+  B2R1HalogenProductTag,
+  B2R1HalogenProductTagDefinition,
   B2R1IonId,
   B2R1MediumDefinition,
   B2R1MediumId,
@@ -259,6 +261,51 @@ const CU2_SOLUTION_IONS: readonly B2R1CationId[] = Object.freeze(["Cu2+"]);
 const AG_SOLUTION_IONS: readonly B2R1CationId[] = Object.freeze(["Ag+"]);
 
 /**
+ * 卤素置换产物标签：生成 Br₂ 卡或状态
+ */
+export const B2R1_PRODUCT_TAG_BR2: B2R1HalogenProductTag = "produce_br2_card_or_status";
+
+export const B2R1_PRODUCT_TAG_DEFINITION_BR2: B2R1HalogenProductTagDefinition = Object.freeze({
+  id: "produce_br2_card_or_status",
+  nameZh: "生成 Br₂ 卡或状态",
+  nameEn: "produce Br2 card or status",
+});
+
+/**
+ * 卤素置换产物标签：生成 I₂
+ */
+export const B2R1_PRODUCT_TAG_I2: B2R1HalogenProductTag = "produce_i2";
+
+export const B2R1_PRODUCT_TAG_DEFINITION_I2: B2R1HalogenProductTagDefinition = Object.freeze({
+  id: "produce_i2",
+  nameZh: "生成 I₂",
+  nameEn: "produce I2",
+});
+
+export const B2R1_HALOGEN_PRODUCT_TAG_DEFINITIONS: Readonly<Record<
+  B2R1HalogenProductTag,
+  B2R1HalogenProductTagDefinition
+>> = Object.freeze({
+  produce_br2_card_or_status: B2R1_PRODUCT_TAG_DEFINITION_BR2,
+  produce_i2: B2R1_PRODUCT_TAG_DEFINITION_I2,
+});
+
+export const B2R1_HALOGEN_PRODUCT_TAGS: readonly B2R1HalogenProductTag[] = Object.freeze([
+  B2R1_PRODUCT_TAG_BR2,
+  B2R1_PRODUCT_TAG_I2,
+]);
+
+const BR2_PRODUCT_TAGS: readonly B2R1HalogenProductTag[] = Object.freeze([
+  B2R1_PRODUCT_TAG_BR2,
+]);
+const I2_PRODUCT_TAGS: readonly B2R1HalogenProductTag[] = Object.freeze([
+  B2R1_PRODUCT_TAG_I2,
+]);
+const BR_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Br-"]);
+const I_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["I-"]);
+const F_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["F-"]);
+
+/**
  * 本刀冻结的氧化还原反应行静态数据
  * §3.8: OR-KMnO4-HCl-conc
  * §3.7: OR-Cu-HNO3-dil
@@ -423,6 +470,49 @@ export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = 
     effectTags: AGNO3_CL_TEST_EFFECT_TAGS,
     effectTagZh: "AgNO₃ / Cl⁻ 检验联动",
   }),
+  Object.freeze({
+    id: "OR-Cl2-Br",
+    equation: "Cl₂ + 2Br⁻ → 2Cl⁻ + Br₂",
+    medium: "water",
+    reactants: Object.freeze(["Cl2"]),
+    solutionIon: "Br-",
+    solutionIons: BR_SOLUTION_IONS,
+    effectZh: "生成 Br₂ 卡或状态",
+    productTags: BR2_PRODUCT_TAGS,
+    productTagZh: "生成 Br₂ 卡或状态",
+  }),
+  Object.freeze({
+    id: "OR-Cl2-I",
+    equation: "Cl₂ + 2I⁻ → 2Cl⁻ + I₂",
+    medium: "water",
+    reactants: Object.freeze(["Cl2"]),
+    solutionIon: "I-",
+    solutionIons: I_SOLUTION_IONS,
+    effectZh: "生成 I₂",
+    productTags: I2_PRODUCT_TAGS,
+    productTagZh: "生成 I₂",
+  }),
+  Object.freeze({
+    id: "OR-Br2-I",
+    equation: "Br₂ + 2I⁻ → 2Br⁻ + I₂",
+    medium: "water",
+    reactants: Object.freeze(["Br2"]),
+    solutionIon: "I-",
+    solutionIons: I_SOLUTION_IONS,
+    effectZh: "生成 I₂",
+    productTags: I2_PRODUCT_TAGS,
+    productTagZh: "生成 I₂",
+  }),
+  Object.freeze({
+    id: "OR-Cl2-F",
+    equation: "Cl₂ + F⁻",
+    medium: "water",
+    reactants: Object.freeze(["Cl2"]),
+    solutionIon: "F-",
+    solutionIons: F_SOLUTION_IONS,
+    effectZh: "不反应",
+    isNoReaction: true,
+  }),
 ]);
 
 const REDOX_ROW_MAP = new Map<B2R1RedoxRowId, B2R1RedoxReactionDefinition>(
@@ -463,6 +553,23 @@ const REACTANT_NORMALIZATION_MAP: Record<string, string> = {
   Ag: "Ag",
   ag: "Ag",
   银: "Ag",
+  Cl2: "Cl2",
+  "Cl₂": "Cl2",
+  cl2: "Cl2",
+  氯气: "Cl2",
+  氯单质: "Cl2",
+  Br2: "Br2",
+  "Br₂": "Br2",
+  br2: "Br2",
+  溴: "Br2",
+  溴水: "Br2",
+  溴单质: "Br2",
+  I2: "I2",
+  "I₂": "I2",
+  i2: "I2",
+  碘: "I2",
+  碘水: "I2",
+  碘单质: "I2",
 };
 
 function normalizeReactantKey(item: string): string {
@@ -641,9 +748,9 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  // 3. 水介质分叉 (§3.10 高铁酸钠 & §3.3 金属置换)
+  // 3. 水介质分叉 (§3.10 高铁酸钠 & §3.3 金属置换 & §3.4 卤素置换)
   if (normalizedMedium === "water") {
-    // 3.1 溶液离子分叉 (§3.3 金属置换)
+    // 3.1 溶液离子分叉 (§3.3 金属置换 & §3.4 卤素置换)
     if (rawSolutionIons.length > 0) {
       if (normalizedReactants.length === 1 && normalizedSolutionIons.length === 1) {
         const reactant = normalizedReactants[0];
@@ -767,18 +874,51 @@ export function matchB2R1RedoxReaction(
           };
         }
 
-        // 其他溶液离子未列入 §3.3 置换白名单
+        // §3.4 仅匹配四个冻结组合，不推导活动性规则。
+        const halogenRowId =
+          reactant === "Cl2" && targetIon === "Br-" ? "OR-Cl2-Br" :
+          reactant === "Cl2" && targetIon === "I-" ? "OR-Cl2-I" :
+          reactant === "Br2" && targetIon === "I-" ? "OR-Br2-I" :
+          reactant === "Cl2" && targetIon === "F-" ? "OR-Cl2-F" :
+          undefined;
+        if (halogenRowId) {
+          const reaction = REDOX_ROW_MAP.get(halogenRowId)!;
+          if (reaction.isNoReaction) {
+            return {
+              matched: false,
+              success: false,
+              rowId: reaction.id,
+              reaction,
+              isNoReaction: true,
+              effectZh: reaction.effectZh,
+              reason: "Cl₂ 与 F⁻ 不反应（氟特殊，不泛化）",
+            };
+          }
+          return {
+            matched: true,
+            success: true,
+            rowId: reaction.id,
+            reaction,
+            effectZh: reaction.effectZh,
+            productTags: reaction.productTags,
+            productTagZh: reaction.productTagZh,
+            solutionIon: reaction.solutionIon,
+            solutionIons: reaction.solutionIons,
+          };
+        }
+
+        // 其他溶液离子未列入置换白名单
         return {
           matched: false,
           success: false,
-          reason: `未收录的金属置换反应: 金属 [${reactant}], 溶液离子 [${rawSolutionIons.join(", ")}]`,
+          reason: `未收录的置换反应: 反应物 [${reactant}], 溶液离子 [${rawSolutionIons.join(", ")}]`,
         };
       }
 
       return {
         matched: false,
         success: false,
-        reason: `金属置换反应物或离子不合法: 金属 [${normalizedReactants.join(", ")}], 离子 [${rawSolutionIons.join(", ")}]`,
+        reason: `置换反应物或离子不合法: 反应物 [${normalizedReactants.join(", ")}], 离子 [${rawSolutionIons.join(", ")}]`,
       };
     }
 

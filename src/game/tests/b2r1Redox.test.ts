@@ -606,6 +606,68 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
     });
 
     describe("7.3 严格负例拦截锁（验收标准要求）", () => {
+      it("P1: 完整 solution ion 输入必须属于命中行的白名单", () => {
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Mg"],
+            medium: "water",
+            solutionIons: ["Cu2+", "Unknown+"],
+          }).matched
+        ).toBe(false);
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Mg"],
+            medium: "water",
+            solutionIons: ["Cu2+", ""],
+          }).matched
+        ).toBe(false);
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Mg"],
+            medium: "water",
+            solutionIons: ["Cu2+"],
+            solutionIon: "Unknown+",
+          }).matched
+        ).toBe(false);
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Mg"],
+            medium: "dil_non_oxidizing_acid",
+            solutionIons: ["Cu2+"],
+          }).matched
+        ).toBe(false);
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["Cu"],
+            medium: "dil_hno3",
+            solutionIons: ["Ag+"],
+          }).matched
+        ).toBe(false);
+        expect(
+          matchB2R1RedoxReaction({
+            reactants: ["KMnO4"],
+            medium: "conc_hcl",
+            solutionIons: ["Unknown+"],
+          }).matched
+        ).toBe(false);
+
+        expect(matchB2R1RedoxReaction({ reactants: ["Mg"], solutionIons: ["Cu2+"] })).toMatchObject({
+          matched: true,
+          rowId: "OR-Mg-Cu",
+        });
+        expect(matchB2R1RedoxReaction({ reactants: ["Cu"], medium: "dil_hno3" })).toMatchObject({
+          matched: true,
+          rowId: "OR-Cu-HNO3-dil",
+        });
+        expect(
+          matchB2R1RedoxReaction({ reactants: ["Mg"], medium: "dil_non_oxidizing_acid" })
+        ).toMatchObject({ matched: true, rowId: "OR-Mg-H" });
+        expect(matchB2R1RedoxReaction({ reactants: ["KMnO4"], medium: "conc_hcl" })).toMatchObject({
+          matched: true,
+          rowId: "OR-KMnO4-HCl-conc",
+        });
+      });
+
       it("负例 1: 只有金属没有离子，不可靠金属单质自己配对成功", () => {
         // 在水介质中只有金属
         expect(matchB2R1RedoxReaction({ reactants: ["Mg"], medium: "water" }).matched).toBe(false);

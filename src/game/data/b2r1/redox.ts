@@ -9,6 +9,7 @@ import type {
   B2R1DisplacementEffectTagDefinition,
   B2R1GasTag,
   B2R1GasTagDefinition,
+  B2R1IonId,
   B2R1MediumDefinition,
   B2R1MediumId,
   B2R1MetalDefinition,
@@ -496,8 +497,10 @@ export function matchB2R1RedoxReaction(
     rawReactants = input.reactants ?? (input.reactant !== undefined ? [input.reactant] : []);
     rawMedium = input.medium;
     rawConditions = input.conditions ?? (input.condition !== undefined ? [input.condition] : []);
-    rawSolutionIons =
-      input.solutionIons ?? (input.solutionIon !== undefined ? [input.solutionIon] : []);
+    rawSolutionIons = [
+      ...(input.solutionIons ?? []),
+      ...(input.solutionIon !== undefined ? [input.solutionIon] : []),
+    ];
   } else if (typeof inputOrReactants === "string") {
     rawReactants = [inputOrReactants];
     rawMedium = mediumArg;
@@ -526,10 +529,19 @@ export function matchB2R1RedoxReaction(
       : [];
   }
 
-  // 溶液离子标准化
-  const normalizedSolutionIons = rawSolutionIons
-    .map((ion) => normalizeIonId(ion.trim()))
-    .filter((ion): ion is B2R1CationId => ion !== undefined);
+  // 每个显式溶液离子都必须可标准化；不能丢弃未知条目后继续匹配。
+  const normalizedSolutionIons: B2R1IonId[] = [];
+  for (const ion of rawSolutionIons) {
+    const normalizedIon = normalizeIonId(ion.trim());
+    if (!normalizedIon) {
+      return {
+        matched: false,
+        success: false,
+        reason: `未识别的溶液离子: "${ion}"`,
+      };
+    }
+    normalizedSolutionIons.push(normalizedIon);
+  }
 
   // 若未显式提供介质，但提供了溶液离子，则在水溶液环境下进行
   if (
@@ -553,6 +565,14 @@ export function matchB2R1RedoxReaction(
       matched: false,
       success: false,
       reason: `未识别的介质: "${rawMedium}"`,
+    };
+  }
+
+  if (normalizedMedium !== "water" && normalizedSolutionIons.length > 0) {
+    return {
+      matched: false,
+      success: false,
+      reason: `该介质反应不接受溶液离子: [${rawSolutionIons.join(", ")}]`,
     };
   }
 

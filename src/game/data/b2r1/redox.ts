@@ -304,6 +304,10 @@ const I2_PRODUCT_TAGS: readonly B2R1HalogenProductTag[] = Object.freeze([
 const BR_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Br-"]);
 const I_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["I-"]);
 const F_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["F-"]);
+const FE3_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe3+"]);
+const FE2_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe2+"]);
+const FE2_H_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe2+", "H+"]);
+const FE3_OH_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe3+", "OH-"]);
 
 /**
  * 本刀冻结的氧化还原反应行静态数据
@@ -312,6 +316,8 @@ const F_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["F-"]);
  * §3.10: OR-Na2FeO4-purify
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
  * §3.3: OR-Mg-Cu, OR-Zn-Cu, OR-Fe-Cu, OR-Mg-Ag, OR-Zn-Ag, OR-Fe-Ag, OR-Cu-Ag
+ * §3.4: OR-Cl2-Br, OR-Cl2-I, OR-Br2-I, OR-Cl2-F
+ * §3.5: 铁族 Fe²⁺ / Fe³⁺ 与单质铁五行
  */
 export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = Object.freeze([
   Object.freeze({
@@ -513,6 +519,50 @@ export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = 
     effectZh: "不反应",
     isNoReaction: true,
   }),
+  Object.freeze({
+    id: "OR-Fe-Fe3",
+    equation: "Fe + 2Fe³⁺ → 3Fe²⁺",
+    medium: "water",
+    reactants: Object.freeze(["Fe"]),
+    solutionIon: "Fe3+",
+    solutionIons: FE3_SOLUTION_IONS,
+    effectZh: "还原铁离子",
+  }),
+  Object.freeze({
+    id: "OR-Fe2-Cl2",
+    equation: "2Fe²⁺ + Cl₂ → 2Fe³⁺ + 2Cl⁻",
+    medium: "water",
+    reactants: Object.freeze(["Cl2"]),
+    solutionIon: "Fe2+",
+    solutionIons: FE2_SOLUTION_IONS,
+    effectZh: "氧化至 Fe³⁺",
+  }),
+  // Frozen §3.5 retained compatibility row; matcher continues to return canonical OR-Fe-Cu.
+  Object.freeze({
+    id: "OR-Fe-Cu2",
+    equation: "Fe + Cu²⁺ → Fe²⁺ + Cu",
+    medium: "water",
+    reactants: Object.freeze(["Fe"]),
+    solutionIon: "Cu2+",
+    solutionIons: CU2_SOLUTION_IONS,
+    effectZh: "与 §3.3 合并授权，行保留",
+  }),
+  Object.freeze({
+    id: "OR-Fe2-H2O2",
+    equation: "2Fe²⁺ + H₂O₂ + 2H⁺ → 2Fe³⁺ + 2H₂O",
+    medium: "water",
+    reactants: Object.freeze(["H2O2"]),
+    solutionIons: FE2_H_SOLUTION_IONS,
+    effectZh: "氧化至 Fe³⁺",
+  }),
+  Object.freeze({
+    id: "OR-Fe3-OH",
+    equation: "Fe³⁺ + 3OH⁻ → Fe(OH)₃↓",
+    medium: "water",
+    reactants: Object.freeze([]),
+    solutionIons: FE3_OH_SOLUTION_IONS,
+    effectZh: "沉淀；与离子表一致",
+  }),
 ]);
 
 const REDOX_ROW_MAP = new Map<B2R1RedoxRowId, B2R1RedoxReactionDefinition>(
@@ -570,11 +620,23 @@ const REACTANT_NORMALIZATION_MAP: Record<string, string> = {
   碘: "I2",
   碘水: "I2",
   碘单质: "I2",
+  H2O2: "H2O2",
+  "H₂O₂": "H2O2",
+  过氧化氢: "H2O2",
 };
 
 function normalizeReactantKey(item: string): string {
   const trimmed = item.trim();
   return REACTANT_NORMALIZATION_MAP[trimmed] ?? trimmed;
+}
+
+function hasExactSolutionIons(
+  actual: readonly B2R1IonId[],
+  expected: readonly B2R1IonId[]
+): boolean {
+  if (actual.length !== expected.length) return false;
+  const actualSet = new Set(actual);
+  return actualSet.size === actual.length && expected.every((ion) => actualSet.has(ion));
 }
 
 /**
@@ -683,11 +745,31 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  const normalizedReactants = rawReactants
-    .map(normalizeReactantKey)
-    .filter((r) => r.length > 0);
+  if (rawReactants.some((reactant) => reactant.trim() === "")) {
+    return {
+      matched: false,
+      success: false,
+      reason: "反应物列表包含空白项",
+    };
+  }
+
+  const normalizedReactants = rawReactants.map(normalizeReactantKey);
 
   if (normalizedReactants.length === 0) {
+    if (
+      normalizedMedium === "water" &&
+      hasExactSolutionIons(normalizedSolutionIons, FE3_OH_SOLUTION_IONS)
+    ) {
+      const reaction = REDOX_ROW_MAP.get("OR-Fe3-OH")!;
+      return {
+        matched: true,
+        success: true,
+        rowId: reaction.id,
+        reaction,
+        effectZh: reaction.effectZh,
+        solutionIons: reaction.solutionIons,
+      };
+    }
     return {
       matched: false,
       success: false,
@@ -750,6 +832,30 @@ export function matchB2R1RedoxReaction(
 
   // 3. 水介质分叉 (§3.10 高铁酸钠 & §3.3 金属置换 & §3.4 卤素置换)
   if (normalizedMedium === "water") {
+    if (normalizedReactants.length === 1) {
+      const reactant = normalizedReactants[0];
+      const rowId =
+        reactant === "Fe" && hasExactSolutionIons(normalizedSolutionIons, FE3_SOLUTION_IONS)
+          ? "OR-Fe-Fe3"
+          : reactant === "Cl2" && hasExactSolutionIons(normalizedSolutionIons, FE2_SOLUTION_IONS)
+          ? "OR-Fe2-Cl2"
+          : reactant === "H2O2" && hasExactSolutionIons(normalizedSolutionIons, FE2_H_SOLUTION_IONS)
+          ? "OR-Fe2-H2O2"
+          : undefined;
+      if (rowId) {
+        const reaction = REDOX_ROW_MAP.get(rowId)!;
+        return {
+          matched: true,
+          success: true,
+          rowId: reaction.id,
+          reaction,
+          effectZh: reaction.effectZh,
+          solutionIon: reaction.solutionIon,
+          solutionIons: reaction.solutionIons,
+        };
+      }
+    }
+
     // 3.1 溶液离子分叉 (§3.3 金属置换 & §3.4 卤素置换)
     if (rawSolutionIons.length > 0) {
       if (normalizedReactants.length === 1 && normalizedSolutionIons.length === 1) {

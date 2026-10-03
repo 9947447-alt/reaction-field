@@ -93,8 +93,8 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
   });
 
   describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.3, §3.5, §3.7, §3.8, §3.10, §3.11)", () => {
-    it("恰好收录本刀锁定的二十五条反应行（含 §3.5 五行铁族规则）", () => {
-      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(25);
+    it("恰好收录本刀锁定的三十条反应行（含 §3.5 铁族与 §3.6 硫族）", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(30);
       const rowIds = B2R1_REDOX_REACTION_ROWS.map((r) => r.id);
       expect(rowIds).toEqual([
         "OR-KMnO4-HCl-conc",
@@ -122,6 +122,11 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         "OR-Fe-Cu2",
         "OR-Fe2-H2O2",
         "OR-Fe3-OH",
+        "OR-S-O2",
+        "OR-SO2-Cl2",
+        "OR-SO2-O2",
+        "OR-S-Fe",
+        "OR-SO2-OH",
       ]);
     });
 
@@ -1051,6 +1056,224 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       for (const input of invalidInputs) {
         expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
       }
+    });
+  });
+
+  describe("10. §3.6 硫族静态行与精确匹配", () => {
+    const sulfurRows = [
+      "OR-S-O2",
+      "OR-SO2-Cl2",
+      "OR-SO2-O2",
+      "OR-S-Fe",
+      "OR-SO2-OH",
+    ] as const;
+
+    it("静态表从 25 行增加到 30 行，且只追加冻结的五行", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(30);
+      expect(B2R1_REDOX_REACTION_ROWS.slice(-5).map((row) => row.id)).toEqual(sulfurRows);
+
+      const expectedRows = [
+        ["OR-S-O2", "S + O₂ —【点燃】→ SO₂", "SO₂ 气体/泄漏链入口", undefined],
+        ["OR-SO2-Cl2", "SO₂ + Cl₂ + 2H₂O → H₂SO₄ + 2HCl", "需 Cl₂ 与介质；浓/稀按产物卡面", "water"],
+        ["OR-SO2-O2", "2SO₂ + O₂ —【催化】→ 2SO₃", "条件牌", undefined],
+        ["OR-S-Fe", "Fe + S —【加热】→ FeS", "硫化亚铁；无机固体盐卡", undefined],
+        ["OR-SO2-OH", "SO₂ + 2OH⁻ → SO₃²⁻ + H₂O", "吸收；对齐 Phase 10", "water"],
+      ] as const;
+
+      for (const [id, equation, effectZh, medium] of expectedRows) {
+        const row = getB2R1RedoxReaction(id);
+        expect(row).toMatchObject({ id, equation, effectZh });
+        expect(row?.medium).toBe(medium);
+        expect(Object.isFrozen(row)).toBe(true);
+        expect(Object.isFrozen(row?.reactants)).toBe(true);
+        if (id === "OR-SO2-OH") {
+          expect(row?.solutionIons).toEqual(["OH-"]);
+          expect(Object.isFrozen(row?.solutionIons)).toBe(true);
+        } else {
+          expect(row?.solutionIons).toBeUndefined();
+        }
+        expect(row).not.toHaveProperty("event");
+        expect(row).not.toHaveProperty("cardInstance");
+      }
+
+      expect(getB2R1RedoxReaction("OR-S-O2")?.conditions).toEqual(["ignition"]);
+      expect(getB2R1RedoxReaction("OR-SO2-O2")?.conditions).toEqual(["catalysis"]);
+      expect(getB2R1RedoxReaction("OR-S-Fe")?.conditions).toEqual(["heating"]);
+      for (const id of ["OR-S-O2", "OR-SO2-O2", "OR-S-Fe"] as const) {
+        expect(Object.isFrozen(getB2R1RedoxReaction(id)?.conditions)).toBe(true);
+      }
+      expect(getB2R1RedoxReaction("OR-SO2-O2")).toBeDefined();
+      expect(getB2R1RedoxReaction("OR-SO2-Cl2")).toBeDefined();
+      expect(getB2R1RedoxReaction("OR-SO2-OH")).toBeDefined();
+    });
+
+    it("条件 ID 与中文别名归一，且条件清单保持冻结", () => {
+      expect(B2R1_REACTION_CONDITIONS).toEqual([
+        "oxide_film_removed",
+        "ignition",
+        "heating",
+        "catalysis",
+      ]);
+      expect(Object.isFrozen(B2R1_REACTION_CONDITIONS)).toBe(true);
+      expect(normalizeReactionCondition("ignition")).toBe("ignition");
+      expect(normalizeReactionCondition("点燃")).toBe("ignition");
+      expect(normalizeReactionCondition("heating")).toBe("heating");
+      expect(normalizeReactionCondition("加热")).toBe("heating");
+      expect(normalizeReactionCondition("catalysis")).toBe("catalysis");
+      expect(normalizeReactionCondition("催化")).toBe("catalysis");
+      expect(normalizeReactionCondition("高温")).toBeUndefined();
+    });
+
+    it.each([
+      [["S", "O2"], ["点燃"], "OR-S-O2"],
+      [["O₂", "硫"], ["ignition"], "OR-S-O2"],
+      [["s", "氧气"], ["ignite"], "OR-S-O2"],
+      [["so2", "O₂"], ["催化"], "OR-SO2-O2"],
+      [["SO₂", "o2"], ["catalysis"], "OR-SO2-O2"],
+      [["二氧化硫", "O2"], ["catalyst"], "OR-SO2-O2"],
+      [["Fe", "S"], ["加热"], "OR-S-Fe"],
+      [["硫", "Fe"], ["heating"], "OR-S-Fe"],
+    ])("精确、顺序无关匹配 %j 与条件 %j", (reactants, conditions, rowId) => {
+      const result = matchB2R1RedoxReaction({ reactants, conditions });
+      expect(result).toMatchObject({ matched: true, success: true, rowId });
+      expect(result.reaction).toBe(getB2R1RedoxReaction(rowId));
+    });
+
+    it("无介质行要求对应条件，并拒绝显式介质或溶液离子", () => {
+      const missingConditions = [
+        { reactants: ["S", "O2"] },
+        { reactants: ["S", "O2"], conditions: ["heating"] },
+        { reactants: ["SO2", "O2"] },
+        { reactants: ["SO2", "O2"], conditions: ["ignition"] },
+        { reactants: ["Fe", "S"] },
+        { reactants: ["Fe", "S"], conditions: ["ignition"] },
+      ];
+      for (const input of missingConditions) {
+        expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
+      }
+
+      for (const medium of ["water", "dil_hno3", "conc_hcl"]) {
+        expect(matchB2R1RedoxReaction({
+          reactants: ["S", "O2"], medium, conditions: ["ignition"],
+        }).matched).toBe(false);
+        expect(matchB2R1RedoxReaction({
+          reactants: ["SO2", "O2"], medium, conditions: ["catalysis"],
+        }).matched).toBe(false);
+        expect(matchB2R1RedoxReaction({
+          reactants: ["Fe", "S"], medium, conditions: ["heating"],
+        }).matched).toBe(false);
+      }
+      expect(matchB2R1RedoxReaction({
+        reactants: ["S", "O2"], conditions: ["ignition"], solutionIon: "OH-",
+      }).matched).toBe(false);
+    });
+
+    it("OR-SO2-Cl2 只接受 SO2 + Cl2 + water，顺序无关且无溶液离子", () => {
+      for (const reactants of [["SO2", "Cl2"], ["Cl₂", "二氧化硫"]]) {
+        const result = matchB2R1RedoxReaction({ reactants, medium: "water" });
+        expect(result).toMatchObject({ matched: true, success: true, rowId: "OR-SO2-Cl2" });
+        expect(result.effectZh).toBe("需 Cl₂ 与介质；浓/稀按产物卡面");
+      }
+
+      const invalidInputs = [
+        { reactants: ["SO2", "Cl2"] },
+        { reactants: ["SO2"], medium: "water" },
+        { reactants: ["Cl2"], medium: "water" },
+        { reactants: ["SO2", "Cl2"], medium: "dil_hno3" },
+        { reactants: ["SO2", "Br2"], medium: "water" },
+        { reactants: ["SO2", "Cl2", "O2"], medium: "water" },
+        { reactants: ["SO2", "SO2", "Cl2"], medium: "water" },
+        { reactants: ["SO2", "Cl2"], medium: "water", solutionIon: "OH-" },
+        { reactants: ["SO2", "Cl2"], medium: "water", solutionIons: ["OH-"] },
+      ];
+      for (const input of invalidInputs) {
+        const result = matchB2R1RedoxReaction(input);
+        expect(result.matched, JSON.stringify(input)).toBe(false);
+        expect(result.rowId, JSON.stringify(input)).not.toBe("OR-SO2-Cl2");
+      }
+    });
+
+    it("OR-SO2-OH 在 solution ion 默认 water 与显式 water 下精确匹配", () => {
+      for (const input of [
+        { reactant: "SO2", solutionIon: "OH-" },
+        { reactant: "二氧化硫", solutionIons: ["OH⁻"], medium: "water" },
+      ]) {
+        const result = matchB2R1RedoxReaction(input);
+        expect(result).toMatchObject({ matched: true, success: true, rowId: "OR-SO2-OH" });
+        expect(result.effectZh).toBe("吸收；对齐 Phase 10");
+        expect(result.solutionIons).toEqual(["OH-"]);
+      }
+
+      const invalidInputs = [
+        { reactant: "SO2" },
+        { reactant: "SO2", solutionIon: "H+" },
+        { reactant: "SO2", solutionIons: ["OH-", "Cl-"] },
+        { reactant: "SO2", solutionIons: ["OH-", "OH-"] },
+        { reactant: "SO2", solutionIons: ["OH-", "Unknown+"] },
+        { reactant: "SO2", solutionIons: ["OH-", ""] },
+        { reactant: "SO2", solutionIons: ["OH-", "   "] },
+        { reactant: "SO2", solutionIon: "OH-", medium: "dil_hno3" },
+        { reactant: "SO2", solutionIon: "OH-", medium: "" },
+        { reactant: "SO2", solutionIon: "OH-", medium: "unknown_medium" },
+        { reactant: "Cl2", solutionIon: "OH-" },
+      ];
+      for (const input of invalidInputs) {
+        const result = matchB2R1RedoxReaction(input);
+        expect(result.matched, JSON.stringify(input)).toBe(false);
+        expect(result.rowId, JSON.stringify(input)).not.toBe("OR-SO2-OH");
+      }
+    });
+
+    it("跨组合保持白名单精确，且冻结输入不会被修改", () => {
+      const invalidInputs = [
+        { reactants: ["S", "O2"] },
+        { reactants: ["S"], conditions: ["ignition"] },
+        { reactants: ["O2"], conditions: ["ignition"] },
+        { reactants: ["S", "O2", "Cl2"], conditions: ["ignition"] },
+        { reactants: ["S", "S", "O2"], conditions: ["ignition"] },
+        { reactants: ["unknown", "S", "O2"], conditions: ["ignition"] },
+        { reactants: ["S", "Cl2"], conditions: ["ignition"] },
+        { reactants: ["SO2", "O2"] },
+        { reactants: ["SO2", "O2"], conditions: ["ignition"] },
+        { reactants: ["SO2"] , conditions: ["catalysis"] },
+        { reactants: ["O2"], conditions: ["catalysis"] },
+        { reactants: ["Fe", "S"], conditions: ["ignition"] },
+        { reactants: ["Cu", "S"], conditions: ["heating"] },
+        { reactants: ["SO2"], solutionIon: "H+" },
+        { reactants: ["SO2", "O2", "O2"], conditions: ["catalysis"] },
+        { reactants: ["SO2", "Fe"], conditions: ["heating"] },
+        { reactants: ["S", "O2", " "], conditions: ["ignition"] },
+      ];
+      for (const input of invalidInputs) {
+        expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
+      }
+
+      const reactants = Object.freeze(["O₂", "硫"]);
+      const conditions = Object.freeze(["点燃"]);
+      const input = Object.freeze({ reactants, conditions });
+      expect(matchB2R1RedoxReaction(input)).toMatchObject({
+        matched: true, success: true, rowId: "OR-S-O2",
+      });
+      expect(reactants).toEqual(["O₂", "硫"]);
+      expect(conditions).toEqual(["点燃"]);
+    });
+
+    it("medium 变为 optional 后旧 medium-specific rows 仍不接受缺失介质", () => {
+      expect(matchB2R1RedoxReaction({ reactant: "Cu" }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "KMnO4" }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "Na2FeO4" }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({
+        reactant: "Mg", solutionIon: "Cu2+", medium: "",
+      }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "Cu", medium: "dil_hno3" })).toMatchObject({
+        matched: true, rowId: "OR-Cu-HNO3-dil",
+      });
+      expect(matchB2R1RedoxReaction({ reactant: "KMnO4", medium: "conc_hcl" })).toMatchObject({
+        matched: true, rowId: "OR-KMnO4-HCl-conc",
+      });
+      expect(matchB2R1RedoxReaction({ reactant: "Na2FeO4", medium: "water" })).toMatchObject({
+        matched: true, rowId: "OR-Na2FeO4-purify",
+      });
     });
   });
 });

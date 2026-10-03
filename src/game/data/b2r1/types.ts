@@ -163,6 +163,7 @@ export interface B2R1HalogenProductTagDefinition {
 
 /**
  * 本刀冻结的氧化还原反应行 ID
+ * §3.6: OR-S-O2, OR-SO2-Cl2, OR-SO2-O2, OR-S-Fe, OR-SO2-OH
  * §3.8: OR-KMnO4-HCl-conc
  * §3.7: OR-Cu-HNO3-dil
  * §3.10: OR-Na2FeO4-purify
@@ -196,7 +197,12 @@ export type B2R1RedoxRowId =
   | "OR-Fe2-Cl2"
   | "OR-Fe-Cu2"
   | "OR-Fe2-H2O2"
-  | "OR-Fe3-OH";
+  | "OR-Fe3-OH"
+  | "OR-S-O2"
+  | "OR-SO2-Cl2"
+  | "OR-SO2-O2"
+  | "OR-S-Fe"
+  | "OR-SO2-OH";
 
 /**
  * B2-R1 气体标签枚举（§3.2 H₂ 标注可燃气体标签）
@@ -211,9 +217,13 @@ export interface B2R1GasTagDefinition {
 
 /**
  * B2-R1 反应条件枚举
- * §3.2 本刀仅包含去氧化膜
+ * §3.2 与 §3.6 反应条件
  */
-export type B2R1ReactionCondition = "oxide_film_removed";
+export type B2R1ReactionCondition =
+  | "oxide_film_removed"
+  | "ignition"
+  | "heating"
+  | "catalysis";
 
 /**
  * 氧化还原反应行静态定义
@@ -221,7 +231,7 @@ export type B2R1ReactionCondition = "oxide_film_removed";
 export interface B2R1RedoxReactionDefinition {
   readonly id: B2R1RedoxRowId;
   readonly equation: string;
-  readonly medium: B2R1MediumId;
+  readonly medium?: B2R1MediumId;
   readonly reactants: readonly string[];
   readonly effectZh: string;
   readonly stimulusStatus?: B2R1StimulusStatusDefinition;

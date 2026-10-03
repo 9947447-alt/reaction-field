@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  B2R1_ANION_DEFINITIONS,
+  B2R1_CATION_DEFINITIONS,
   B2R1_CONDITION_OXIDE_FILM_REMOVED,
   B2R1_DISPLACEMENT_EFFECT_TAG_DEFINITIONS,
   B2R1_DISPLACEMENT_EFFECT_TAGS,
@@ -93,8 +95,8 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
   });
 
   describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.3, §3.5, §3.7, §3.8, §3.10, §3.11)", () => {
-    it("恰好收录本刀锁定的三十条反应行（含 §3.5 铁族与 §3.6 硫族）", () => {
-      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(30);
+    it("恰好收录本刀锁定的三十四条反应行（含 §3.5-§3.7）", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(34);
       const rowIds = B2R1_REDOX_REACTION_ROWS.map((r) => r.id);
       expect(rowIds).toEqual([
         "OR-KMnO4-HCl-conc",
@@ -127,7 +129,13 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         "OR-SO2-O2",
         "OR-S-Fe",
         "OR-SO2-OH",
+        "OR-Cu-HNO3-conc",
+        "OR-Fe-HNO3-dil",
+        "OR-NH4-OH-heat",
+        "OR-NH3-H",
       ]);
+      expect(new Set(rowIds).size).toBe(34);
+      expect(rowIds.filter((id) => id === "OR-Cu-HNO3-dil")).toHaveLength(1);
     });
 
     it("气体刺激状态满足双语与稳定英文键要求", () => {
@@ -371,13 +379,12 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       expect(matchB2R1RedoxReaction("KMnO4", "conc_hno3").matched).toBe(false);
     });
 
-    it("负例 2: Cu + 浓 HNO₃（本刀只锁 §3.2 与旧三行，不实现 OR-Cu-HNO3-conc）返回未知失败", () => {
-      const res = matchB2R1RedoxReaction({
-        reactants: ["Cu"],
-        medium: "conc_hno3",
+    it("Cu + 浓 HNO₃ 命中本刀新增的 OR-Cu-HNO3-conc", () => {
+      expect(matchB2R1RedoxReaction({ reactants: ["Cu"], medium: "conc_hno3" })).toMatchObject({
+        matched: true,
+        rowId: "OR-Cu-HNO3-conc",
+        statusId: "nitrogen_oxide_stimulus",
       });
-      expect(res.matched).toBe(false);
-      expect(res.rowId).toBeUndefined();
     });
 
     it("负例 3: Na₂FeO₄ 无水（如介质非水）", () => {
@@ -389,8 +396,8 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
     it("负例 4: 未知组合返回 matched=false 且 rowId 为 undefined，与显式不反应（带 rowId）严格区分", () => {
       // 未列出金属与酸
       const resFeHno3 = matchB2R1RedoxReaction("Fe", "dil_hno3");
-      expect(resFeHno3.matched).toBe(false);
-      expect(resFeHno3.rowId).toBeUndefined();
+      expect(resFeHno3.matched).toBe(true);
+      expect(resFeHno3.rowId).toBe("OR-Fe-HNO3-dil");
 
       const resAlHCl = matchB2R1RedoxReaction("Al", "conc_hcl");
       expect(resAlHCl.matched).toBe(false);
@@ -1068,9 +1075,13 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       "OR-SO2-OH",
     ] as const;
 
-    it("静态表从 25 行增加到 30 行，且只追加冻结的五行", () => {
-      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(30);
-      expect(B2R1_REDOX_REACTION_ROWS.slice(-5).map((row) => row.id)).toEqual(sulfurRows);
+    it("扩表后仍保留冻结的五条硫族行", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(34);
+      expect(
+        B2R1_REDOX_REACTION_ROWS
+          .filter((row) => (sulfurRows as readonly string[]).includes(row.id))
+          .map((row) => row.id)
+      ).toEqual(sulfurRows);
 
       const expectedRows = [
         ["OR-S-O2", "S + O₂ —【点燃】→ SO₂", "SO₂ 气体/泄漏链入口", undefined],
@@ -1274,6 +1285,253 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
       expect(matchB2R1RedoxReaction({ reactant: "Na2FeO4", medium: "water" })).toMatchObject({
         matched: true, rowId: "OR-Na2FeO4-purify",
       });
+    });
+  });
+
+  describe("11. §3.7 氮族 / 硝酸 / 氮氧化物", () => {
+    it("四个新增行可按 ID 读取，且静态数据精确复用既有状态与冻结数组", () => {
+      const concCu = getB2R1RedoxReaction("OR-Cu-HNO3-conc");
+      const diluteFe = getB2R1RedoxReaction("OR-Fe-HNO3-dil");
+      const ammonium = getB2R1RedoxReaction("OR-NH4-OH-heat");
+      const ammonia = getB2R1RedoxReaction("OR-NH3-H");
+
+      expect(concCu).toMatchObject({
+        equation: "Cu + 4H⁺ + 2NO₃⁻ → Cu²⁺ + 2NO₂↑ + 2H₂O",
+        medium: "conc_hno3",
+        reactants: ["Cu"],
+        effectZh: "生成 NO₂，造成【氮氧化物刺激】持续状态",
+      });
+      expect(diluteFe).toMatchObject({
+        equation: "3Fe + 8H⁺ + 2NO₃⁻ → 3Fe²⁺ + 2NO↑ + 4H₂O",
+        medium: "dil_hno3",
+        reactants: ["Fe"],
+        effectZh: "生成 NO，造成【氮氧化物刺激】持续状态",
+      });
+      expect(ammonium).toMatchObject({
+        equation: "NH₄⁺ + OH⁻ —【加热】→ NH₃↑ + H₂O",
+        medium: "water",
+        reactants: [],
+        solutionIons: ["NH4+", "OH-"],
+        conditions: ["heating"],
+        effectZh: "气体链",
+      });
+      expect(ammonia).toMatchObject({
+        equation: "NH₃ + H⁺ → NH₄⁺",
+        medium: "water",
+        reactants: ["NH3"],
+        solutionIon: "H+",
+        solutionIons: ["H+"],
+        effectZh: "清除氨气刺激",
+      });
+
+      for (const row of [concCu, diluteFe]) {
+        expect(row?.stimulusStatus).toBe(B2R1_STIMULUS_STATUS_NITROGEN_OXIDE);
+        expect(row).not.toHaveProperty("damage");
+        expect(row).not.toHaveProperty("instantDamage");
+        expect(Object.isFrozen(row)).toBe(true);
+        expect(Object.isFrozen(row?.reactants)).toBe(true);
+      }
+      expect(getB2R1RedoxReaction("OR-Cu-HNO3-dil")?.stimulusStatus)
+        .toBe(B2R1_STIMULUS_STATUS_NITROGEN_OXIDE);
+      expect(B2R1_STIMULUS_STATUSES).toHaveLength(2);
+      expect(Object.isFrozen(ammonium?.solutionIons)).toBe(true);
+      expect(Object.isFrozen(ammonium?.conditions)).toBe(true);
+      expect(Object.isFrozen(ammonia?.solutionIons)).toBe(true);
+      expect(Object.isFrozen(ammonium)).toBe(true);
+      expect(Object.isFrozen(ammonia)).toBe(true);
+      expect(getB2R1RedoxReaction("OR-MnO2-HCl-conc")).toBeUndefined();
+      expect(getB2R1RedoxReaction("OR-NaClO-HCl")).toBeUndefined();
+      expect(getB2R1RedoxReaction("OR-Cl2-H2")).toBeUndefined();
+    });
+
+    it("稀硝酸只按 Cu / Fe 精确分叉，并保持旧 Cu 结果", () => {
+      for (const [reactant, medium, expectedId] of [
+        ["Cu", "dil_hno3", "OR-Cu-HNO3-dil"],
+        ["铜", "稀硝酸", "OR-Cu-HNO3-dil"],
+        ["Fe", "dil_hno3", "OR-Fe-HNO3-dil"],
+        ["铁", "稀 HNO3", "OR-Fe-HNO3-dil"],
+      ]) {
+        const result = matchB2R1RedoxReaction({ reactant, medium });
+        expect(result).toMatchObject({
+          matched: true,
+          success: true,
+          rowId: expectedId,
+          statusId: "nitrogen_oxide_stimulus",
+          statusNameZh: "氮氧化物刺激",
+        });
+      }
+
+      for (const reactant of ["Zn", "Mg", "Al", "Ag"]) {
+        expect(matchB2R1RedoxReaction({ reactant, medium: "dil_hno3" }).matched).toBe(false);
+      }
+      for (const input of [
+        { reactants: ["Cu", "Fe"], medium: "dil_hno3" },
+        { reactants: ["Fe", "Cu"], medium: "稀硝酸" },
+        { reactants: ["Fe", "Fe"], medium: "dil_hno3" },
+        { reactant: "Fe", medium: "dil_hno3", solutionIon: "H+" },
+        { reactant: "Fe", medium: "dil_hno3", solutionIon: "NO3-" },
+        { reactant: "Cu", medium: "dil_hno3", solutionIon: "Cu2+" },
+      ]) {
+        expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
+      }
+    });
+
+    it("浓硝酸只允许 Cu，并对别名返回 canonical OR-Cu-HNO3-conc", () => {
+      for (const [reactant, medium] of [
+        ["Cu", "conc_hno3"],
+        ["铜", "浓硝酸"],
+        ["铜", "浓 HNO3"],
+      ]) {
+        const result = matchB2R1RedoxReaction({ reactant, medium });
+        expect(result).toMatchObject({
+          matched: true,
+          success: true,
+          rowId: "OR-Cu-HNO3-conc",
+          statusId: "nitrogen_oxide_stimulus",
+        });
+      }
+
+      for (const reactant of ["Fe", "Zn", "Mg", "Al", "Ag"]) {
+        expect(matchB2R1RedoxReaction({ reactant, medium: "conc_hno3" }).matched).toBe(false);
+      }
+      for (const input of [
+        { reactants: ["Cu", "Fe"], medium: "conc_hno3" },
+        { reactants: ["Cu", "Cu"], medium: "conc_hno3" },
+        { reactant: "Cu", medium: "conc_hno3", solutionIon: "H+" },
+        { reactant: "Cu", medium: "conc_hno3", solutionIon: "NO3-" },
+      ]) {
+        expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
+      }
+    });
+
+    it("NH₄⁺ + OH⁻ 只有精确 ion-only 白名单及加热条件可命中", () => {
+      for (const input of [
+        { reactants: [], solutionIons: ["NH4+", "OH-"], condition: "heating" },
+        { solutionIons: ["OH⁻", "NH₄⁺"], condition: "加热" },
+        { reactants: [], solutionIons: ["NH₄⁺", "OH⁻"], conditions: ["heat"], medium: "water" },
+      ]) {
+        const result = matchB2R1RedoxReaction(input);
+        expect(result).toMatchObject({
+          matched: true,
+          success: true,
+          rowId: "OR-NH4-OH-heat",
+          solutionIons: ["NH4+", "OH-"],
+        });
+      }
+
+      const invalidInputs = [
+        { solutionIons: ["NH4+", "OH-"] },
+        { solutionIons: ["NH4+", "OH-"], condition: "ignition" },
+        { solutionIons: ["NH4+", "OH-"], condition: "catalysis" },
+        { solutionIons: ["NH4+", "OH-"], condition: "高温" },
+        { solutionIons: ["NH4+", "OH-"], conditions: ["heating", "ignition"] },
+        { solutionIons: ["NH4+"], condition: "heating" },
+        { solutionIons: ["OH-"], condition: "heating" },
+        { solutionIons: ["NH4+", "H+"], condition: "heating" },
+        { solutionIons: ["NH4+", "OH-", "OH-"], condition: "heating" },
+        { solutionIons: ["NH4+", "OH-", "Cl-"], condition: "heating" },
+        { solutionIons: ["NH4+", "OH-", "Unknown+"], condition: "heating" },
+        { solutionIons: ["NH4+", "OH-", ""], condition: "heating" },
+        { solutionIons: ["NH4+", "OH-", "   "], condition: "heating" },
+        { solutionIons: ["NH4+", "OH-"], condition: "heating", medium: "conc_hno3" },
+        { solutionIons: ["NH4+", "OH-"], condition: "heating", medium: "" },
+      ];
+      for (const input of invalidInputs) {
+        expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
+      }
+    });
+
+    it("规范离子的 ion-only 二元矩阵除两条冻结轨外全部失败", () => {
+      const ionIds = [
+        ...B2R1_CATION_DEFINITIONS.map((ion) => ion.id),
+        ...B2R1_ANION_DEFINITIONS.map((ion) => ion.id),
+      ];
+      for (let left = 0; left < ionIds.length; left += 1) {
+        for (let right = left; right < ionIds.length; right += 1) {
+          const solutionIons = [ionIds[left], ionIds[right]];
+          const result = matchB2R1RedoxReaction({ solutionIons });
+          const isExistingFeWhitelist = solutionIons.includes("Fe3+") && solutionIons.includes("OH-");
+          if (isExistingFeWhitelist) {
+            expect(result).toMatchObject({ matched: true, rowId: "OR-Fe3-OH" });
+          } else {
+            expect(result.matched, JSON.stringify(solutionIons)).toBe(false);
+          }
+        }
+      }
+      expect(matchB2R1RedoxReaction({ solutionIons: ["NH4+", "OH-"], condition: "heating" }))
+        .toMatchObject({ matched: true, rowId: "OR-NH4-OH-heat" });
+    });
+
+    it("NH₃ 别名 + 精确 H⁺ 命中 OR-NH3-H，默认与显式水语义一致", () => {
+      for (const input of [
+        { reactant: "NH3", solutionIon: "H+" },
+        { reactant: "NH₃", solutionIons: ["H⁺"], medium: "water" },
+        { reactant: "nh3", solutionIon: "H+", medium: undefined },
+        { reactant: "氨", solutionIon: "H+" },
+        { reactant: "氨气", solutionIons: ["H⁺"], medium: "水" },
+      ]) {
+        const result = matchB2R1RedoxReaction(input);
+        expect(result).toMatchObject({
+          matched: true,
+          success: true,
+          rowId: "OR-NH3-H",
+          effectZh: "清除氨气刺激",
+          solutionIons: ["H+"],
+        });
+        expect(result).not.toHaveProperty("stimulusStatus");
+      }
+
+      const invalidInputs = [
+        { reactant: "NH3" },
+        { reactant: "NH3", solutionIon: "OH-" },
+        { reactant: "NH3", solutionIon: "NH4+" },
+        { reactant: "NH3", solutionIons: ["H+", "H+"] },
+        { reactant: "NH3", solutionIons: ["H+", "OH-"] },
+        { reactant: "NH3", solutionIons: ["H+", "Unknown+"] },
+        { reactant: "NH3", solutionIons: ["H+", ""] },
+        { reactant: "NH3", solutionIons: ["H+", "   "] },
+        { reactant: "NH3", solutionIon: "H+", solutionIons: ["H+"] },
+        { reactants: ["NH3", "Cu"], solutionIon: "H+" },
+        { reactant: "Cu", solutionIon: "H+" },
+        { reactant: "NH3", solutionIon: "H+", medium: "dil_hno3" },
+      ];
+      for (const input of invalidInputs) {
+        expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
+      }
+    });
+
+    it("水默认值、显式空介质和非水离子边界保持严格", () => {
+      for (const medium of ["", " ", "unknown_medium", "dil_hno3", "conc_hno3"]) {
+        expect(matchB2R1RedoxReaction({
+          solutionIons: ["NH4+", "OH-"], condition: "heating", medium,
+        }).matched).toBe(false);
+        expect(matchB2R1RedoxReaction({ reactant: "NH3", solutionIon: "H+", medium }).matched)
+          .toBe(false);
+      }
+      expect(matchB2R1RedoxReaction({ reactant: "NH3", solutionIon: "H+" })).toMatchObject({
+        matched: true,
+        rowId: "OR-NH3-H",
+      });
+      expect(matchB2R1RedoxReaction({
+        reactant: "NH3", solutionIon: "H+", medium: undefined,
+      })).toMatchObject({ matched: true, rowId: "OR-NH3-H" });
+      expect(matchB2R1RedoxReaction({
+        reactants: [], solutionIons: ["NH4+", "OH-"], condition: "heating", medium: undefined,
+      })).toMatchObject({ matched: true, rowId: "OR-NH4-OH-heat" });
+    });
+
+    it("NH₄⁺ 离子、条件和 reactant 输入冻结时不会被修改", () => {
+      const solutionIons = Object.freeze(["OH⁻", "NH₄⁺"]);
+      const conditions = Object.freeze(["加热"]);
+      const reactants = Object.freeze([] as string[]);
+      const input = Object.freeze({ reactants, solutionIons, conditions });
+      expect(matchB2R1RedoxReaction(input)).toMatchObject({
+        matched: true,
+        rowId: "OR-NH4-OH-heat",
+      });
+      expect(reactants).toEqual([]);
+      expect(solutionIons).toEqual(["OH⁻", "NH₄⁺"]);
+      expect(conditions).toEqual(["加热"]);
     });
   });
 });

@@ -330,6 +330,8 @@ const FE3_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe3+"]);
 const FE2_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe2+"]);
 const FE2_H_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe2+", "H+"]);
 const FE3_OH_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["Fe3+", "OH-"]);
+const NH4_OH_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["NH4+", "OH-"]);
+const H_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["H+"]);
 const SO2_OH_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["OH-"]);
 
 /**
@@ -624,6 +626,40 @@ export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = 
     solutionIons: SO2_OH_SOLUTION_IONS,
     effectZh: "吸收；对齐 Phase 10",
   }),
+  Object.freeze({
+    id: "OR-Cu-HNO3-conc",
+    equation: "Cu + 4H⁺ + 2NO₃⁻ → Cu²⁺ + 2NO₂↑ + 2H₂O",
+    medium: "conc_hno3",
+    reactants: Object.freeze(["Cu"]),
+    effectZh: "生成 NO₂，造成【氮氧化物刺激】持续状态",
+    stimulusStatus: B2R1_STIMULUS_STATUS_NITROGEN_OXIDE,
+  }),
+  Object.freeze({
+    id: "OR-Fe-HNO3-dil",
+    equation: "3Fe + 8H⁺ + 2NO₃⁻ → 3Fe²⁺ + 2NO↑ + 4H₂O",
+    medium: "dil_hno3",
+    reactants: Object.freeze(["Fe"]),
+    effectZh: "生成 NO，造成【氮氧化物刺激】持续状态",
+    stimulusStatus: B2R1_STIMULUS_STATUS_NITROGEN_OXIDE,
+  }),
+  Object.freeze({
+    id: "OR-NH4-OH-heat",
+    equation: "NH₄⁺ + OH⁻ —【加热】→ NH₃↑ + H₂O",
+    medium: "water",
+    reactants: Object.freeze([]),
+    solutionIons: NH4_OH_SOLUTION_IONS,
+    effectZh: "气体链",
+    conditions: HEATING_CONDITIONS,
+  }),
+  Object.freeze({
+    id: "OR-NH3-H",
+    equation: "NH₃ + H⁺ → NH₄⁺",
+    medium: "water",
+    reactants: Object.freeze(["NH3"]),
+    solutionIon: "H+",
+    solutionIons: H_SOLUTION_IONS,
+    effectZh: "清除氨气刺激",
+  }),
 ]);
 
 const REDOX_ROW_MAP = new Map<B2R1RedoxRowId, B2R1RedoxReactionDefinition>(
@@ -695,6 +731,11 @@ const REACTANT_NORMALIZATION_MAP: Readonly<Record<string, string>> = Object.free
   H2O2: "H2O2",
   "H₂O₂": "H2O2",
   过氧化氢: "H2O2",
+  NH3: "NH3",
+  "NH₃": "NH3",
+  nh3: "NH3",
+  氨: "NH3",
+  氨气: "NH3",
 });
 
 function normalizeReactantKey(item: string): string {
@@ -830,7 +871,31 @@ export function matchB2R1RedoxReaction(
 
   const normalizedReactants = rawReactants.map(normalizeReactantKey);
 
+  const normalizedConditions = new Set<B2R1ReactionCondition>(
+    rawConditions
+      .map(normalizeReactionCondition)
+      .filter((c): c is B2R1ReactionCondition => c !== undefined)
+  );
+
   if (normalizedReactants.length === 0) {
+    if (
+      normalizedMedium === "water" &&
+      hasExactSolutionIons(normalizedSolutionIons, NH4_OH_SOLUTION_IONS) &&
+      rawConditions.length === 1 &&
+      normalizedConditions.size === 1 &&
+      normalizedConditions.has("heating")
+    ) {
+      const reaction = REDOX_ROW_MAP.get("OR-NH4-OH-heat")!;
+      return {
+        matched: true,
+        success: true,
+        rowId: reaction.id,
+        reaction,
+        effectZh: reaction.effectZh,
+        solutionIons: reaction.solutionIons,
+      };
+    }
+
     if (
       normalizedMedium === "water" &&
       hasExactSolutionIons(normalizedSolutionIons, FE3_OH_SOLUTION_IONS)
@@ -852,11 +917,6 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  const normalizedConditions = new Set<B2R1ReactionCondition>(
-    rawConditions
-      .map(normalizeReactionCondition)
-      .filter((c): c is B2R1ReactionCondition => c !== undefined)
-  );
   const hasOxideFilmRemoved = normalizedConditions.has("oxide_film_removed");
 
   if (!normalizedMedium) {
@@ -884,8 +944,15 @@ export function matchB2R1RedoxReaction(
 
   // 1. 稀硝酸介质分叉 (§3.7)
   if (normalizedMedium === "dil_hno3") {
-    if (normalizedReactants.length === 1 && normalizedReactants[0] === "Cu") {
-      const reaction = REDOX_ROW_MAP.get("OR-Cu-HNO3-dil")!;
+    const rowId = normalizedReactants.length === 1
+      ? normalizedReactants[0] === "Cu"
+        ? "OR-Cu-HNO3-dil"
+        : normalizedReactants[0] === "Fe"
+        ? "OR-Fe-HNO3-dil"
+        : undefined
+      : undefined;
+    if (rowId) {
+      const reaction = REDOX_ROW_MAP.get(rowId)!;
       return {
         matched: true,
         success: true,
@@ -905,7 +972,30 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  // 2. 浓盐酸介质分叉 (§3.8)
+  // 2. 浓硝酸介质分叉 (§3.7)
+  if (normalizedMedium === "conc_hno3") {
+    if (normalizedReactants.length === 1 && normalizedReactants[0] === "Cu") {
+      const reaction = REDOX_ROW_MAP.get("OR-Cu-HNO3-conc")!;
+      return {
+        matched: true,
+        success: true,
+        rowId: reaction.id,
+        reaction,
+        stimulusStatus: reaction.stimulusStatus,
+        statusNameZh: reaction.stimulusStatus?.nameZh,
+        statusNameEn: reaction.stimulusStatus?.nameEn,
+        statusId: reaction.stimulusStatus?.id,
+        effectZh: reaction.effectZh,
+      };
+    }
+    return {
+      matched: false,
+      success: false,
+      reason: `未收录的浓硝酸氧化还原反应: 反应物 [${normalizedReactants.join(", ")}]`,
+    };
+  }
+
+  // 3. 浓盐酸介质分叉 (§3.8)
   if (normalizedMedium === "conc_hcl") {
     if (normalizedReactants.length === 1 && normalizedReactants[0] === "KMnO4") {
       const reaction = REDOX_ROW_MAP.get("OR-KMnO4-HCl-conc")!;
@@ -928,7 +1018,7 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  // 3. 水介质分叉 (§3.10 高铁酸钠 & §3.3 金属置换 & §3.4 卤素置换)
+  // 4. 水介质分叉 (§3.10 高铁酸钠 & §3.3 金属置换 & §3.4 卤素置换)
   if (normalizedMedium === "water") {
     if (
       normalizedSolutionIons.length === 0 &&
@@ -973,6 +1063,19 @@ export function matchB2R1RedoxReaction(
       if (normalizedReactants.length === 1 && normalizedSolutionIons.length === 1) {
         const reactant = normalizedReactants[0];
         const targetIon = normalizedSolutionIons[0];
+
+        if (reactant === "NH3" && hasExactSolutionIons(normalizedSolutionIons, H_SOLUTION_IONS)) {
+          const reaction = REDOX_ROW_MAP.get("OR-NH3-H")!;
+          return {
+            matched: true,
+            success: true,
+            rowId: reaction.id,
+            reaction,
+            effectZh: reaction.effectZh,
+            solutionIon: reaction.solutionIon,
+            solutionIons: reaction.solutionIons,
+          };
+        }
 
         if (reactant === "SO2" && hasExactSolutionIons(normalizedSolutionIons, SO2_OH_SOLUTION_IONS)) {
           const reaction = REDOX_ROW_MAP.get("OR-SO2-OH")!;
@@ -1175,7 +1278,7 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  // 4. 稀非氧化性酸介质分叉 (§3.2 金属在稀非氧化性酸)
+  // 5. 稀非氧化性酸介质分叉 (§3.2 金属在稀非氧化性酸)
   if (normalizedMedium === "dil_non_oxidizing_acid") {
     if (normalizedReactants.length === 1) {
       const reactant = normalizedReactants[0];
@@ -1279,7 +1382,7 @@ export function matchB2R1RedoxReaction(
     };
   }
 
-  // 5. 其他介质下的未收录组合与友好提示
+  // 6. 其他介质下的未收录组合与友好提示
   if (normalizedReactants.length === 1 && normalizedReactants[0] === "KMnO4") {
     return {
       matched: false,

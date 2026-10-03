@@ -23,8 +23,8 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24.18.0
-      - name: Install pnpm 11.9.0
-        run: npm install --global pnpm@11.9.0
+      - name: Install pnpm 12.8.2
+        run: npm install --global pnpm@12.8.2
       - name: Verify tag matches package version
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}

@@ -23,8 +23,8 @@ jobs:
         with:
           node-version: 24.18.0
 
-      - name: Install pnpm 11.9.0
-        run: npm install --global pnpm@11.9.0
+      - name: Install pnpm 12.8.2
+        run: npm install --global pnpm@12.8.2
 
       - name: Install dependencies from lockfile
         run: pnpm install --frozen-lockfile

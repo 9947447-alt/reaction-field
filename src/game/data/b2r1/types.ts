@@ -169,6 +169,7 @@ export interface B2R1HalogenProductTagDefinition {
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
  * §3.3: OR-Mg-Cu, OR-Zn-Cu, OR-Fe-Cu, OR-Mg-Ag, OR-Zn-Ag, OR-Fe-Ag, OR-Cu-Ag
  * §3.4: OR-Cl2-Br, OR-Cl2-I, OR-Br2-I, OR-Cl2-F
+ * §3.5: OR-Fe-Fe3, OR-Fe2-Cl2, OR-Fe-Cu2, OR-Fe2-H2O2, OR-Fe3-OH
  */
 export type B2R1RedoxRowId =
   | "OR-KMnO4-HCl-conc"
@@ -190,7 +191,12 @@ export type B2R1RedoxRowId =
   | "OR-Cl2-Br"
   | "OR-Cl2-I"
   | "OR-Br2-I"
-  | "OR-Cl2-F";
+  | "OR-Cl2-F"
+  | "OR-Fe-Fe3"
+  | "OR-Fe2-Cl2"
+  | "OR-Fe-Cu2"
+  | "OR-Fe2-H2O2"
+  | "OR-Fe3-OH";
 
 /**
  * B2-R1 气体标签枚举（§3.2 H₂ 标注可燃气体标签）
@@ -291,4 +297,3 @@ export interface B2R1RedoxMatchFailure {
 }
 
 export type B2R1RedoxMatchResult = B2R1RedoxMatchSuccess | B2R1RedoxMatchFailure;
-

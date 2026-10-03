@@ -92,9 +92,9 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
     });
   });
 
-  describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.3, §3.7, §3.8, §3.10, §3.11)", () => {
-    it("恰好收录本刀锁定的二十条反应行（旧十六行 + §3.4 四行卤素置换）", () => {
-      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(20);
+  describe("3. 氧化还原反应行、气体状态与可燃标签 (§3.2, §3.3, §3.5, §3.7, §3.8, §3.10, §3.11)", () => {
+    it("恰好收录本刀锁定的二十五条反应行（含 §3.5 五行铁族规则）", () => {
+      expect(B2R1_REDOX_REACTION_ROWS).toHaveLength(25);
       const rowIds = B2R1_REDOX_REACTION_ROWS.map((r) => r.id);
       expect(rowIds).toEqual([
         "OR-KMnO4-HCl-conc",
@@ -117,6 +117,11 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         "OR-Cl2-I",
         "OR-Br2-I",
         "OR-Cl2-F",
+        "OR-Fe-Fe3",
+        "OR-Fe2-Cl2",
+        "OR-Fe-Cu2",
+        "OR-Fe2-H2O2",
+        "OR-Fe3-OH",
       ]);
     });
 
@@ -178,7 +183,7 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
     });
   });
 
-  describe("4. 纯函数匹配正确识别旧三条与新六行", () => {
+  describe("4. 纯函数匹配正确识别冻结反应行", () => {
     describe("旧三条氧化还原反应保持不变", () => {
       it("1) OR-KMnO4-HCl-conc: 2KMnO₄ + 16HCl → 2KCl + 2MnCl₂ + 5Cl₂↑ + 8H₂O", () => {
         const res1 = matchB2R1RedoxReaction({
@@ -471,7 +476,7 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         expect(Object.isFrozen(B2R1_DISPLACEMENT_EFFECT_TAG_DEFINITIONS)).toBe(true);
       });
 
-      it("§3.3 七条反应行均收录且未收录禁止行（OR-Fe-Cu2, OR-Zn-Cu2, OR-Al-Cu2, OR-Mg-Fe2）", () => {
+      it("§3.3 七条反应行均收录且未收录禁止行（OR-Zn-Cu2, OR-Al-Cu2, OR-Mg-Fe2）", () => {
         const requiredDisplacementRows = [
           "OR-Mg-Cu",
           "OR-Zn-Cu",
@@ -494,7 +499,6 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         }
 
         // 禁止新增行验证
-        expect(getB2R1RedoxReaction("OR-Fe-Cu2")).toBeUndefined();
         expect(getB2R1RedoxReaction("OR-Zn-Cu2")).toBeUndefined();
         expect(getB2R1RedoxReaction("OR-Al-Cu2")).toBeUndefined();
         expect(getB2R1RedoxReaction("OR-Mg-Fe2")).toBeUndefined();
@@ -806,7 +810,7 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
         expect(definition.nameEn.length).toBeGreaterThan(0);
       }
       expect(Object.isFrozen(B2R1_REDOX_REACTION_ROWS)).toBe(true);
-      for (const row of B2R1_REDOX_REACTION_ROWS.slice(16)) {
+      for (const row of B2R1_REDOX_REACTION_ROWS.slice(16, 20)) {
         expect(Object.isFrozen(row)).toBe(true);
         expect(Object.isFrozen(row.reactants)).toBe(true);
         expect(Object.isFrozen(row.solutionIons)).toBe(true);
@@ -904,6 +908,149 @@ describe("Phase 22 B2-R1 氧化还原反应数据与纯函数匹配", () => {
 
     it.each(["Br-", "Br⁻", "I-", "I⁻", "F-", "F⁻"])("复用 normalizeIonId: %s", (ion) => {
       expect(normalizeIonId(ion)).toBe(ion.replace("⁻", "-"));
+    });
+  });
+
+  describe("9. §3.5 铁族离子与单质铁冻结行", () => {
+    it("五个静态行均可按 ID 读取，OR-Fe-Cu2 是保留行而非新 matcher 行为", () => {
+      const ids = [
+        "OR-Fe-Fe3",
+        "OR-Fe2-Cl2",
+        "OR-Fe-Cu2",
+        "OR-Fe2-H2O2",
+        "OR-Fe3-OH",
+      ] as const;
+
+      for (const id of ids) {
+        const row = getB2R1RedoxReaction(id);
+        expect(row).toBeDefined();
+        expect(row?.id).toBe(id);
+        expect(Object.isFrozen(row)).toBe(true);
+        expect(Object.isFrozen(row?.reactants)).toBe(true);
+        if (row?.solutionIons) expect(Object.isFrozen(row.solutionIons)).toBe(true);
+      }
+
+      const retainedCuRow = getB2R1RedoxReaction("OR-Fe-Cu2");
+      expect(retainedCuRow?.equation).toBe("Fe + Cu²⁺ → Fe²⁺ + Cu");
+      expect(retainedCuRow?.effectZh).toBe("与 §3.3 合并授权，行保留");
+      expect(getB2R1RedoxReaction("OR-Fe-Fe3")).toMatchObject({
+        equation: "Fe + 2Fe³⁺ → 3Fe²⁺",
+        effectZh: "还原铁离子",
+      });
+      expect(getB2R1RedoxReaction("OR-Fe2-Cl2")).toMatchObject({
+        equation: "2Fe²⁺ + Cl₂ → 2Fe³⁺ + 2Cl⁻",
+        effectZh: "氧化至 Fe³⁺",
+      });
+      expect(getB2R1RedoxReaction("OR-Fe2-H2O2")).toMatchObject({
+        equation: "2Fe²⁺ + H₂O₂ + 2H⁺ → 2Fe³⁺ + 2H₂O",
+        reactants: ["H2O2"],
+        solutionIons: ["Fe2+", "H+"],
+      });
+      expect(getB2R1RedoxReaction("OR-Fe3-OH")).toMatchObject({
+        equation: "Fe³⁺ + 3OH⁻ → Fe(OH)₃↓",
+        effectZh: "沉淀；与离子表一致",
+        reactants: [],
+        solutionIons: ["Fe3+", "OH-"],
+      });
+      expect(
+        matchB2R1RedoxReaction({ reactant: "Fe", solutionIon: "Cu2+" }).rowId
+      ).toBe("OR-Fe-Cu");
+    });
+
+    it("Fe + Fe³⁺ 精确命中 OR-Fe-Fe3，Fe²⁺ 不命中", () => {
+      for (const ion of ["Fe3+", "Fe³⁺"]) {
+        const result = matchB2R1RedoxReaction({ reactant: "Fe", solutionIon: ion });
+        expect(result).toMatchObject({ matched: true, success: true, rowId: "OR-Fe-Fe3" });
+        expect(result.effectZh).toBe("还原铁离子");
+      }
+      expect(matchB2R1RedoxReaction({ reactant: "Fe", solutionIon: "Fe2+" }).matched).toBe(false);
+    });
+
+    it("Cl₂ + Fe²⁺ 精确命中 OR-Fe2-Cl2，不泛化到其他卤素", () => {
+      for (const [reactant, solutionIon] of [["Cl2", "Fe2+"], ["Cl₂", "Fe²⁺"]]) {
+        const result = matchB2R1RedoxReaction({ reactant, solutionIon });
+        expect(result).toMatchObject({ matched: true, success: true, rowId: "OR-Fe2-Cl2" });
+        expect(result.effectZh).toBe("氧化至 Fe³⁺");
+      }
+      expect(matchB2R1RedoxReaction({ reactant: "Cl2", solutionIon: "Fe3+" }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "Br2", solutionIon: "Fe2+" }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "I2", solutionIon: "Fe2+" }).matched).toBe(false);
+    });
+
+    it("H₂O₂ 的三种明确名称只在 Fe²⁺ 与 H⁺ 两种离子齐全时命中", () => {
+      for (const reactant of ["H2O2", "H₂O₂", "过氧化氢"]) {
+        const result = matchB2R1RedoxReaction({
+          reactant,
+          solutionIons: ["Fe2+", "H+"],
+        });
+        expect(result).toMatchObject({ matched: true, success: true, rowId: "OR-Fe2-H2O2" });
+        expect(result.reaction?.reactants).toEqual(["H2O2"]);
+      }
+
+      const reversed = matchB2R1RedoxReaction({
+        reactant: "H₂O₂",
+        solutionIons: Object.freeze(["H⁺", "Fe²⁺"]),
+      });
+      expect(reversed).toMatchObject({ matched: true, rowId: "OR-Fe2-H2O2" });
+      expect(matchB2R1RedoxReaction({ reactant: "H2O2", solutionIons: ["Fe2+"] }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "H2O2", solutionIons: ["H+"] }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ solutionIons: ["Fe2+", "H+"] }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "H2O2", solutionIons: ["Fe3+", "H+"] }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ reactant: "H2O2", solutionIons: ["Fe2+", "OH-"] }).matched).toBe(false);
+    });
+
+    it("Fe³⁺ + OH⁻ 是精确 ion-only 白名单，支持倒序与 Unicode", () => {
+      for (const solutionIons of [["Fe3+", "OH-"], ["OH⁻", "Fe³⁺"]]) {
+        const result = matchB2R1RedoxReaction({ solutionIons });
+        expect(result).toMatchObject({ matched: true, success: true, rowId: "OR-Fe3-OH" });
+        expect(result.effectZh).toBe("沉淀；与离子表一致");
+      }
+      expect(matchB2R1RedoxReaction({ reactants: [], solutionIons: ["OH-", "Fe3+"] }).rowId)
+        .toBe("OR-Fe3-OH");
+      expect(matchB2R1RedoxReaction({ solutionIons: ["Fe3+", "Cl-"] }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ solutionIons: ["Fe2+", "OH-"] }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ solutionIons: ["Fe3+"] }).matched).toBe(false);
+      expect(matchB2R1RedoxReaction({ solutionIons: ["OH-"] }).matched).toBe(false);
+    });
+
+    it("新行拒绝缺失、额外、重复、未知、空白离子及混合字段额外项", () => {
+      const invalidInputs = [
+        { reactant: "Fe", solutionIons: ["Fe3+", "Unknown+"] },
+        { reactant: "Cl2", solutionIons: ["Fe2+", ""] },
+        { reactant: "H2O2", solutionIons: ["Fe2+", "H+", "Unknown+"] },
+        { reactant: "H2O2", solutionIons: ["Fe2+", "H+", "   "] },
+        { reactant: "H2O2", solutionIons: ["Fe2+", "H+", "Cu2+"] },
+        { reactant: "H2O2", solutionIons: ["Fe2+", "H+", "H+"] },
+        { reactant: "H2O2", solutionIon: "H+", solutionIons: ["Fe2+", "H+"] },
+        { reactant: "H2O2", solutionIon: "Cu2+", solutionIons: ["Fe2+", "H+"] },
+        { solutionIons: ["Fe3+", "OH-", ""] },
+        { solutionIons: ["Fe3+", "OH-", "Cu2+"] },
+        { solutionIons: ["Fe3+", "OH-", "OH-"] },
+        { reactants: ["H2O2", " "], solutionIons: ["Fe2+", "H+"] },
+      ];
+
+      for (const input of invalidInputs) {
+        const result = matchB2R1RedoxReaction(input);
+        expect(result.matched, JSON.stringify(input)).toBe(false);
+        expect(result.rowId, JSON.stringify(input)).toBeUndefined();
+      }
+    });
+
+    it("新行不按金属活动性或未冻结离子组合泛化", () => {
+      const invalidInputs = [
+        { reactant: "Zn", solutionIon: "Fe3+" },
+        { reactant: "Mg", solutionIon: "Fe3+" },
+        { reactant: "Fe", solutionIon: "Fe2+" },
+        { reactant: "Cl2", solutionIon: "Fe3+" },
+        { reactant: "Br2", solutionIon: "Fe2+" },
+        { reactant: "I2", solutionIon: "Fe2+" },
+        { solutionIons: ["Fe3+", "Cl-"] },
+        { solutionIons: ["Fe2+", "OH-"] },
+        { solutionIons: ["Fe3+", "OH-", "Cu2+"] },
+      ];
+      for (const input of invalidInputs) {
+        expect(matchB2R1RedoxReaction(input).matched, JSON.stringify(input)).toBe(false);
+      }
     });
   });
 });

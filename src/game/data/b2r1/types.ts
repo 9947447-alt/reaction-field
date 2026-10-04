@@ -164,7 +164,8 @@ export interface B2R1HalogenProductTagDefinition {
 /**
  * 本刀冻结的氧化还原反应行 ID
  * §3.6: OR-S-O2, OR-SO2-Cl2, OR-SO2-O2, OR-S-Fe, OR-SO2-OH
- * §3.8: OR-KMnO4-HCl-conc
+ * §3.8: 氯气生成与含氯氧化还原四行
+ * §3.9: 其他常见无机氧化还原十二行
  * §3.7: OR-Cu-HNO3-dil, OR-Cu-HNO3-conc, OR-Fe-HNO3-dil, OR-NH4-OH-heat, OR-NH3-H
  * §3.10: OR-Na2FeO4-purify
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
@@ -173,6 +174,9 @@ export interface B2R1HalogenProductTagDefinition {
  * §3.5: OR-Fe-Fe3, OR-Fe2-Cl2, OR-Fe-Cu2, OR-Fe2-H2O2, OR-Fe3-OH
  */
 export type B2R1RedoxRowId =
+  | "OR-MnO2-HCl-conc"
+  | "OR-NaClO-HCl"
+  | "OR-Cl2-H2"
   | "OR-KMnO4-HCl-conc"
   | "OR-Cu-HNO3-dil"
   | "OR-Cu-HNO3-conc"
@@ -206,7 +210,19 @@ export type B2R1RedoxRowId =
   | "OR-SO2-Cl2"
   | "OR-SO2-O2"
   | "OR-S-Fe"
-  | "OR-SO2-OH";
+  | "OR-SO2-OH"
+  | "OR-Zn-Cu2"
+  | "OR-Al-Cu2"
+  | "OR-Mg-Fe2"
+  | "OR-H2-CuO"
+  | "OR-C-CuO"
+  | "OR-CO-CuO"
+  | "OR-Fe2O3-CO"
+  | "OR-Fe2O3-H2"
+  | "OR-KMnO4-Fe2"
+  | "OR-Na2O2-H2O"
+  | "OR-KClO3-MnO2"
+  | "OR-Na2S2O3-I2";
 
 /**
  * B2-R1 气体标签枚举（§3.2 H₂ 标注可燃气体标签）
@@ -221,13 +237,15 @@ export interface B2R1GasTagDefinition {
 
 /**
  * B2-R1 反应条件枚举
- * §3.2 与 §3.6 反应条件
+ * §3.2、§3.6–§3.9 反应条件
  */
 export type B2R1ReactionCondition =
   | "oxide_film_removed"
   | "ignition"
   | "heating"
-  | "catalysis";
+  | "catalysis"
+  | "high_temperature"
+  | "mno2_catalysis";
 
 /**
  * 氧化还原反应行静态定义

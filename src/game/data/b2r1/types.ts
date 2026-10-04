@@ -165,7 +165,7 @@ export interface B2R1HalogenProductTagDefinition {
  * 本刀冻结的氧化还原反应行 ID
  * §3.6: OR-S-O2, OR-SO2-Cl2, OR-SO2-O2, OR-S-Fe, OR-SO2-OH
  * §3.8: OR-KMnO4-HCl-conc
- * §3.7: OR-Cu-HNO3-dil
+ * §3.7: OR-Cu-HNO3-dil, OR-Cu-HNO3-conc, OR-Fe-HNO3-dil, OR-NH4-OH-heat, OR-NH3-H
  * §3.10: OR-Na2FeO4-purify
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
  * §3.3: OR-Mg-Cu, OR-Zn-Cu, OR-Fe-Cu, OR-Mg-Ag, OR-Zn-Ag, OR-Fe-Ag, OR-Cu-Ag
@@ -175,6 +175,10 @@ export interface B2R1HalogenProductTagDefinition {
 export type B2R1RedoxRowId =
   | "OR-KMnO4-HCl-conc"
   | "OR-Cu-HNO3-dil"
+  | "OR-Cu-HNO3-conc"
+  | "OR-Fe-HNO3-dil"
+  | "OR-NH4-OH-heat"
+  | "OR-NH3-H"
   | "OR-Na2FeO4-purify"
   | "OR-Mg-H"
   | "OR-Zn-H"

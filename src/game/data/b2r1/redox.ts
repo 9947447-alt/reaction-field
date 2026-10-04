@@ -180,12 +180,16 @@ export const B2R1_CONDITION_OXIDE_FILM_REMOVED: B2R1ReactionCondition = "oxide_f
 export const B2R1_CONDITION_IGNITION: B2R1ReactionCondition = "ignition";
 export const B2R1_CONDITION_HEATING: B2R1ReactionCondition = "heating";
 export const B2R1_CONDITION_CATALYSIS: B2R1ReactionCondition = "catalysis";
+export const B2R1_CONDITION_HIGH_TEMPERATURE: B2R1ReactionCondition = "high_temperature";
+export const B2R1_CONDITION_MNO2_CATALYSIS: B2R1ReactionCondition = "mno2_catalysis";
 
 export const B2R1_REACTION_CONDITIONS: readonly B2R1ReactionCondition[] = Object.freeze([
   B2R1_CONDITION_OXIDE_FILM_REMOVED,
   B2R1_CONDITION_IGNITION,
   B2R1_CONDITION_HEATING,
   B2R1_CONDITION_CATALYSIS,
+  B2R1_CONDITION_HIGH_TEMPERATURE,
+  B2R1_CONDITION_MNO2_CATALYSIS,
 ]);
 
 const FLAMMABLE_GAS_TAGS: readonly B2R1GasTag[] = Object.freeze([B2R1_GAS_TAG_FLAMMABLE]);
@@ -202,6 +206,13 @@ const CATALYSIS_CONDITIONS: readonly B2R1ReactionCondition[] = Object.freeze([
   B2R1_CONDITION_CATALYSIS,
 ]);
 
+const HIGH_TEMPERATURE_CONDITIONS: readonly B2R1ReactionCondition[] = Object.freeze([
+  B2R1_CONDITION_HIGH_TEMPERATURE,
+]);
+const MNO2_CATALYSIS_CONDITIONS: readonly B2R1ReactionCondition[] = Object.freeze([
+  B2R1_CONDITION_MNO2_CATALYSIS,
+]);
+
 const REACTION_CONDITION_ALIAS_MAP: Readonly<Record<string, B2R1ReactionCondition>> = Object.freeze({
   oxide_film_removed: B2R1_CONDITION_OXIDE_FILM_REMOVED,
   去氧化膜: B2R1_CONDITION_OXIDE_FILM_REMOVED,
@@ -216,6 +227,13 @@ const REACTION_CONDITION_ALIAS_MAP: Readonly<Record<string, B2R1ReactionConditio
   catalysis: B2R1_CONDITION_CATALYSIS,
   催化: B2R1_CONDITION_CATALYSIS,
   catalyst: B2R1_CONDITION_CATALYSIS,
+  high_temperature: B2R1_CONDITION_HIGH_TEMPERATURE,
+  高温: B2R1_CONDITION_HIGH_TEMPERATURE,
+  high_temp: B2R1_CONDITION_HIGH_TEMPERATURE,
+  mno2_catalysis: B2R1_CONDITION_MNO2_CATALYSIS,
+  MnO2催化: B2R1_CONDITION_MNO2_CATALYSIS,
+  "MnO₂催化": B2R1_CONDITION_MNO2_CATALYSIS,
+  二氧化锰催化: B2R1_CONDITION_MNO2_CATALYSIS,
 });
 
 export function normalizeReactionCondition(condition: string): B2R1ReactionCondition | undefined {
@@ -336,7 +354,8 @@ const SO2_OH_SOLUTION_IONS: readonly B2R1IonId[] = Object.freeze(["OH-"]);
 
 /**
  * 本刀冻结的氧化还原反应行静态数据
- * §3.8: OR-KMnO4-HCl-conc
+ * §3.8: 氯气生成与含氯氧化还原四行
+ * §3.9: 其他常见无机氧化还原十二行
  * §3.7: OR-Cu-HNO3-dil
  * §3.10: OR-Na2FeO4-purify
  * §3.2: OR-Mg-H, OR-Zn-H, OR-Fe-H, OR-Al-H, OR-Cu-H, OR-Ag-H
@@ -660,6 +679,121 @@ export const B2R1_REDOX_REACTION_ROWS: readonly B2R1RedoxReactionDefinition[] = 
     solutionIons: H_SOLUTION_IONS,
     effectZh: "清除氨气刺激",
   }),
+  Object.freeze({
+    id: "OR-MnO2-HCl-conc",
+    equation: "MnO₂ + 4HCl → MnCl₂ + Cl₂↑ + 2H₂O",
+    medium: "conc_hcl",
+    reactants: Object.freeze(["MnO2"]),
+    effectZh: "浓盐酸；Cl₂ →【氯气刺激】",
+    stimulusStatus: B2R1_STIMULUS_STATUS_CHLORINE,
+  }),
+  Object.freeze({
+    id: "OR-NaClO-HCl",
+    equation: "NaClO + 2HCl → NaCl + Cl₂↑ + H₂O",
+    reactants: Object.freeze(["NaClO", "HCl"]),
+    effectZh: "漂白液与酸；Cl₂ →【氯气刺激】",
+    stimulusStatus: B2R1_STIMULUS_STATUS_CHLORINE,
+  }),
+  Object.freeze({
+    id: "OR-Cl2-H2",
+    equation: "H₂ + Cl₂ —【点燃】→ 2HCl",
+    reactants: Object.freeze(["H2", "Cl2"]),
+    conditions: IGNITION_CONDITIONS,
+    effectZh: "生成 HCl 气体/酸卡",
+  }),
+  // Frozen §3.9 retained compatibility row; matcher continues to return canonical OR-Zn-Cu.
+  Object.freeze({
+    id: "OR-Zn-Cu2",
+    equation: "Zn + Cu²⁺ → Zn²⁺ + Cu",
+    medium: "water",
+    reactants: Object.freeze(["Zn"]),
+    solutionIon: "Cu2+",
+    solutionIons: CU2_SOLUTION_IONS,
+    effectZh: "与 §3.3 同",
+    effectTags: SEIZE_CU_EFFECT_TAGS,
+    effectTagZh: "夺取 Cu²⁺；生成 Cu 资源/打断",
+  }),
+  Object.freeze({
+    id: "OR-Al-Cu2",
+    equation: "2Al + 3Cu²⁺ → 2Al³⁺ + 3Cu",
+    medium: "water",
+    reactants: Object.freeze(["Al"]),
+    solutionIon: "Cu2+",
+    solutionIons: CU2_SOLUTION_IONS,
+    effectZh: "铝置换铜",
+  }),
+  Object.freeze({
+    id: "OR-Mg-Fe2",
+    equation: "Mg + Fe²⁺ → Mg²⁺ + Fe",
+    medium: "water",
+    reactants: Object.freeze(["Mg"]),
+    solutionIon: "Fe2+",
+    solutionIons: FE2_SOLUTION_IONS,
+    effectZh: "仅当数据层声明 Fe²⁺ 溶液可置换",
+  }),
+  Object.freeze({
+    id: "OR-H2-CuO",
+    equation: "H₂ + CuO —【加热】→ Cu + H₂O",
+    reactants: Object.freeze(["H2", "CuO"]),
+    conditions: HEATING_CONDITIONS,
+    effectZh: "氢气还原氧化铜",
+  }),
+  Object.freeze({
+    id: "OR-C-CuO",
+    equation: "C + 2CuO —【高温】→ 2Cu + CO₂↑",
+    reactants: Object.freeze(["C", "CuO"]),
+    conditions: HIGH_TEMPERATURE_CONDITIONS,
+    effectZh: "木炭还原",
+  }),
+  Object.freeze({
+    id: "OR-CO-CuO",
+    equation: "CO + CuO —【加热】→ Cu + CO₂",
+    reactants: Object.freeze(["CO", "CuO"]),
+    conditions: HEATING_CONDITIONS,
+    effectZh: "一氧化碳还原",
+  }),
+  Object.freeze({
+    id: "OR-Fe2O3-CO",
+    equation: "Fe₂O₃ + 3CO —【高温】→ 2Fe + 3CO₂",
+    reactants: Object.freeze(["Fe2O3", "CO"]),
+    conditions: HIGH_TEMPERATURE_CONDITIONS,
+    effectZh: "炼铁抽象行",
+  }),
+  Object.freeze({
+    id: "OR-Fe2O3-H2",
+    equation: "Fe₂O₃ + 3H₂ —【加热】→ 2Fe + 3H₂O",
+    reactants: Object.freeze(["Fe2O3", "H2"]),
+    conditions: HEATING_CONDITIONS,
+    effectZh: "氢气还原铁锈",
+  }),
+  Object.freeze({
+    id: "OR-KMnO4-Fe2",
+    equation: "MnO₄⁻ + 5Fe²⁺ + 8H⁺ → Mn²⁺ + 5Fe³⁺ + 4H₂O",
+    medium: "water",
+    reactants: Object.freeze(["KMnO4"]),
+    solutionIons: FE2_H_SOLUTION_IONS,
+    effectZh: "酸性高锰酸根氧化 Fe²⁺",
+  }),
+  Object.freeze({
+    id: "OR-Na2O2-H2O",
+    equation: "2Na₂O₂ + 2H₂O → 4NaOH + O₂↑",
+    medium: "water",
+    reactants: Object.freeze(["Na2O2"]),
+    effectZh: "O₂ 释放",
+  }),
+  Object.freeze({
+    id: "OR-KClO3-MnO2",
+    equation: "2KClO₃ —【MnO₂催化】→ 2KCl + 3O₂↑",
+    reactants: Object.freeze(["KClO3"]),
+    conditions: MNO2_CATALYSIS_CONDITIONS,
+    effectZh: "氧气制取抽象",
+  }),
+  Object.freeze({
+    id: "OR-Na2S2O3-I2",
+    equation: "2S₂O₃²⁻ + I₂ → S₄O₆²⁻ + 2I⁻",
+    reactants: Object.freeze(["Na2S2O3", "I2"]),
+    effectZh: "碘量法抽象；碘参与",
+  }),
 ]);
 
 const REDOX_ROW_MAP = new Map<B2R1RedoxRowId, B2R1RedoxReactionDefinition>(
@@ -736,6 +870,48 @@ const REACTANT_NORMALIZATION_MAP: Readonly<Record<string, string>> = Object.free
   nh3: "NH3",
   氨: "NH3",
   氨气: "NH3",
+  MnO2: "MnO2",
+  "MnO₂": "MnO2",
+  mno2: "MnO2",
+  二氧化锰: "MnO2",
+  NaClO: "NaClO",
+  naclo: "NaClO",
+  次氯酸钠: "NaClO",
+  漂白液: "NaClO",
+  HCl: "HCl",
+  hcl: "HCl",
+  盐酸: "HCl",
+  H2: "H2",
+  "H₂": "H2",
+  h2: "H2",
+  氢气: "H2",
+  CuO: "CuO",
+  cuo: "CuO",
+  氧化铜: "CuO",
+  C: "C",
+  c: "C",
+  碳: "C",
+  木炭: "C",
+  CO: "CO",
+  co: "CO",
+  一氧化碳: "CO",
+  Fe2O3: "Fe2O3",
+  "Fe₂O₃": "Fe2O3",
+  fe2o3: "Fe2O3",
+  氧化铁: "Fe2O3",
+  三氧化二铁: "Fe2O3",
+  Na2O2: "Na2O2",
+  "Na₂O₂": "Na2O2",
+  na2o2: "Na2O2",
+  过氧化钠: "Na2O2",
+  KClO3: "KClO3",
+  "KClO₃": "KClO3",
+  kclo3: "KClO3",
+  氯酸钾: "KClO3",
+  Na2S2O3: "Na2S2O3",
+  "Na₂S₂O₃": "Na2S2O3",
+  na2s2o3: "Na2S2O3",
+  硫代硫酸钠: "Na2S2O3",
 });
 
 function normalizeReactantKey(item: string): string {
@@ -933,6 +1109,12 @@ export function matchB2R1RedoxReaction(
         rowId: reaction.id,
         reaction,
         effectZh: reaction.effectZh,
+        ...(reaction.stimulusStatus ? {
+          stimulusStatus: reaction.stimulusStatus,
+          statusNameZh: reaction.stimulusStatus.nameZh,
+          statusNameEn: reaction.stimulusStatus.nameEn,
+          statusId: reaction.stimulusStatus.id,
+        } : {}),
       };
     }
     return {
@@ -997,8 +1179,12 @@ export function matchB2R1RedoxReaction(
 
   // 3. 浓盐酸介质分叉 (§3.8)
   if (normalizedMedium === "conc_hcl") {
-    if (normalizedReactants.length === 1 && normalizedReactants[0] === "KMnO4") {
-      const reaction = REDOX_ROW_MAP.get("OR-KMnO4-HCl-conc")!;
+    const rowId = normalizedReactants.length === 1
+      ? normalizedReactants[0] === "KMnO4" ? "OR-KMnO4-HCl-conc"
+        : normalizedReactants[0] === "MnO2" ? "OR-MnO2-HCl-conc" : undefined
+      : undefined;
+    if (rowId) {
+      const reaction = REDOX_ROW_MAP.get(rowId)!;
       return {
         matched: true,
         success: true,
@@ -1043,6 +1229,12 @@ export function matchB2R1RedoxReaction(
           ? "OR-Fe2-Cl2"
           : reactant === "H2O2" && hasExactSolutionIons(normalizedSolutionIons, FE2_H_SOLUTION_IONS)
           ? "OR-Fe2-H2O2"
+          : reactant === "Al" && hasExactSolutionIons(normalizedSolutionIons, CU2_SOLUTION_IONS)
+          ? "OR-Al-Cu2"
+          : reactant === "Mg" && hasExactSolutionIons(normalizedSolutionIons, FE2_SOLUTION_IONS)
+          ? "OR-Mg-Fe2"
+          : reactant === "KMnO4" && hasExactSolutionIons(normalizedSolutionIons, FE2_H_SOLUTION_IONS)
+          ? "OR-KMnO4-Fe2"
           : undefined;
       if (rowId) {
         const reaction = REDOX_ROW_MAP.get(rowId)!;
@@ -1134,7 +1326,7 @@ export function matchB2R1RedoxReaction(
               solutionIons: reaction.solutionIons,
             };
           }
-          // 负例拦截：Ag、Cu、Al 及未列金属单质置换 Cu²⁺ 均不成立
+          // §3.9 Al 已在上方精确分支处理；其余未列组合不成立。
           return {
             matched: false,
             success: false,
@@ -1253,6 +1445,17 @@ export function matchB2R1RedoxReaction(
         matched: false,
         success: false,
         reason: `置换反应物或离子不合法: 反应物 [${normalizedReactants.join(", ")}], 离子 [${rawSolutionIons.join(", ")}]`,
+      };
+    }
+
+    if (normalizedReactants.length === 1 && normalizedReactants[0] === "Na2O2") {
+      const reaction = REDOX_ROW_MAP.get("OR-Na2O2-H2O")!;
+      return {
+        matched: true,
+        success: true,
+        rowId: reaction.id,
+        reaction,
+        effectZh: reaction.effectZh,
       };
     }
 

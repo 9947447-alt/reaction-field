@@ -98,6 +98,9 @@ export type SaltGenerationResult =
  */
 export type B2R1MetalElementId = "Cu" | "Mg" | "Zn" | "Fe" | "Al" | "Ag";
 
+/** The six ion-component modes granted by the frozen B2-R1 card-pool manifest. */
+export type B2R1MetalIonId = "Mg2+" | "Al3+" | "Zn2+" | "Fe2+" | "Cu2+" | "Ag+";
+
 export interface B2R1MetalDefinition {
   readonly id: B2R1MetalElementId;
   readonly symbol: string;
@@ -329,3 +332,140 @@ export interface B2R1RedoxMatchFailure {
 }
 
 export type B2R1RedoxMatchResult = B2R1RedoxMatchSuccess | B2R1RedoxMatchFailure;
+
+/**
+ * Phase 22 B2-R1 ordinary card-pool static metadata.
+ * This describes frozen inventory and capabilities only; it does not create runtime cards.
+ */
+export type B2R1CardPoolCategory =
+  | "independent_ion"
+  | "dual_use_metal"
+  | "base_element"
+  | "condition"
+  | "halogen_elemental"
+  | "base_molecule_gas"
+  | "named_reagent_oxide"
+  | "dilute_acid_base"
+  | "concentrated_acid"
+  | "salt";
+
+export type B2R1CardPoolSide = "core" | "other";
+
+export type B2R1CardPoolTag =
+  | "ion_component"
+  | "acid"
+  | "base"
+  | "alkaline-absorb"
+  | "carbonate"
+  | "halogen"
+  | "dual_use"
+  | "metal"
+  | "element_component"
+  | "nonmetal"
+  | "reaction_condition"
+  | "special"
+  | "high_risk_candidate"
+  | "harmful-gas"
+  | "flammable_gas"
+  | "fire-extinguish"
+  | "reagent"
+  | "oxide"
+  | "strong-acid"
+  | "aqueous"
+  | "dilute"
+  | "strong-alkali"
+  | "concentrated"
+  | "salt"
+  | "chloride"
+  | "precipitate"
+  | "sulfate"
+  | "slightly_soluble"
+  | "nitrate";
+
+export type B2R1CardPoolMetalMode =
+  | { readonly mode: "elemental"; readonly element: B2R1MetalElementId }
+  | { readonly mode: "ion_component"; readonly ionId: B2R1MetalIonId };
+
+export type B2R1CardPoolMetalModes = readonly [
+  { readonly mode: "elemental"; readonly element: B2R1MetalElementId },
+  { readonly mode: "ion_component"; readonly ionId: B2R1MetalIonId },
+];
+
+export interface B2R1CardPoolIonQuantity {
+  readonly ionId: B2R1IonId;
+  readonly count: number;
+}
+
+export interface B2R1CardPoolDefinition {
+  readonly id: string;
+  readonly nameZh: string;
+  readonly formula: string;
+  readonly displayFormula: string;
+  readonly count: number;
+  readonly category: B2R1CardPoolCategory;
+  readonly poolSide: B2R1CardPoolSide;
+  readonly tags: readonly B2R1CardPoolTag[];
+  readonly nameEn?: string;
+  readonly ionProvided?: B2R1IonId;
+  readonly elementProvided?: string;
+  readonly elementUnitsPerCard?: 1;
+  /** Exclusive mode selection is descriptive card metadata and is not executed here. */
+  readonly modeSelection?: "exclusive";
+  readonly modes?: B2R1CardPoolMetalModes;
+  readonly conditionProvided?: B2R1ReactionCondition;
+  readonly conditionRowIds?: readonly B2R1RedoxRowId[];
+  readonly mediumProvided?: B2R1MediumId;
+  /** Chemical composition identity; it does not by itself grant component cards. */
+  readonly ionComposition?: readonly B2R1CardPoolIonQuantity[];
+  /** Exact components required to generate the named output; descriptive metadata only. */
+  readonly diyInputSignature?: readonly B2R1CardPoolIonQuantity[];
+  readonly cation?: B2R1CationId;
+  readonly anion?: B2R1AnionId;
+  readonly cationCount?: number;
+  readonly anionCount?: number;
+  readonly solubility?: B2R1Solubility;
+  readonly isPrecipitate?: boolean;
+}
+
+export interface B2R1CardPoolDeckManifestEntry {
+  readonly definitionId: string;
+  readonly count: number;
+}
+
+export interface B2R1CardPoolCategoryTotal {
+  readonly category: B2R1CardPoolCategory;
+  readonly definitions: number;
+  readonly cards: number;
+  readonly poolSide: B2R1CardPoolSide;
+}
+
+export interface B2R1CardPoolTotals {
+  readonly definitions: number;
+  readonly cards: number;
+  readonly coreCards: number;
+  readonly otherCards: number;
+}
+
+export interface B2R1CardPoolFormulaProvider {
+  readonly formula: string;
+  readonly definitionIds: readonly string[];
+}
+
+export type B2R1CardPoolIonSourceKind = "independent_ion" | "metal_ion_component";
+
+export interface B2R1CardPoolIonSource {
+  readonly ionId: B2R1IonId;
+  readonly definitionId: string;
+  readonly sourceKind: B2R1CardPoolIonSourceKind;
+  readonly unitsPerCard: 1;
+}
+
+export interface B2R1CardPoolMediumProvider {
+  readonly medium: B2R1MediumId;
+  readonly definitionIds: readonly string[];
+}
+
+export interface B2R1CardPoolConditionProvider {
+  readonly condition: B2R1ReactionCondition;
+  readonly definitionIds: readonly string[];
+}

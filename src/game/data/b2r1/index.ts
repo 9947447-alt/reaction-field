@@ -8,3 +8,4 @@ export * from "./ions";
 export * from "./salts";
 export * from "./redox";
 export * from "./cardPool";
+export * from "./ionPair";

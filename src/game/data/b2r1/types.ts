@@ -469,3 +469,109 @@ export interface B2R1CardPoolConditionProvider {
   readonly condition: B2R1ReactionCondition;
   readonly definitionIds: readonly string[];
 }
+
+/** Frozen §2.4 ion-pair whitelist row identities. */
+export type B2R1IonPairReactionRowId =
+  | "IP-NEUTRALIZATION-H-OH"
+  | "IP-GAS-ACID-CARBONATE"
+  | "IP-GAS-AMMONIUM-HYDROXIDE-HEAT"
+  | "IP-ABSORPTION-SO2-OH"
+  | "IP-PRECIPITATION-BASO4"
+  | "IP-PRECIPITATION-BACO3"
+  | "IP-PRECIPITATION-CACO3"
+  | "IP-PRECIPITATION-AGCL"
+  | "IP-PRECIPITATION-AG2CO3"
+  | "IP-PRECIPITATION-CUOH2"
+  | "IP-PRECIPITATION-FE3OH3"
+  | "IP-PRECIPITATION-FE2OH2";
+
+export type B2R1IonPairReactionKind =
+  | "neutralization"
+  | "gas_evolution"
+  | "absorption"
+  | "precipitation";
+
+export type B2R1IonPairInputIdentity = B2R1IonId | "SO2";
+
+export interface B2R1IonPairComponent {
+  readonly identity: B2R1IonPairInputIdentity;
+  readonly count: number;
+  /** Present only for the SO2 molecular input identity. */
+  readonly definitionId?: "substance_so2";
+}
+
+export type B2R1IonPairDefinitionId =
+  | "substance_h2o"
+  | "substance_co2"
+  | "substance_nh3"
+  | "substance_baso4"
+  | "substance_baco3"
+  | "substance_caco3"
+  | "substance_agcl"
+  | "substance_ag2co3";
+
+export type B2R1IonPairProductIdentity =
+  | B2R1IonPairDefinitionId
+  | "SO3^2-"
+  | "formula:Cu(OH)2"
+  | "formula:Fe(OH)3"
+  | "formula:Fe(OH)2";
+
+export type B2R1IonPairProductIdentityKind =
+  | "definition"
+  | "display_only_formula"
+  | "result_only_formula";
+
+export interface B2R1IonPairProduct {
+  readonly identity: B2R1IonPairProductIdentity;
+  readonly identityKind: B2R1IonPairProductIdentityKind;
+  readonly formula: string;
+  readonly displayFormula: string;
+  readonly count: number;
+  readonly definitionId?: B2R1IonPairDefinitionId;
+}
+
+export type B2R1IonPairLegacyReactionDefinitionId =
+  | "acid_base_neutralization"
+  | "acid_carbonate_co2"
+  | "so2_alkaline_absorption";
+
+export type B2R1IonPairResultIdentity =
+  | "absorption:so2-alkaline"
+  | "formula:Cu(OH)2"
+  | "formula:Fe(OH)3"
+  | "formula:Fe(OH)2";
+
+export interface B2R1IonPairReactionDefinition {
+  readonly rowId: B2R1IonPairReactionRowId;
+  readonly reactionKind: B2R1IonPairReactionKind;
+  readonly components: readonly B2R1IonPairComponent[];
+  readonly medium: "water";
+  readonly conditions: readonly B2R1ReactionCondition[];
+  readonly equation: string;
+  readonly resultIdentity?: B2R1IonPairResultIdentity;
+  readonly products: readonly B2R1IonPairProduct[];
+  readonly legacyReactionDefinitionId?: B2R1IonPairLegacyReactionDefinitionId;
+  readonly redoxCrossReferences?: readonly B2R1RedoxRowId[];
+  /** §2.4 owns only the three explicitly cross-referenced overlaps. */
+  readonly overlapOwner?: "ion_pair";
+  readonly sources: readonly string[];
+}
+
+export interface B2R1IonPairMatchInput {
+  readonly components: readonly string[];
+  readonly medium?: string;
+  readonly conditions?: readonly string[];
+}
+
+export type B2R1IonPairMatchResult =
+  | {
+      readonly matched: true;
+      readonly success: true;
+      readonly rowId: B2R1IonPairReactionRowId;
+      readonly reaction: B2R1IonPairReactionDefinition;
+    }
+  | {
+      readonly matched: false;
+      readonly success: false;
+    };

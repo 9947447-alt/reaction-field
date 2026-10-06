@@ -409,6 +409,21 @@ const REACTION_CONDITION_IDS: ReadonlySet<string> = new Set([
   "mno2_catalysis",
 ]);
 const ALLOWED_INPUT_KEYS = new Set<PropertyKey>(["components", "medium", "conditions"]);
+const OBJECT_PROTOTYPE_BUILTIN_KEYS = new Set<PropertyKey>([
+  "constructor",
+  "__defineGetter__",
+  "__defineSetter__",
+  "hasOwnProperty",
+  "__lookupGetter__",
+  "__lookupSetter__",
+  "isPrototypeOf",
+  "propertyIsEnumerable",
+  "toString",
+  "valueOf",
+  "__proto__",
+  "toLocaleString",
+]);
+const DEFAULT_OBJECT_CONSTRUCTOR_SOURCE = Function.prototype.toString.call(Object);
 const SUCCESS_BY_ROW = new Map(
   B2R1_ION_PAIR_REACTION_ROWS.map((reaction) => [
     reaction.rowId,
@@ -470,6 +485,51 @@ function exactConditions(
   return actual.length === expected.length && expected.every((condition, index) => actual[index] === condition);
 }
 
+function isDefaultObjectPrototype(value: object): boolean {
+  if (Object.getPrototypeOf(value) !== null) return false;
+  const constructorDescriptor = Object.getOwnPropertyDescriptor(value, "constructor");
+  if (!constructorDescriptor || !("value" in constructorDescriptor) || typeof constructorDescriptor.value !== "function") {
+    return false;
+  }
+  if (Function.prototype.toString.call(constructorDescriptor.value) !== DEFAULT_OBJECT_CONSTRUCTOR_SOURCE) {
+    return false;
+  }
+  const constructorPrototype = Object.getOwnPropertyDescriptor(constructorDescriptor.value, "prototype");
+  if (constructorPrototype?.value !== value) return false;
+  for (const key of OBJECT_PROTOTYPE_BUILTIN_KEYS) {
+    if (Object.getOwnPropertyDescriptor(value, key) === undefined) return false;
+  }
+  return true;
+}
+
+function isDefaultClassConstructor(prototype: object): boolean {
+  const constructorDescriptor = Object.getOwnPropertyDescriptor(prototype, "constructor");
+  if (!constructorDescriptor || !("value" in constructorDescriptor) || typeof constructorDescriptor.value !== "function") {
+    return false;
+  }
+  return Object.getOwnPropertyDescriptor(constructorDescriptor.value, "prototype")?.value === prototype;
+}
+
+function hasOnlyAllowedInputKeys(input: object): boolean {
+  let current: object | null = input;
+  let isInput = true;
+  const visited = new Set<object>();
+  while (current !== null && !visited.has(current)) {
+    visited.add(current);
+    const isObjectPrototype = !isInput && isDefaultObjectPrototype(current);
+    for (const key of Reflect.ownKeys(current)) {
+      if (ALLOWED_INPUT_KEYS.has(key)) continue;
+      if (isObjectPrototype && OBJECT_PROTOTYPE_BUILTIN_KEYS.has(key)) continue;
+      if (!isInput && key === "constructor" && isDefaultClassConstructor(current)) continue;
+      return false;
+    }
+    if (isObjectPrototype) return true;
+    isInput = false;
+    current = Object.getPrototypeOf(current);
+  }
+  return true;
+}
+
 function normalizeInput(input: unknown): {
   readonly components: readonly string[];
   readonly medium: "water";
@@ -477,9 +537,7 @@ function normalizeInput(input: unknown): {
 } | undefined {
   try {
     if (input === null || typeof input !== "object" || Array.isArray(input)) return undefined;
-    if (!Reflect.ownKeys(input).every((key) => typeof key === "string" && ALLOWED_INPUT_KEYS.has(key))) {
-      return undefined;
-    }
+    if (!hasOnlyAllowedInputKeys(input)) return undefined;
 
     const structuralInput = input as {
       readonly components?: unknown;

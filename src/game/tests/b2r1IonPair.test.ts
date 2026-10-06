@@ -244,7 +244,7 @@ function isDeeplyFrozen(value: unknown): boolean {
   );
 }
 
-function withObjectPrototypeProperty<T>(key: string, value: unknown, run: () => T): T {
+function withObjectPrototypeProperty<T>(key: PropertyKey, value: unknown, run: () => T): T {
   const previous = Object.getOwnPropertyDescriptor(Object.prototype, key);
   try {
     Object.defineProperty(Object.prototype, key, { configurable: true, value });
@@ -447,6 +447,92 @@ describe("matchB2R1IonPairReaction", () => {
     expectRow(matchB2R1IonPairReaction(Object.freeze(new FrozenMatchInput())), "IP-NEUTRALIZATION-H-OH");
     expectRow(matchB2R1IonPairReaction(inheritedComponents), "IP-NEUTRALIZATION-H-OH");
     expectRow(matchB2R1IonPairReaction(foreignRealmInput), "IP-NEUTRALIZATION-H-OH");
+  });
+
+  it("rejects own and inherited extra fields regardless of visibility or key type", () => {
+    const extraKeys: PropertyKey[] = [
+      "extra",
+      "reactants",
+      "solutionIons",
+      "condition",
+      Symbol("extra"),
+    ];
+    const validInput = { components: ["H+", "OH-"] };
+    expectRow(matchB2R1IonPairReaction(validInput), "IP-NEUTRALIZATION-H-OH");
+    const unexpectedMatches: string[] = [];
+
+    for (const key of extraKeys) {
+      for (const enumerable of [false, true]) {
+        const ownInput = { components: ["H+", "OH-"] };
+        Object.defineProperty(ownInput, key, { configurable: true, enumerable, value: true });
+
+        const prototype = {};
+        Object.defineProperty(prototype, key, { configurable: true, enumerable, value: true });
+        const inheritedInput = Object.create(prototype);
+        inheritedInput.components = ["H+", "OH-"];
+
+        if (matchB2R1IonPairReaction(ownInput).matched) {
+          unexpectedMatches.push(`own ${String(key)} enumerable=${enumerable}`);
+        }
+        if (matchB2R1IonPairReaction(inheritedInput).matched) {
+          unexpectedMatches.push(`inherited ${String(key)} enumerable=${enumerable}`);
+        }
+      }
+    }
+    expect(unexpectedMatches).toEqual([]);
+  });
+
+  it("checks extra fields through multiple custom prototype levels and null prototypes", () => {
+    const deepestPrototype = { solutionIons: ["H+", "OH-"] };
+    const middlePrototype = Object.create(deepestPrototype);
+    const layeredInput = Object.create(middlePrototype);
+    layeredInput.components = ["H+", "OH-"];
+
+    const nullPrototype = Object.create(null);
+    nullPrototype.reactants = ["H+", "OH-"];
+    const nullPrototypeInput = Object.create(nullPrototype);
+    nullPrototypeInput.components = ["H+", "OH-"];
+
+    expect([
+      matchB2R1IonPairReaction(layeredInput).matched,
+      matchB2R1IonPairReaction(nullPrototypeInput).matched,
+    ]).toEqual([false, false]);
+    expectRow(matchB2R1IonPairReaction(Object.create({ medium: "水", conditions: [], components: ["H+", "OH-"] })), "IP-NEUTRALIZATION-H-OH");
+  });
+
+  it("rejects extra fields explicitly added to the standard prototype", () => {
+    const stringExtra = withObjectPrototypeProperty("condition", true, () =>
+      matchB2R1IonPairReaction({ components: ["H+", "OH-"] }),
+    );
+    const symbolExtra = withObjectPrototypeProperty(Symbol("extra"), true, () =>
+      matchB2R1IonPairReaction({ components: ["H+", "OH-"] }),
+    );
+
+    expect([stringExtra.matched, symbolExtra.matched]).toEqual([false, false]);
+    expectRow(matchB2R1IonPairReaction({ components: ["H+", "OH-"] }), "IP-NEUTRALIZATION-H-OH");
+  });
+
+  it("does not treat a custom prototype that copies Object keys as the built-in prototype", () => {
+    const fakePrototype = Object.create(null);
+    function Fake() {}
+    Fake.prototype = fakePrototype;
+    for (const key of Reflect.ownKeys(Object.prototype)) {
+      Object.defineProperty(fakePrototype, key, {
+        configurable: true,
+        value: key === "constructor" ? Fake : true,
+      });
+    }
+    const input = Object.create(fakePrototype);
+    input.components = ["H+", "OH-"];
+
+    expect(matchUnknown(input).matched).toBe(false);
+  });
+
+  it("terminates and matches when a structural proxy repeats its prototype node", () => {
+    let input: object;
+    input = new Proxy({ components: ["H+", "OH-"] }, { getPrototypeOf: () => input });
+
+    expectRow(matchUnknown(input), "IP-NEUTRALIZATION-H-OH");
   });
 
   it("reads stable own and inherited field getters as structural input values", () => {

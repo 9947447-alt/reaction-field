@@ -421,29 +421,16 @@ const SUCCESS_BY_ROW = new Map(
   ]),
 );
 
-interface OwnDataValue {
-  readonly found: boolean;
-  readonly valid: boolean;
-  readonly value?: unknown;
-}
-
-function getOwnDataValue(input: object, key: string): OwnDataValue {
-  const descriptor = Object.getOwnPropertyDescriptor(input, key);
-  if (!descriptor) return { found: false, valid: true };
-  if (!("value" in descriptor)) return { found: true, valid: false };
-  return { found: true, valid: true, value: descriptor.value };
-}
-
 function readDenseStringArray(value: unknown, allowEmpty: boolean): string[] | undefined {
   if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) return undefined;
 
   const strings: string[] = [];
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-    if (!descriptor || !("value" in descriptor) || typeof descriptor.value !== "string") {
-      return undefined;
-    }
-    strings.push(descriptor.value);
+    if (!descriptor) return undefined;
+    const item: unknown = value[index];
+    if (typeof item !== "string") return undefined;
+    strings.push(item);
   }
   return strings;
 }
@@ -490,15 +477,16 @@ function normalizeInput(input: unknown): {
 } | undefined {
   try {
     if (input === null || typeof input !== "object" || Array.isArray(input)) return undefined;
-    const prototype = Object.getPrototypeOf(input);
-    if (prototype !== Object.prototype && prototype !== null) return undefined;
     if (!Reflect.ownKeys(input).every((key) => typeof key === "string" && ALLOWED_INPUT_KEYS.has(key))) {
       return undefined;
     }
 
-    const componentsProperty = getOwnDataValue(input, "components");
-    if (!componentsProperty.found || !componentsProperty.valid) return undefined;
-    const rawComponents = readDenseStringArray(componentsProperty.value, false);
+    const structuralInput = input as {
+      readonly components?: unknown;
+      readonly medium?: unknown;
+      readonly conditions?: unknown;
+    };
+    const rawComponents = readDenseStringArray(structuralInput.components, false);
     if (!rawComponents) return undefined;
 
     const components: string[] = [];
@@ -508,16 +496,12 @@ function normalizeInput(input: unknown): {
       components.push(identity);
     }
 
-    const mediumProperty = getOwnDataValue(input, "medium");
-    if (!mediumProperty.valid) return undefined;
-    const mediumValue = mediumProperty.found ? mediumProperty.value : undefined;
+    const mediumValue = structuralInput.medium;
     if (mediumValue !== undefined && typeof mediumValue !== "string") return undefined;
     const medium = mediumValue === undefined ? "water" : normalizeMediumId(mediumValue);
     if (medium !== "water") return undefined;
 
-    const conditionsProperty = getOwnDataValue(input, "conditions");
-    if (!conditionsProperty.valid) return undefined;
-    const conditionsValue = conditionsProperty.found ? conditionsProperty.value : undefined;
+    const conditionsValue = structuralInput.conditions;
     let rawConditions: string[];
     if (conditionsValue === undefined) {
       rawConditions = [];

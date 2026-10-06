@@ -1,3 +1,4 @@
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import {
   B2R1_ION_PAIR_REACTION_ROWS,
@@ -243,6 +244,17 @@ function isDeeplyFrozen(value: unknown): boolean {
   );
 }
 
+function withObjectPrototypeProperty<T>(key: string, value: unknown, run: () => T): T {
+  const previous = Object.getOwnPropertyDescriptor(Object.prototype, key);
+  try {
+    Object.defineProperty(Object.prototype, key, { configurable: true, value });
+    return run();
+  } finally {
+    if (previous) Object.defineProperty(Object.prototype, key, previous);
+    else Reflect.deleteProperty(Object.prototype, key);
+  }
+}
+
 describe("B2-R1 ion-pair static rows", () => {
   it("contains exactly the frozen 12 IDs, categories, complete row contracts and source links", () => {
     expect(B2R1_ION_PAIR_REACTION_ROWS).toHaveLength(12);
@@ -299,6 +311,9 @@ describe("matchB2R1IonPairReaction", () => {
       ["one extra valid identity", [...components, "Na+"]],
       ["unknown identity replacing a required unit", ["unknown-ion", ...components.slice(1)]],
       ["blank identity replacing a required unit", ["   ", ...components.slice(1)]],
+      ["unknown identity appended to a complete valid input", [...components, "unknown-ion"]],
+      ["blank identity appended to a complete valid input", [...components, "   "]],
+      ["alias appended to a complete valid input", [...components, alias ?? "H⁺"]],
       ["an alias mixed with canonical identities", aliasMixed],
       ["proportionally scaled coefficients", components.flatMap((identity) => [identity, identity])],
     ];
@@ -417,6 +432,99 @@ describe("matchB2R1IonPairReaction", () => {
       expect(result.matched, String(candidate)).toBe(false);
     }
     expectRow(matchB2R1IonPairReaction({ components: valid }), "IP-NEUTRALIZATION-H-OH");
+  });
+
+  it("accepts structural input objects across class, custom-prototype and realm boundaries", () => {
+    class FrozenMatchInput {
+      readonly components = Object.freeze(["H+", "OH-"]);
+    }
+
+    const inheritedComponents = Object.create({ components: ["H+", "OH-"] });
+    const foreignRealmInput = runInNewContext(
+      "Object.freeze({ components: Object.freeze(['H+', 'OH-']) })",
+    ) as B2R1IonPairMatchInput;
+
+    expectRow(matchB2R1IonPairReaction(Object.freeze(new FrozenMatchInput())), "IP-NEUTRALIZATION-H-OH");
+    expectRow(matchB2R1IonPairReaction(inheritedComponents), "IP-NEUTRALIZATION-H-OH");
+    expectRow(matchB2R1IonPairReaction(foreignRealmInput), "IP-NEUTRALIZATION-H-OH");
+  });
+
+  it("reads stable own and inherited field getters as structural input values", () => {
+    const getterCounts = { components: 0, medium: 0, conditions: 0 };
+    const input = Object.create(null);
+    Object.defineProperties(input, {
+      components: {
+        enumerable: true,
+        get: () => {
+          getterCounts.components += 1;
+          return ["NH4+", "OH-"];
+        },
+      },
+      medium: {
+        enumerable: true,
+        get: () => {
+          getterCounts.medium += 1;
+          return "水";
+        },
+      },
+      conditions: {
+        enumerable: true,
+        get: () => {
+          getterCounts.conditions += 1;
+          return ["heat"];
+        },
+      },
+    });
+
+    const inheritedOptionalValues = Object.create({ medium: "水", conditions: [] });
+    inheritedOptionalValues.components = ["H+", "OH-"];
+
+    expectRow(matchB2R1IonPairReaction(input), "IP-GAS-AMMONIUM-HYDROXIDE-HEAT");
+    expect(getterCounts).toEqual({ components: 1, medium: 1, conditions: 1 });
+    expectRow(matchB2R1IonPairReaction(inheritedOptionalValues), "IP-NEUTRALIZATION-H-OH");
+  });
+
+  it("rejects invalid inherited optional values instead of defaulting them as absent", () => {
+    const inheritedAcidMedium = withObjectPrototypeProperty("medium", "acid", () =>
+      matchB2R1IonPairReaction({ components: ["H+", "OH-"] }),
+    );
+    const inheritedHeatingCondition = withObjectPrototypeProperty("conditions", ["heating"], () =>
+      matchB2R1IonPairReaction({ components: ["H+", "OH-"] }),
+    );
+
+    expect(inheritedAcidMedium.matched).toBe(false);
+    expect(inheritedHeatingCondition.matched).toBe(false);
+  });
+
+  it("reads dense string arrays with own index getters but rejects inherited sparse indexes", () => {
+    const componentsWithGetters = new Array(2) as string[];
+    Object.defineProperties(componentsWithGetters, {
+      0: { configurable: true, enumerable: true, get: () => "H+" },
+      1: { configurable: true, enumerable: true, get: () => "OH-" },
+    });
+
+    const conditionsWithGetter = new Array(1) as string[];
+    Object.defineProperty(conditionsWithGetter, 0, {
+      configurable: true,
+      enumerable: true,
+      get: () => "heating",
+    });
+
+    const sparseWithInheritedIndexes = new Array(2) as string[];
+    Object.setPrototypeOf(sparseWithInheritedIndexes, Object.create(Array.prototype, {
+      0: { configurable: true, value: "H+" },
+      1: { configurable: true, value: "OH-" },
+    }));
+
+    expectRow(matchB2R1IonPairReaction({ components: componentsWithGetters }), "IP-NEUTRALIZATION-H-OH");
+    expectRow(matchB2R1IonPairReaction({
+      components: ["NH4+", "OH-"],
+      conditions: conditionsWithGetter,
+    }), "IP-GAS-AMMONIUM-HYDROXIDE-HEAT");
+    expect(sparseWithInheritedIndexes[0]).toBe("H+");
+    expect(sparseWithInheritedIndexes[1]).toBe("OH-");
+    expect(Object.prototype.hasOwnProperty.call(sparseWithInheritedIndexes, 0)).toBe(false);
+    expect(matchB2R1IonPairReaction({ components: sparseWithInheritedIndexes }).matched).toBe(false);
   });
 
   it("rejects non-water, blank, unknown, null and non-string media, including prototype keys", () => {

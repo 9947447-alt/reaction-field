@@ -1,7 +1,12 @@
-import { Children, type ReactNode } from "react";
+import { Children, useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocale } from "../../../app/locale";
 import type { ActivateCharacterSkillAction, GameAction } from "../../../game/engine/actions";
 import { getLegalCharacterSkillActions } from "../../../game/engine/characterSkills";
+import {
+  validatePassAction,
+  validatePlayMainActionCard,
+  validatePlayReferenceCard,
+} from "../../../game/engine/resolution";
 import type {
   CardInstanceId,
   DIYSelectionAnalysis,
@@ -53,9 +58,14 @@ const MAX_DESK_ACTION_BUTTONS = 3;
 
 type DeskButtonKind = "play" | "skill" | "end" | "diy";
 
-type DeskButtonItem = Readonly<{
+type MainActionItem = Readonly<{
+  key: string;
   kind: DeskButtonKind;
-  node: ReactNode;
+  label: string;
+  onSelect: () => void;
+  disabled?: boolean;
+  highlighted?: boolean;
+  skillAction?: ActivateCharacterSkillAction;
 }>;
 
 function DeskActionButtons({ children }: { children: ReactNode }) {
@@ -66,53 +76,133 @@ function DeskActionButtons({ children }: { children: ReactNode }) {
   );
 }
 
-function pickDeskSkillActions(
-  legalActions: readonly ActivateCharacterSkillAction[],
-  selectedCardId: CardInstanceId | undefined,
-): ActivateCharacterSkillAction[] {
-  const alkaliActions = legalActions.filter(
-    (action): action is Extract<ActivateCharacterSkillAction, { skillId: "alkali_recovery" }> =>
-      action.skillId === "alkali_recovery",
+function MainActionButton({ item, inMenu = false }: { item: MainActionItem; inMenu?: boolean }) {
+  const variant = item.kind === "skill" ? "skill" : item.kind === "play" ? "primary" : "secondary";
+  return (
+    <button
+      className={`${inMenu ? "desk-action-menu__item" : `desk-action-btn desk-action-btn--${variant}`}${item.highlighted ? " coach-highlight" : ""}`}
+      data-skill-id={item.skillAction?.skillId}
+      data-skill-card-id={item.skillAction && "cardInstanceId" in item.skillAction ? item.skillAction.cardInstanceId : undefined}
+      disabled={item.disabled}
+      onClick={item.onSelect}
+      role={inMenu ? "menuitem" : undefined}
+      type="button"
+    >
+      {item.label}
+    </button>
   );
-  const otherActions = legalActions.filter((action) => action.skillId !== "alkali_recovery");
-  const picked: ActivateCharacterSkillAction[] = [...otherActions];
-
-  if (alkaliActions.length > 0) {
-    const bound = selectedCardId
-      ? alkaliActions.find((action) => action.cardInstanceId === selectedCardId)
-      : undefined;
-    picked.push(bound ?? alkaliActions[0]);
-  }
-
-  return picked;
 }
 
-function takeOfficialDeskButtons(items: readonly DeskButtonItem[]): ReactNode[] {
-  const play = items.filter((item) => item.kind === "play");
-  const skills = items.filter((item) => item.kind === "skill");
-  const rest = items.filter((item) => item.kind === "end" || item.kind === "diy");
-  const out: ReactNode[] = [];
+function DeskActionOverflowMenu({ items, isEnglish }: { items: readonly MainActionItem[]; isEnglish: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuLabel = isEnglish ? "More actions" : "更多操作";
 
-  for (const item of play) {
-    if (out.length >= MAX_DESK_ACTION_BUTTONS) {
-      break;
-    }
-    out.push(item.node);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="desk-action-overflow" ref={rootRef}>
+      <button
+        aria-controls="desk-action-overflow-menu"
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        className="desk-action-menu__trigger"
+        data-testid="desk-action-menu-trigger"
+        onClick={() => setIsOpen((open) => !open)}
+        ref={triggerRef}
+        type="button"
+      >
+        {menuLabel}
+      </button>
+      {isOpen ? (
+        <div
+          aria-label={menuLabel}
+          className="desk-action-menu"
+          id="desk-action-overflow-menu"
+          onKeyDown={(event) => {
+            const targets = Array.from(
+              event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)'),
+            );
+            if (targets.length === 0) return;
+            const current = targets.indexOf(document.activeElement as HTMLButtonElement);
+            let next = current;
+            if (event.key === "ArrowDown") next = (current + 1 + targets.length) % targets.length;
+            else if (event.key === "ArrowUp") next = (current - 1 + targets.length) % targets.length;
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = targets.length - 1;
+            if (next !== current && targets[next]) {
+              event.preventDefault();
+              targets[next].focus();
+            }
+          }}
+          role="menu"
+        >
+          {items.map((item) => (
+            <MainActionButton
+              inMenu
+              item={{ ...item, onSelect: () => {
+                setIsOpen(false);
+                triggerRef.current?.focus();
+                item.onSelect();
+              } }}
+              key={item.key}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function makeSkillActionLabel(
+  action: ActivateCharacterSkillAction,
+  game: GameState,
+  locale: "zh-CN" | "en",
+  variants: readonly ActivateCharacterSkillAction[],
+): string {
+  const name = `${locale === "en" ? "Activate " : "发动"}${getSkillDisplayName(action.skillId, locale)}`;
+  if (variants.length < 2) return name;
+
+  if ("cardInstanceId" in action) {
+    const displayName = getOptionalCardDisplayName(getCardDefinition(game, action.cardInstanceId), locale);
+    const sameDefinition = variants.filter((variant) =>
+      "cardInstanceId" in variant &&
+      game.cardInstances[variant.cardInstanceId]?.definitionId === game.cardInstances[action.cardInstanceId]?.definitionId,
+    );
+    const handIndex = game.players.find((player) => player.id === action.playerId)?.hand.indexOf(action.cardInstanceId);
+    const copy = sameDefinition.length > 1 && handIndex !== undefined && handIndex >= 0
+      ? (locale === "en" ? ` (${handIndex + 1})` : `（第${handIndex + 1}张）`)
+      : "";
+    return `${name} · ${displayName}${copy}`;
   }
 
-  const skillBudget = Math.max(0, MAX_DESK_ACTION_BUTTONS - out.length);
-  for (const item of skills.slice(0, skillBudget)) {
-    out.push(item.node);
+  if ("targetPlayerId" in action) {
+    return `${name} · ${getPlayerDisplayName(getPlayer(game, action.targetPlayerId), locale)}`;
   }
 
-  for (const item of rest) {
-    if (out.length >= MAX_DESK_ACTION_BUTTONS) {
-      break;
-    }
-    out.push(item.node);
-  }
+  return name;
+}
 
-  return out;
+function skillActionKey(action: ActivateCharacterSkillAction): string {
+  return `${action.skillId}-${"cardInstanceId" in action ? action.cardInstanceId : "targetPlayerId" in action ? action.targetPlayerId : "solo"}`;
 }
 
 export function DeskActionBar({
@@ -418,9 +508,11 @@ export function DeskActionBar({
       playerControllers[activePlayer.id === "player_1" ? 0 : 1] === "ai",
   );
   const targets = activePlayer ? getOpponentTargets(game, activePlayer.id) : [];
+  const canAct = Boolean(
+    !isAi && activePlayer && validatePassAction(game, activePlayer.id),
+  );
   const legalSkillActions =
     !isAi && activePlayer ? getLegalCharacterSkillActions(game, activePlayer.id) : [];
-  const deskSkillActions = pickDeskSkillActions(legalSkillActions, selectedCardId);
 
   if (isDiyMode && activePlayer) {
     const isExecutable = diyAnalysis?.status === "EXECUTABLE";
@@ -495,7 +587,7 @@ export function DeskActionBar({
   }
 
   const canDiy = Boolean(
-    !isAi &&
+    canAct &&
       activePlayer &&
       !activePlayer.usedDIYThisCycle &&
       activePlayer.hand.some((id) =>
@@ -506,22 +598,22 @@ export function DeskActionBar({
   const selectedCardDef = selectedCardId && activePlayer
     ? getCardDefinition(game, selectedCardId)
     : undefined;
+  const isOxygen = selectedCardDef?.id === "substance_o2";
+  const targetPlayerId = isOxygen ? activePlayer?.id : targets[0]?.id;
   const canExecute = Boolean(
     !isAi &&
       activePlayer &&
       selectedCardId &&
-      canExecuteMainActionEffect(game, activePlayer, selectedCardId),
+      canExecuteMainActionEffect(game, activePlayer, selectedCardId) &&
+      validatePlayMainActionCard(game, activePlayer.id, selectedCardId, targetPlayerId),
   );
   const canAssociate = Boolean(
     !isAi &&
       activePlayer &&
       selectedCardId &&
-      canPlayAgainstCurrentTableReference(game, activePlayer, selectedCardId),
+      canPlayAgainstCurrentTableReference(game, activePlayer, selectedCardId) &&
+      validatePlayReferenceCard(game, activePlayer.id, selectedCardId),
   );
-
-  const isOxygen = selectedCardDef?.id === "substance_o2";
-  const targetPlayerId = isOxygen ? activePlayer?.id : targets[0]?.id;
-  const keepSkillSlot = Boolean(selectedCardId && deskSkillActions.length > 0);
 
   let hintText = isAi
     ? (isEnglish ? "AI is playing..." : "AI 正在行动...")
@@ -541,6 +633,116 @@ export function DeskActionBar({
     }
   }
 
+  const playItems: MainActionItem[] = [];
+  if (!isAi && activePlayer && selectedCardId) {
+    const effectItem: MainActionItem = {
+      key: "play-effect",
+      kind: "play",
+      label: isEnglish ? "Run Effect" : "执行效果",
+      onSelect: () => dispatchGameAction({
+        type: "PLAY_CARD",
+        playerId: activePlayer.id,
+        cardInstanceId: selectedCardId,
+        targetPlayerId,
+      }),
+    };
+    const referenceItem: MainActionItem = {
+      key: "play-reference",
+      kind: "play",
+      label: isEnglish ? "Play" : "普通出牌",
+      highlighted: tutorialStepKey === "PLAY_REFERENCE_CARD",
+      onSelect: () => dispatchGameAction({
+        type: "PLAY_REFERENCE_CARD",
+        playerId: activePlayer.id,
+        cardInstanceId: selectedCardId,
+      }),
+    };
+
+    if (canExecute && canAssociate) {
+      playItems.push(...(tutorialStepKey === "PLAY_REFERENCE_CARD"
+        ? [referenceItem, effectItem]
+        : [effectItem, referenceItem]));
+    } else if (canExecute) {
+      playItems.push(effectItem);
+    } else if (canAssociate) {
+      playItems.push(referenceItem);
+    }
+  } else if (isAi && activePlayer && selectedCardId) {
+    playItems.push({
+      key: "play-blocked",
+      kind: "play",
+      label: isEnglish ? "Cannot Play" : "不可出牌",
+      disabled: true,
+      onSelect: () => undefined,
+    });
+  }
+
+  if (!isAi && activePlayer && selectedCardId && !canExecute && !canAssociate) {
+    playItems.push({
+      key: "play-blocked",
+      kind: "play",
+      label: isEnglish ? "Cannot Play" : "不可出牌",
+      disabled: true,
+      onSelect: () => undefined,
+    });
+  }
+
+  const skillGroups = new Map<string, ActivateCharacterSkillAction[]>();
+  for (const action of legalSkillActions) {
+    skillGroups.set(action.skillId, [...(skillGroups.get(action.skillId) ?? []), action]);
+  }
+  const skillItems: MainActionItem[] = legalSkillActions.map((action) => ({
+    key: `skill-${skillActionKey(action)}`,
+    kind: "skill",
+    label: makeSkillActionLabel(action, game, locale, skillGroups.get(action.skillId) ?? [action]),
+    skillAction: action,
+    onSelect: () => dispatchGameAction(action),
+  }));
+  const firstSkillById = [...skillGroups.values()].map((actions) => {
+    const selected = selectedCardId
+      ? actions.find((action) => "cardInstanceId" in action && action.cardInstanceId === selectedCardId)
+      : undefined;
+    return skillItems.find((item) => item.skillAction === (selected ?? actions[0]))!;
+  });
+  const firstSkillKeys = new Set(firstSkillById.map((item) => item.key));
+  const additionalSkillItems = skillItems.filter((item) => !firstSkillKeys.has(item.key));
+
+  const passItem: MainActionItem | undefined = canAct && activePlayer
+    ? {
+        key: "end-action",
+        kind: "end",
+        label: isEnglish ? "End Action" : "结束本次行动",
+        onSelect: () => dispatchGameAction({ type: "PASS_ACTION", playerId: activePlayer.id }),
+      }
+    : undefined;
+  const diyItem: MainActionItem | undefined = canAct && activePlayer && canDiy
+    ? {
+        key: "enter-diy",
+        kind: "diy",
+        label: isEnglish ? "Active DIY" : "进入主动 DIY",
+        onSelect: () => onEnterDiy?.(),
+      }
+    : undefined;
+
+  const actionItems = tutorialStepKey === "PLAY_REFERENCE_CARD"
+    ? [
+        ...playItems,
+        ...firstSkillById,
+        ...(passItem ? [passItem] : []),
+        ...(diyItem ? [diyItem] : []),
+        ...additionalSkillItems,
+      ]
+    : [
+        ...playItems.slice(0, 1),
+        ...firstSkillById,
+        ...(passItem ? [passItem] : []),
+        ...(diyItem ? [diyItem] : []),
+        ...playItems.slice(1),
+        ...additionalSkillItems,
+      ];
+  const primaryItems = actionItems.slice(0, MAX_DESK_ACTION_BUTTONS);
+  const overflowItems = actionItems.slice(MAX_DESK_ACTION_BUTTONS);
+
   return (
     <nav aria-label={isEnglish ? "Main action bar" : "主行动操作条"} className="desk-action-bar">
       <div className="desk-action-bar__info">
@@ -549,142 +751,10 @@ export function DeskActionBar({
         </span>
         <span className="desk-action-bar__hint">{hintText}</span>
       </div>
-      <DeskActionButtons>
-        {takeOfficialDeskButtons([
-          ...(selectedCardId
-            ? [
-                {
-                  kind: "play" as const,
-                  node: canExecute ? (
-                    <button
-                      className="desk-action-btn desk-action-btn--primary"
-                      disabled={isAi}
-                      key="play-effect"
-                      onClick={() => {
-                        if (!activePlayer || !selectedCardId) return;
-                        dispatchGameAction({
-                          type: "PLAY_CARD",
-                          playerId: activePlayer.id,
-                          cardInstanceId: selectedCardId,
-                          targetPlayerId,
-                        });
-                      }}
-                      type="button"
-                    >
-                      {isEnglish ? "Run Effect" : "执行效果"}
-                    </button>
-                  ) : canAssociate ? (
-                    <button
-                      className={`desk-action-btn desk-action-btn--primary${tutorialStepKey === "PLAY_REFERENCE_CARD" ? " coach-highlight" : ""}`}
-                      disabled={isAi}
-                      key="play-reference"
-                      onClick={() => {
-                        if (!activePlayer || !selectedCardId) return;
-                        dispatchGameAction({
-                          type: "PLAY_REFERENCE_CARD",
-                          playerId: activePlayer.id,
-                          cardInstanceId: selectedCardId,
-                        });
-                      }}
-                      type="button"
-                    >
-                      {isEnglish ? "Play" : "普通出牌"}
-                    </button>
-                  ) : (
-                    <button
-                      className="desk-action-btn desk-action-btn--primary"
-                      disabled
-                      key="play-blocked"
-                      type="button"
-                    >
-                      {isEnglish ? "Cannot Play" : "不可出牌"}
-                    </button>
-                  ),
-                },
-              ]
-            : []),
-          ...deskSkillActions.map((action) => ({
-            kind: "skill" as const,
-            node: (
-              <button
-                className="desk-action-btn desk-action-btn--skill"
-                data-skill-id={action.skillId}
-                key={`skill-${action.skillId}-${"cardInstanceId" in action ? action.cardInstanceId : "targetPlayerId" in action ? action.targetPlayerId : "solo"}`}
-                onClick={() => {
-                  dispatchGameAction(action);
-                }}
-                type="button"
-              >
-                {isEnglish
-                  ? `Activate ${getSkillDisplayName(action.skillId, locale)}`
-                  : `发动${getSkillDisplayName(action.skillId, locale)}`}
-              </button>
-            ),
-          })),
-          ...(keepSkillSlot
-            ? []
-            : selectedCardId && canExecute && canAssociate
-              ? [
-                  {
-                    kind: "play" as const,
-                    node: (
-                      <button
-                        className={`desk-action-btn desk-action-btn--secondary${tutorialStepKey === "PLAY_REFERENCE_CARD" ? " coach-highlight" : ""}`}
-                        disabled={isAi}
-                        key="play-reference-secondary"
-                        onClick={() => {
-                          if (!activePlayer || !selectedCardId) return;
-                          dispatchGameAction({
-                            type: "PLAY_REFERENCE_CARD",
-                            playerId: activePlayer.id,
-                            cardInstanceId: selectedCardId,
-                          });
-                        }}
-                        type="button"
-                      >
-                        {isEnglish ? "Play" : "普通出牌"}
-                      </button>
-                    ),
-                  },
-                ]
-              : [
-                  {
-                    kind: "diy" as const,
-                    node: (
-                      <button
-                        className="desk-action-btn desk-action-btn--secondary"
-                        disabled={!canDiy}
-                        key="enter-diy"
-                        onClick={onEnterDiy}
-                        type="button"
-                      >
-                        {isEnglish ? "Active DIY" : "进入主动 DIY"}
-                      </button>
-                    ),
-                  },
-                ]),
-          {
-            kind: "end" as const,
-            node: (
-              <button
-                className="desk-action-btn desk-action-btn--secondary"
-                disabled={isAi}
-                key="end-action"
-                onClick={() => {
-                  if (!activePlayer) return;
-                  dispatchGameAction({
-                    type: "PASS_ACTION",
-                    playerId: activePlayer.id,
-                  });
-                }}
-                type="button"
-              >
-                {isEnglish ? "End Action" : "结束本次行动"}
-              </button>
-            ),
-          },
-        ])}
-      </DeskActionButtons>
+      <div className="desk-action-bar__buttons">
+        {primaryItems.map((item) => <MainActionButton item={item} key={item.key} />)}
+        {overflowItems.length > 0 ? <DeskActionOverflowMenu items={overflowItems} isEnglish={isEnglish} /> : null}
+      </div>
     </nav>
   );
 }

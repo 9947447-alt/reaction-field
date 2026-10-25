@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LocaleProvider, type DisplayLocale } from "../../../app/locale";
 import { characterDefinitions, getCharacterDefinition } from "../../../game/data/characterDefinitions";
+import { cardDefinitionsById } from "../../../game/data/cardDefinitions";
 import { createInitialGame } from "../../../game/engine/createInitialGame";
 import { getLegalCharacterSkillActions } from "../../../game/engine/characterSkills";
 import { engineReducer } from "../../../game/engine/reducer";
@@ -16,7 +17,7 @@ import type {
   PlayerId,
 } from "../../../game/engine/types";
 import { identityShuffle } from "../../../shared/random";
-import { getSkillDisplayName } from "../presentationLocale";
+import { getOptionalCardDisplayName, getSkillDisplayName } from "../presentationLocale";
 import { DeskActionBar, type DeskActionBarProps } from "./DeskActionBar";
 
 function publicButtons(container: HTMLElement): HTMLButtonElement[] {
@@ -35,6 +36,22 @@ function findSkillButton(
     (container.querySelector(`button[data-skill-id="${skillId}"]`) as HTMLButtonElement | null) ??
     undefined
   );
+}
+
+function findOverflowMenu(container: HTMLElement): HTMLElement | null {
+  return container.querySelector('[role="menu"][aria-label="更多操作"], [role="menu"][aria-label="More actions"]');
+}
+
+async function openOverflowMenu(container: HTMLElement): Promise<HTMLElement | null> {
+  const trigger = container.querySelector<HTMLButtonElement>(
+    'button[data-testid="desk-action-menu-trigger"]',
+  );
+  if (!trigger) return null;
+
+  await act(async () => {
+    trigger.click();
+  });
+  return findOverflowMenu(container);
 }
 
 function findInstanceId(game: GameState, definitionId: string): CardInstanceId {
@@ -687,6 +704,245 @@ describe("Official desk action bar character skills", () => {
       skillId,
       type: "ACTIVATE_CHARACTER_SKILL",
     });
+  });
+
+  it("keeps every secretary skill, PASS, and DIY reachable when the three primary slots are full", async () => {
+    const dispatchGameAction = vi.fn();
+    const onEnterDiy = vi.fn();
+    const game = createSecretaryGame();
+    const legalSkills = getLegalCharacterSkillActions(game, "player_1");
+    expect(legalSkills.map((action) => action.skillId)).toEqual([
+      "exhaust_leak",
+      "lab_fire",
+      "exothermic_accident",
+    ]);
+
+    await renderDeskActionBar({
+      dispatchGameAction,
+      game,
+      playerControllers: ["human", "ai"],
+      onEnterDiy,
+    });
+
+    expect(publicButtons(container)).toHaveLength(3);
+    expect(skillButtons(container)).toHaveLength(3);
+    const menu = await openOverflowMenu(container);
+    expect(menu).not.toBeNull();
+    const trigger = container.querySelector<HTMLButtonElement>(
+      'button[data-testid="desk-action-menu-trigger"]',
+    );
+    await act(async () => {
+      trigger?.click();
+    });
+    expect(findOverflowMenu(container)).toBeNull();
+    await openOverflowMenu(container);
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    });
+    expect(findOverflowMenu(container)).toBeNull();
+    await openOverflowMenu(container);
+    await act(async () => {
+      document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    });
+    expect(findOverflowMenu(container)).toBeNull();
+
+    const reopenedMenu = await openOverflowMenu(container);
+    const menuItems = Array.from(reopenedMenu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    const passButton = menuItems.find((button) => /结束本次行动/u.test(button.textContent ?? ""));
+    const diyButton = menuItems.find((button) => /进入主动 DIY/u.test(button.textContent ?? ""));
+    expect(passButton).toBeDefined();
+    expect(diyButton).toBeDefined();
+    await act(async () => {
+      passButton?.click();
+    });
+    expect(dispatchGameAction).toHaveBeenCalledWith({
+      playerId: "player_1",
+      type: "PASS_ACTION",
+    });
+    expect(findOverflowMenu(container)).toBeNull();
+
+    await openOverflowMenu(container);
+    const currentDiyButton = Array.from(
+      findOverflowMenu(container)?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+    ).find((button) => /进入主动 DIY/u.test(button.textContent ?? ""));
+    await act(async () => {
+      currentDiyButton?.click();
+    });
+    expect(onEnterDiy).toHaveBeenCalledOnce();
+  });
+
+  it("keeps each legal card-bound alkali recovery action reachable and identifies its card", async () => {
+    const dispatchGameAction = vi.fn();
+    const base = createCaptainGame();
+    const alkaliIds = [
+      findInstanceId(base, "substance_naoh_dilute"),
+      findInstanceId(base, "substance_koh_dilute"),
+      findInstanceId(base, "substance_caoh2_limewater"),
+    ];
+    const game = withPlayerHand(base, "player_1", alkaliIds);
+    const legalActions = getLegalCharacterSkillActions(game, "player_1").filter(
+      (action) => action.skillId === "alkali_recovery" && "cardInstanceId" in action,
+    );
+    const legalCardIds = legalActions.map((action) =>
+      "cardInstanceId" in action ? action.cardInstanceId : "",
+    );
+    expect(alkaliIds.every((id) => legalCardIds.includes(id))).toBe(true);
+
+    const selectedCardId = game.players[0].hand.find((id) => !legalCardIds.includes(id));
+    expect(selectedCardId).toBeDefined();
+    await renderDeskActionBar({
+      dispatchGameAction,
+      game,
+      playerControllers: ["human", "ai"],
+      selectedCardId,
+    });
+
+    const menu = await openOverflowMenu(container);
+    const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>(
+      'button[data-skill-id="alkali_recovery"][data-skill-card-id]',
+    ));
+    const reachableIds = buttons.map((button) => button.dataset.skillCardId);
+    expect(legalCardIds.every((id) => reachableIds.includes(id))).toBe(true);
+
+    const primaryCardId = buttons.find((button) => !menu?.contains(button))?.dataset.skillCardId;
+    const selectedVariantId = legalCardIds.find((id) => id !== primaryCardId);
+    expect(selectedVariantId).toBeDefined();
+    await renderDeskActionBar({
+      dispatchGameAction,
+      game,
+      playerControllers: ["human", "ai"],
+      selectedCardId: selectedVariantId,
+    });
+    const updatedMenu = findOverflowMenu(container);
+    expect(updatedMenu).not.toBeNull();
+    const selectedVariantButton = container.querySelector<HTMLButtonElement>(
+      `button[data-skill-id="alkali_recovery"][data-skill-card-id="${selectedVariantId}"]`,
+    );
+    expect(selectedVariantButton).toBeDefined();
+    expect(updatedMenu?.contains(selectedVariantButton!)).toBe(false);
+
+    const updatedButtons = Array.from(container.querySelectorAll<HTMLButtonElement>(
+      'button[data-skill-id="alkali_recovery"][data-skill-card-id]',
+    ));
+    const overflowVariant = updatedButtons.find(
+      (button) => updatedMenu?.contains(button) && button.dataset.skillCardId !== selectedVariantId,
+    );
+    expect(overflowVariant).toBeDefined();
+    const overflowCardId = overflowVariant?.dataset.skillCardId;
+    const cardDefinition = overflowCardId
+      ? cardDefinitionsById.get(game.cardInstances[overflowCardId].definitionId)
+      : undefined;
+    expect(overflowVariant?.textContent).toContain(getOptionalCardDisplayName(cardDefinition, "zh-CN"));
+
+    await act(async () => {
+      overflowVariant?.click();
+    });
+    expect(dispatchGameAction).toHaveBeenCalledWith({
+      cardInstanceId: overflowCardId,
+      playerId: "player_1",
+      skillId: "alkali_recovery",
+      type: "ACTIVATE_CHARACTER_SKILL",
+    });
+    expect(findOverflowMenu(container)).toBeNull();
+  });
+
+  it("keeps both legal actions for a selected card reachable when its effect and reference play are both valid", async () => {
+    const dispatchGameAction = vi.fn();
+    const game = createSecretaryGame();
+    const hclId = findInstanceId(game, "substance_hcl_dilute");
+    const handGame = withPlayerHand(game, "player_1", [hclId]);
+
+    await renderDeskActionBar({
+      dispatchGameAction,
+      game: handGame,
+      playerControllers: ["human", "ai"],
+      selectedCardId: hclId,
+    });
+
+    const effectButton = publicButtons(container).find((button) => /执行效果/u.test(button.textContent ?? ""));
+    expect(effectButton).toBeDefined();
+    await act(async () => {
+      effectButton?.click();
+    });
+    expect(dispatchGameAction).toHaveBeenCalledWith({
+      cardInstanceId: hclId,
+      playerId: "player_1",
+      targetPlayerId: "player_2",
+      type: "PLAY_CARD",
+    });
+    dispatchGameAction.mockClear();
+
+    expect(publicButtons(container).some((button) => /执行效果/u.test(button.textContent ?? ""))).toBe(true);
+    expect(publicButtons(container).some((button) => /普通出牌/u.test(button.textContent ?? ""))).toBe(false);
+    const menu = await openOverflowMenu(container);
+    const referencePlay = Array.from(
+      menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+    ).find((button) => /普通出牌/u.test(button.textContent ?? ""));
+    expect(referencePlay).toBeDefined();
+
+    await act(async () => {
+      referencePlay?.click();
+    });
+    expect(dispatchGameAction).toHaveBeenCalledWith({
+      cardInstanceId: hclId,
+      playerId: "player_1",
+      type: "PLAY_REFERENCE_CARD",
+    });
+  });
+
+  it("excludes spent skills, spent DIY, invalid unowned card choices, and AI actions", async () => {
+    const dispatchGameAction = vi.fn();
+    const base = createSecretaryGame();
+    const exhausted: GameState = {
+      ...base,
+      players: base.players.map((player) => player.id === "player_1"
+        ? {
+            ...player,
+            usedDIYThisCycle: true,
+            characterUsage: {
+              ...player.characterUsage,
+              perCycle: {
+                ...player.characterUsage.perCycle,
+                clumsy_party_secretary_shared_active: 1,
+              },
+            },
+          }
+        : player),
+    };
+    expect(getLegalCharacterSkillActions(exhausted, "player_1")).toEqual([]);
+    await renderDeskActionBar({
+      dispatchGameAction,
+      game: exhausted,
+      playerControllers: ["human", "ai"],
+    });
+    expect(skillButtons(container)).toHaveLength(0);
+    expect(publicButtons(container).some((button) => /主动 DIY/u.test(button.textContent ?? ""))).toBe(false);
+    expect(container.querySelector('[data-testid="desk-action-menu-trigger"]')).toBeNull();
+
+    const unownedCardId = base.players[1].hand[0];
+    await renderDeskActionBar({
+      dispatchGameAction,
+      game: base,
+      playerControllers: ["human", "ai"],
+      selectedCardId: unownedCardId,
+    });
+    expect(publicButtons(container).some((button) => /不可出牌/u.test(button.textContent ?? ""))).toBe(true);
+    const invalidMenu = await openOverflowMenu(container);
+    expect(Array.from(invalidMenu?.querySelectorAll('[role="menuitem"]') ?? []).some(
+      (item) => /执行效果|普通出牌/u.test(item.textContent ?? ""),
+    )).toBe(false);
+    expect(dispatchGameAction).not.toHaveBeenCalled();
+
+    await renderDeskActionBar({
+      dispatchGameAction,
+      game: base,
+      playerControllers: ["ai", "human"],
+      selectedCardId: base.players[0].hand[0],
+    });
+    expect(container.querySelector('[data-testid="desk-action-menu-trigger"]')).toBeNull();
+    expect(publicButtons(container).every((button) => button.disabled)).toBe(true);
+    expect(skillButtons(container)).toHaveLength(0);
+    expect(dispatchGameAction).not.toHaveBeenCalled();
   });
 
   it("preserves skill slot and <= 3 buttons for all active skill characters after card selection without DIY crowding out", async () => {

@@ -44,6 +44,9 @@ jobs:
       - name: Run production-preview Chromium E2E
         run: pnpm run test:e2e
 
+      - name: Run formal production Chromium E2E
+        run: pnpm run test:e2e:production
+
       - name: Check production artifact size
         run: pnpm run check:size
 

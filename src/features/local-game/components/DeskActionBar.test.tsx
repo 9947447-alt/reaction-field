@@ -18,7 +18,7 @@ import type {
 } from "../../../game/engine/types";
 import { identityShuffle } from "../../../shared/random";
 import { getOptionalCardDisplayName, getSkillDisplayName } from "../presentationLocale";
-import { DeskActionBar, type DeskActionBarProps } from "./DeskActionBar";
+import { DeskActionBar, DeskActionOverflowMenu, type DeskActionBarProps } from "./DeskActionBar";
 
 function publicButtons(container: HTMLElement): HTMLButtonElement[] {
   return Array.from(container.querySelectorAll(".desk-action-btn"));
@@ -1103,5 +1103,857 @@ describe("Official desk action bar character skills", () => {
     expect(ceoBtn).toBeDefined();
     expect(ceoBtn?.textContent).toBe("发动紧急调货");
     expect(ceoBtn?.textContent).not.toContain("应急调货");
+  });
+
+  describe("official desk overflow menu keyboard accessibility", () => {
+    type OverflowMenuItems = Parameters<typeof DeskActionOverflowMenu>[0]["items"];
+
+    function getTrigger(): HTMLButtonElement | null {
+      return container.querySelector<HTMLButtonElement>(
+        'button[data-testid="desk-action-menu-trigger"]',
+      );
+    }
+
+    function getAllMenuItems(): HTMLButtonElement[] {
+      return Array.from(
+        findOverflowMenu(container)?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+      );
+    }
+
+    function getEnabledMenuItems(): HTMLButtonElement[] {
+      return Array.from(
+        findOverflowMenu(container)?.querySelectorAll<HTMLButtonElement>(
+          '[role="menuitem"]:not(:disabled)',
+        ) ?? [],
+      );
+    }
+
+    async function keyDown(
+      target: Element,
+      key: string,
+      options: { shiftKey?: boolean } = {},
+    ): Promise<void> {
+      await act(async () => {
+        target.dispatchEvent(new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key,
+          shiftKey: options.shiftKey ?? false,
+        }));
+      });
+    }
+
+    async function pressEscape(): Promise<void> {
+      await act(async () => {
+        document.dispatchEvent(new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Escape",
+        }));
+      });
+    }
+
+    async function focusElement(element: Element): Promise<void> {
+      await act(async () => {
+        (element as HTMLElement).focus();
+      });
+    }
+
+    async function dispatchKeyDown(
+      target: Element,
+      key: string,
+      options: { repeat?: boolean; shiftKey?: boolean } = {},
+    ): Promise<KeyboardEvent> {
+      const event = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key,
+        repeat: options.repeat ?? false,
+        shiftKey: options.shiftKey ?? false,
+      });
+      await act(async () => {
+        target.dispatchEvent(event);
+      });
+      return event;
+    }
+
+    async function dispatchKeyUp(
+      target: Element,
+      key: string,
+    ): Promise<KeyboardEvent> {
+      const event = new KeyboardEvent("keyup", {
+        bubbles: true,
+        cancelable: true,
+        key,
+      });
+      await act(async () => {
+        target.dispatchEvent(event);
+      });
+      return event;
+    }
+
+    async function dispatchKeyboardClick(target: EventTarget): Promise<void> {
+      await act(async () => {
+        target.dispatchEvent(new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          detail: 0,
+        }));
+      });
+    }
+
+    async function dispatchPointerClick(target: EventTarget): Promise<void> {
+      await act(async () => {
+        target.dispatchEvent(new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          detail: 1,
+        }));
+      });
+    }
+
+    async function renderOverflowMenu(items: OverflowMenuItems): Promise<void> {
+      await act(async () => {
+        root.render(<DeskActionOverflowMenu isEnglish={false} items={items} />);
+      });
+    }
+
+    async function renderSecretary(
+      dispatchGameAction: DeskActionBarProps["dispatchGameAction"],
+      onEnterDiy?: () => void,
+    ): Promise<void> {
+      await renderDeskActionBar({
+        dispatchGameAction,
+        game: createSecretaryGame(),
+        playerControllers: ["human", "ai"],
+        onEnterDiy,
+      });
+    }
+
+    it("opens from Enter and moves real focus to the first enabled item exactly once", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger();
+      expect(trigger).not.toBeNull();
+      expect(trigger?.getAttribute("aria-expanded")).toBe("false");
+      expect(trigger?.getAttribute("aria-haspopup")).toBe("menu");
+
+      trigger?.focus();
+      await keyDown(trigger!, "Enter");
+
+      const menu = findOverflowMenu(container);
+      expect(menu).not.toBeNull();
+      expect(container.querySelectorAll('[role="menu"]')).toHaveLength(1);
+      expect(trigger?.getAttribute("aria-expanded")).toBe("true");
+      expect(trigger?.getAttribute("aria-controls")).toBe(menu?.id);
+      expect(trigger).not.toBe(document.activeElement);
+
+      const enabledItems = getEnabledMenuItems();
+      expect(enabledItems).toHaveLength(2);
+      expect(document.activeElement).toBe(enabledItems[0]);
+      expect(enabledItems[0]?.textContent).toBe("结束本次行动");
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+    });
+
+    it("opens from Space and moves real focus to the first enabled item exactly once", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, " ");
+
+      expect(container.querySelectorAll('[role="menu"]')).toHaveLength(1);
+      const enabledItems = getEnabledMenuItems();
+      expect(document.activeElement).toBe(enabledItems[0]);
+      expect(enabledItems[0]?.textContent).toBe("结束本次行动");
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+    });
+
+    it("opens with ArrowDown on the trigger and focuses the first enabled item", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+
+      const enabledItems = getEnabledMenuItems();
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(enabledItems[0]);
+      expect(enabledItems[0]?.textContent).toBe("结束本次行动");
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+    });
+
+    it("opens with ArrowUp on the trigger and focuses the last enabled item", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowUp");
+
+      const enabledItems = getEnabledMenuItems();
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(enabledItems[enabledItems.length - 1]);
+      expect(enabledItems[enabledItems.length - 1]?.textContent).toBe("进入主动 DIY");
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+    });
+
+    it("cycles ArrowUp/ArrowDown and honours Home/End inside the menu", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+
+      let enabledItems = getEnabledMenuItems();
+      expect(enabledItems[0]?.textContent).toBe("结束本次行动");
+      expect(enabledItems[1]?.textContent).toBe("进入主动 DIY");
+
+      await keyDown(document.activeElement!, "ArrowDown");
+      expect(document.activeElement).toBe(enabledItems[1]);
+      await keyDown(document.activeElement!, "ArrowDown");
+      expect(document.activeElement).toBe(enabledItems[0]);
+      await keyDown(document.activeElement!, "ArrowUp");
+      expect(document.activeElement).toBe(enabledItems[1]);
+      await keyDown(document.activeElement!, "Home");
+      expect(document.activeElement).toBe(enabledItems[0]);
+      await keyDown(document.activeElement!, "End");
+      expect(document.activeElement).toBe(enabledItems[1]);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+    });
+
+    it("skips disabled items during every keyboard navigation path", async () => {
+      const items: OverflowMenuItems = [
+        { key: "alpha", kind: "play", label: "Alpha", onSelect: vi.fn() },
+        { key: "beta", disabled: true, kind: "play", label: "Beta", onSelect: vi.fn() },
+        { key: "gamma", kind: "end", label: "Gamma", onSelect: vi.fn() },
+      ];
+      await act(async () => {
+        root.render(<DeskActionOverflowMenu isEnglish={false} items={items} />);
+      });
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+
+      const menu = findOverflowMenu(container);
+      expect(menu).not.toBeNull();
+      const itemsInDom = getAllMenuItems();
+      expect(itemsInDom).toHaveLength(3);
+      expect(itemsInDom[1]?.disabled).toBe(true);
+      const enabledItems = getEnabledMenuItems();
+      expect(enabledItems).toHaveLength(2);
+      expect(document.activeElement).toBe(enabledItems[0]);
+      expect(document.activeElement?.textContent).toBe("Alpha");
+
+      await keyDown(document.activeElement!, "ArrowDown");
+      expect(document.activeElement?.textContent).toBe("Gamma");
+      await keyDown(document.activeElement!, "ArrowUp");
+      expect(document.activeElement?.textContent).toBe("Alpha");
+      await keyDown(document.activeElement!, "End");
+      expect(document.activeElement?.textContent).toBe("Gamma");
+      await keyDown(document.activeElement!, "Home");
+      expect(document.activeElement?.textContent).toBe("Alpha");
+    });
+
+    it("keeps the menu reachable when every item is disabled", async () => {
+      const items: OverflowMenuItems = [
+        { key: "alpha", disabled: true, kind: "play", label: "Alpha", onSelect: vi.fn() },
+        { key: "beta", disabled: true, kind: "end", label: "Beta", onSelect: vi.fn() },
+      ];
+      await act(async () => {
+        root.render(<DeskActionOverflowMenu isEnglish={false} items={items} />);
+      });
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(findOverflowMenu(container));
+      await keyDown(document.activeElement!, "ArrowDown");
+      expect(document.activeElement).toBe(findOverflowMenu(container));
+      await pressEscape();
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it("closes on Escape and restores focus to the trigger", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "Enter");
+      expect(getEnabledMenuItems()[0]).toBe(document.activeElement);
+
+      await pressEscape();
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(trigger);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+    });
+
+    it("closes after Tab or Shift+Tab leaves the menu without pulling focus back to the trigger", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      const beforeButton = document.createElement("button");
+      beforeButton.textContent = "before overflow";
+      const afterButton = document.createElement("button");
+      afterButton.textContent = "after overflow";
+      container.before(beforeButton);
+      container.after(afterButton);
+
+      try {
+        trigger.focus();
+        await keyDown(trigger, "Enter");
+        let enabledItems = getEnabledMenuItems();
+        expect(document.activeElement).toBe(enabledItems[0]);
+        await dispatchKeyUp(document.activeElement!, "Enter");
+
+        await keyDown(document.activeElement!, "Tab");
+        await focusElement(enabledItems[1]!);
+        expect(findOverflowMenu(container)).not.toBeNull();
+
+        await keyDown(document.activeElement!, "Tab");
+        await focusElement(afterButton);
+        expect(findOverflowMenu(container)).toBeNull();
+        expect(document.activeElement).toBe(afterButton);
+        expect(document.activeElement).not.toBe(trigger);
+
+        trigger.focus();
+        await keyDown(trigger, "Enter");
+        expect(document.activeElement).toBe(getEnabledMenuItems()[0]);
+        await dispatchKeyUp(document.activeElement!, "Enter");
+        await keyDown(document.activeElement!, "Tab", { shiftKey: true });
+        await focusElement(trigger);
+        expect(findOverflowMenu(container)).not.toBeNull();
+
+        await keyDown(document.activeElement!, "Tab", { shiftKey: true });
+        await focusElement(beforeButton);
+        expect(findOverflowMenu(container)).toBeNull();
+        expect(document.activeElement).toBe(beforeButton);
+        expect(dispatchGameAction).not.toHaveBeenCalled();
+      } finally {
+        beforeButton.remove();
+        afterButton.remove();
+      }
+    });
+
+    it("dispatches the selected action, closes the menu, and returns focus to the trigger", async () => {
+      const dispatchGameAction = vi.fn();
+      const onEnterDiy = vi.fn();
+      await renderSecretary(dispatchGameAction, onEnterDiy);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "Enter");
+      const passItem = getEnabledMenuItems().find(
+        (item) => item.textContent === "结束本次行动",
+      )!;
+      await dispatchKeyUp(document.activeElement!, "Enter");
+
+      await act(async () => {
+        passItem.click();
+      });
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        playerId: "player_1",
+        type: "PASS_ACTION",
+      });
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+
+      await keyDown(trigger, "Enter");
+      const diyItem = getEnabledMenuItems().find(
+        (item) => item.textContent === "进入主动 DIY",
+      )!;
+      await dispatchKeyUp(document.activeElement!, "Enter");
+      await act(async () => {
+        diyItem.click();
+      });
+      expect(onEnterDiy).toHaveBeenCalledOnce();
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it("keeps control when legal overflow items change while the menu is open", async () => {
+      const dispatchGameAction = vi.fn();
+      const game = createSecretaryGame();
+      await renderDeskActionBar({
+        dispatchGameAction,
+        game,
+        playerControllers: ["human", "ai"],
+      });
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+      expect(getEnabledMenuItems()).toHaveLength(2);
+
+      const gameWithoutDiy = {
+        ...game,
+        players: game.players.map((player) =>
+          player.id === "player_1" ? { ...player, usedDIYThisCycle: true } : player,
+        ),
+      };
+      await renderDeskActionBar({
+        dispatchGameAction,
+        game: gameWithoutDiy,
+        playerControllers: ["human", "ai"],
+      });
+
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      const remainingItems = getEnabledMenuItems();
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0]?.textContent).toBe("结束本次行动");
+
+      await pressEscape();
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+    });
+
+    it("unmounts the open menu without errors when the action bar switches phase", async () => {
+      const dispatchGameAction = vi.fn();
+      const game = createSecretaryGame();
+      await renderDeskActionBar({
+        dispatchGameAction,
+        game,
+        playerControllers: ["human", "ai"],
+      });
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "Enter");
+      expect(findOverflowMenu(container)).not.toBeNull();
+
+      await renderDeskActionBar({
+        dispatchGameAction,
+        game: { ...game, phase: "gameOver" },
+        playerControllers: ["human", "ai"],
+      });
+      expect(getTrigger()).toBeNull();
+      expect(findOverflowMenu(container)).toBeNull();
+
+      await pressEscape();
+      await act(async () => {
+        document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      });
+      expect(findOverflowMenu(container)).toBeNull();
+    });
+
+    it("keeps focus on the trigger for pointer activation while keyboard navigation still works", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+
+      await act(async () => {
+        trigger.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+        trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+      });
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(trigger);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+
+      await keyDown(trigger, "ArrowDown");
+      expect(document.activeElement).toBe(getEnabledMenuItems()[0]);
+    });
+
+    it("ignores Enter auto-repeat for the whole key hold and activates exactly once after release", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+
+      await dispatchKeyDown(trigger, "Enter");
+      const endActionItem = getEnabledMenuItems()[0]!;
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(endActionItem);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+
+      for (let repeat = 0; repeat < 3; repeat += 1) {
+        const repeatEvent = await dispatchKeyDown(document.activeElement!, "Enter", {
+          repeat: true,
+        });
+        expect(repeatEvent.defaultPrevented).toBe(true);
+        expect(findOverflowMenu(container)).not.toBeNull();
+        expect(document.activeElement).toBe(endActionItem);
+        expect(dispatchGameAction).not.toHaveBeenCalled();
+      }
+
+      // Chromium synthesizes this click from an Enter keydown; a held key must never dispatch it.
+      await dispatchKeyboardClick(endActionItem);
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+
+      const keyUpEvent = await dispatchKeyUp(endActionItem, "Enter");
+      expect(keyUpEvent.defaultPrevented).toBe(true);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+      expect(findOverflowMenu(container)).not.toBeNull();
+
+      const freshKeyDown = await dispatchKeyDown(endActionItem, "Enter");
+      expect(freshKeyDown.defaultPrevented).toBe(false);
+      await dispatchKeyboardClick(endActionItem);
+      expect(dispatchGameAction).toHaveBeenCalledTimes(1);
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        playerId: "player_1",
+        type: "PASS_ACTION",
+      });
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+
+      const interactionsAfterActivation = dispatchGameAction.mock.calls.length;
+      await dispatchKeyDown(trigger, "Enter", { repeat: true });
+      expect(dispatchGameAction).toHaveBeenCalledTimes(interactionsAfterActivation);
+    });
+
+    it("does not reopen or execute from an unreleased Enter after focus returns to the trigger", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+
+      await dispatchKeyDown(trigger, "Enter");
+      const endActionItem = getEnabledMenuItems()[0]!;
+      expect(document.activeElement).toBe(endActionItem);
+
+      // Activate with the pointer while the physical Enter key is still down.
+      await dispatchPointerClick(endActionItem);
+      expect(dispatchGameAction).toHaveBeenCalledTimes(1);
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+
+      const repeatEvent = await dispatchKeyDown(trigger, "Enter", { repeat: true });
+      expect(repeatEvent.defaultPrevented).toBe(true);
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(dispatchGameAction).toHaveBeenCalledTimes(1);
+
+      await dispatchKeyUp(trigger, "Enter");
+      await dispatchKeyDown(trigger, "Enter");
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(dispatchGameAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("holds Space through auto-repeat and its keyup default activation, then activates once on a fresh press", async () => {
+      const dispatchGameAction = vi.fn();
+      await renderSecretary(dispatchGameAction);
+      const trigger = getTrigger()!;
+      trigger.focus();
+
+      await dispatchKeyDown(trigger, " ");
+      const endActionItem = getEnabledMenuItems()[0]!;
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(endActionItem);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+
+      const repeatEvent = await dispatchKeyDown(endActionItem, " ", { repeat: true });
+      expect(repeatEvent.defaultPrevented).toBe(true);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+
+      const keyUpEvent = await dispatchKeyUp(endActionItem, " ");
+      expect(keyUpEvent.defaultPrevented).toBe(true);
+      expect(dispatchGameAction).not.toHaveBeenCalled();
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(endActionItem);
+
+      const freshKeyDown = await dispatchKeyDown(endActionItem, " ");
+      expect(freshKeyDown.defaultPrevented).toBe(false);
+      const freshKeyUp = await dispatchKeyUp(endActionItem, " ");
+      expect(freshKeyUp.defaultPrevented).toBe(false);
+      await dispatchKeyboardClick(endActionItem);
+      expect(dispatchGameAction).toHaveBeenCalledTimes(1);
+      expect(dispatchGameAction).toHaveBeenCalledWith({
+        playerId: "player_1",
+        type: "PASS_ACTION",
+      });
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it("moves focus to the first enabled item when the focused item is removed by a props update", async () => {
+      const onAlpha = vi.fn();
+      const onBeta = vi.fn();
+      const onGamma = vi.fn();
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        kind: "play",
+        label: "Alpha",
+        onSelect: onAlpha,
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        kind: "end",
+        label: "Beta",
+        onSelect: onBeta,
+      };
+      const gamma: OverflowMenuItems[number] = {
+        key: "gamma",
+        kind: "diy",
+        label: "Gamma",
+        onSelect: onGamma,
+      };
+
+      await renderOverflowMenu([alpha, beta, gamma]);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+      await keyDown(document.activeElement!, "ArrowDown");
+      expect(document.activeElement?.textContent).toBe("Beta");
+
+      await renderOverflowMenu([alpha, gamma]);
+
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement?.textContent).toBe("Alpha");
+      expect(findOverflowMenu(container)?.contains(document.activeElement)).toBe(true);
+      expect(onAlpha).not.toHaveBeenCalled();
+      expect(onBeta).not.toHaveBeenCalled();
+      expect(onGamma).not.toHaveBeenCalled();
+    });
+
+    it("moves focus to the menu when the focused item becomes disabled and no enabled item can take over", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        disabled: true,
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        kind: "end",
+        label: "Beta",
+        onSelect: vi.fn(),
+      };
+
+      await renderOverflowMenu([alpha, beta]);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+      expect(document.activeElement?.textContent).toBe("Beta");
+
+      await renderOverflowMenu([alpha, { ...beta, disabled: true }]);
+
+      const menu = findOverflowMenu(container);
+      expect(menu).not.toBeNull();
+      expect(document.activeElement).not.toBe(document.body);
+      expect(document.activeElement).toBe(menu);
+      expect(getEnabledMenuItems()).toHaveLength(0);
+    });
+
+    it("moves focus to the menu when the focused item is removed and every remaining item is disabled", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        kind: "end",
+        label: "Beta",
+        onSelect: vi.fn(),
+      };
+      const gamma: OverflowMenuItems[number] = {
+        key: "gamma",
+        kind: "diy",
+        label: "Gamma",
+        onSelect: vi.fn(),
+      };
+
+      await renderOverflowMenu([alpha, beta, gamma]);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+      await keyDown(document.activeElement!, "ArrowDown");
+      expect(document.activeElement?.textContent).toBe("Beta");
+
+      await renderOverflowMenu([{ ...alpha, disabled: true }, { ...gamma, disabled: true }]);
+
+      const menu = findOverflowMenu(container);
+      expect(menu).not.toBeNull();
+      expect(document.activeElement).toBe(menu);
+      expect(getEnabledMenuItems()).toHaveLength(0);
+    });
+
+    it("closes the menu and restores the trigger when every item is removed", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        kind: "end",
+        label: "Beta",
+        onSelect: vi.fn(),
+      };
+
+      await renderOverflowMenu([alpha, beta]);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+      await keyDown(document.activeElement!, "ArrowDown");
+      expect(document.activeElement?.textContent).toBe("Beta");
+
+      await renderOverflowMenu([]);
+
+      expect(findOverflowMenu(container)).toBeNull();
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it("does not steal focus the user moved outside before the items update", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        kind: "end",
+        label: "Beta",
+        onSelect: vi.fn(),
+      };
+      const external = document.createElement("button");
+      external.textContent = "external";
+      document.body.append(external);
+
+      try {
+        await renderOverflowMenu([alpha, beta]);
+        const trigger = getTrigger()!;
+        trigger.focus();
+        await keyDown(trigger, "ArrowDown");
+        expect(document.activeElement?.textContent).toBe("Alpha");
+
+        await focusElement(external);
+        expect(document.activeElement).toBe(external);
+        expect(findOverflowMenu(container)).toBeNull();
+
+        await renderOverflowMenu([beta]);
+        expect(document.activeElement).toBe(external);
+        expect(findOverflowMenu(container)).toBeNull();
+      } finally {
+        external.remove();
+      }
+    });
+
+    it("keeps focus on the trigger for pointer activation when the item list updates", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        kind: "end",
+        label: "Beta",
+        onSelect: vi.fn(),
+      };
+
+      await renderOverflowMenu([alpha, beta]);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await act(async () => {
+        trigger.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+        trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+      });
+      expect(document.activeElement).toBe(trigger);
+
+      await renderOverflowMenu([alpha]);
+      expect(document.activeElement).toBe(trigger);
+      expect(findOverflowMenu(container)).not.toBeNull();
+    });
+
+    it("prevents page scrolling for menu navigation keys when no item can take focus", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        disabled: true,
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        disabled: true,
+        kind: "end",
+        label: "Beta",
+        onSelect: vi.fn(),
+      };
+
+      await renderOverflowMenu([alpha, beta]);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await keyDown(trigger, "ArrowDown");
+      const menu = findOverflowMenu(container)!;
+      expect(document.activeElement).toBe(menu);
+
+      for (const key of ["ArrowDown", "ArrowUp", "Home", "End"]) {
+        const navigationEvent = await dispatchKeyDown(menu, key);
+        expect(navigationEvent.defaultPrevented, key).toBe(true);
+        expect(document.activeElement, key).toBe(menu);
+      }
+    });
+
+    it("prevents page scrolling for Home and End when a pointer-opened menu keeps focus on the trigger", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        disabled: true,
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const beta: OverflowMenuItems[number] = {
+        key: "beta",
+        disabled: true,
+        kind: "end",
+        label: "Beta",
+        onSelect: vi.fn(),
+      };
+
+      await renderOverflowMenu([alpha, beta]);
+      const trigger = getTrigger()!;
+      trigger.focus();
+      await act(async () => {
+        trigger.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+        trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+      });
+      expect(findOverflowMenu(container)).not.toBeNull();
+      expect(document.activeElement).toBe(trigger);
+
+      const homeEvent = await dispatchKeyDown(trigger, "Home");
+      expect(homeEvent.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(findOverflowMenu(container));
+
+      const endEvent = await dispatchKeyDown(document.activeElement!, "End");
+      expect(endEvent.defaultPrevented).toBe(true);
+      expect(getEnabledMenuItems()).toHaveLength(0);
+    });
+
+    it("does not prevent the page scroll default outside the menu", async () => {
+      const alpha: OverflowMenuItems[number] = {
+        key: "alpha",
+        kind: "play",
+        label: "Alpha",
+        onSelect: vi.fn(),
+      };
+      const external = document.createElement("button");
+      external.textContent = "external";
+      document.body.append(external);
+
+      try {
+        await renderOverflowMenu([alpha]);
+        const trigger = getTrigger()!;
+        trigger.focus();
+        await keyDown(trigger, "ArrowDown");
+        expect(findOverflowMenu(container)).not.toBeNull();
+
+        for (const key of ["ArrowDown", "ArrowUp", "Home", "End"]) {
+          const outsideEvent = await dispatchKeyDown(external, key);
+          expect(outsideEvent.defaultPrevented, key).toBe(false);
+        }
+      } finally {
+        external.remove();
+      }
+    });
   });
 });

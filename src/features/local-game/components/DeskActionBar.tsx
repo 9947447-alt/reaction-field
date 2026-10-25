@@ -1,4 +1,13 @@
-import { Children, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Children,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+} from "react";
 import { useLocale } from "../../../app/locale";
 import type { ActivateCharacterSkillAction, GameAction } from "../../../game/engine/actions";
 import { getLegalCharacterSkillActions } from "../../../game/engine/characterSkills";
@@ -93,11 +102,85 @@ function MainActionButton({ item, inMenu = false }: { item: MainActionItem; inMe
   );
 }
 
-function DeskActionOverflowMenu({ items, isEnglish }: { items: readonly MainActionItem[]; isEnglish: boolean }) {
+const MENU_ITEM_SELECTOR = '[role="menuitem"]:not(:disabled)';
+const MENU_ITEM_ANY_SELECTOR = '[role="menuitem"]';
+
+type ActivationKey = "Enter" | " ";
+
+function normalizeActivationKey(key: string): ActivationKey | null {
+  if (key === "Enter") return "Enter";
+  if (key === " " || key === "Spacebar") return " ";
+  return null;
+}
+
+function isMenuNavigationKey(key: string): boolean {
+  return key === "ArrowDown" || key === "ArrowUp" || key === "Home" || key === "End";
+}
+
+export function DeskActionOverflowMenu({ items, isEnglish }: { items: readonly MainActionItem[]; isEnglish: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const pendingFocusRef = useRef<"first" | "last" | null>(null);
+  const pointerActivationRef = useRef(false);
+  const heldActivationKeyRef = useRef<ActivationKey | null>(null);
+  const focusInsideRef = useRef(false);
   const menuLabel = isEnglish ? "More actions" : "更多操作";
+
+  const getMenuItems = () =>
+    Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>(MENU_ITEM_SELECTOR) ?? []);
+
+  const focusMenuEdge = (edge: "first" | "last") => {
+    const targets = getMenuItems();
+    const target = edge === "first" ? targets[0] : targets[targets.length - 1];
+    (target ?? menuRef.current)?.focus();
+  };
+
+  const focusMenuFallback = () => {
+    const menu = menuRef.current;
+    if (!menu) return;
+    const targets = getMenuItems();
+    if (targets.length > 0) {
+      targets[0]?.focus();
+      return;
+    }
+    if (menu.querySelectorAll(MENU_ITEM_ANY_SELECTOR).length > 0) {
+      menu.focus();
+      return;
+    }
+    setIsOpen(false);
+    const trigger = triggerRef.current;
+    if (trigger?.isConnected && !trigger.disabled) trigger.focus();
+  };
+
+  const openMenu = (focusIntent: "first" | "last" | null) => {
+    pendingFocusRef.current = focusIntent;
+    setIsOpen(true);
+  };
+
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      pendingFocusRef.current = null;
+      return;
+    }
+    const focusIntent = pendingFocusRef.current;
+    if (focusIntent) {
+      pendingFocusRef.current = null;
+      focusMenuEdge(focusIntent);
+      return;
+    }
+    const menu = menuRef.current;
+    if (!menu) return;
+    const active = document.activeElement;
+    const focusWasLost = active === document.body || active === document.documentElement;
+    const activeIsDisabledItem =
+      active instanceof HTMLButtonElement && active.disabled && menu.contains(active);
+    if ((!focusWasLost && !activeIsDisabledItem) || !focusInsideRef.current) return;
+    // Props updates can remove or disable the focused menu item. Chromium then drops focus to
+    // <body>; restore it to the menu instead of stranding keyboard users outside the menu.
+    focusMenuFallback();
+  }, [isOpen, items]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -105,10 +188,10 @@ function DeskActionOverflowMenu({ items, isEnglish }: { items: readonly MainActi
       if (!rootRef.current?.contains(event.target as Node)) setIsOpen(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-        triggerRef.current?.focus();
-      }
+      if (event.defaultPrevented || event.key !== "Escape") return;
+      setIsOpen(false);
+      const trigger = triggerRef.current;
+      if (trigger?.isConnected && !trigger.disabled) trigger.focus();
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -118,15 +201,154 @@ function DeskActionOverflowMenu({ items, isEnglish }: { items: readonly MainActi
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    const releaseHeldActivation = () => {
+      heldActivationKeyRef.current = null;
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (normalizeActivationKey(event.key) === heldActivationKeyRef.current) {
+        releaseHeldActivation();
+      }
+    };
+    document.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", releaseHeldActivation);
+    return () => {
+      document.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", releaseHeldActivation);
+    };
+  }, []);
+
+  const handleTriggerClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const wasPointerActivation = pointerActivationRef.current;
+    pointerActivationRef.current = false;
+    if (event.detail === 0 && heldActivationKeyRef.current !== null) {
+      // A click synthesized by the key that is still held opened this menu; the keydown
+      // handler owns the toggle and the hold must not close or re-activate it.
+      return;
+    }
+    const activatedByKeyboard = event.detail === 0 && !wasPointerActivation;
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+    openMenu(activatedByKeyboard ? "first" : null);
+  };
+
+  const handleTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const activationKey = normalizeActivationKey(event.key);
+    if (activationKey) {
+      // Prevent the native activation so keyboard activation cannot toggle twice. The key
+      // stays marked until its keyup (or a window blur), which covers auto-repeat and Space's
+      // keyup activation on whichever menu item receives focus next.
+      event.preventDefault();
+      if (event.repeat || heldActivationKeyRef.current !== null) return;
+      heldActivationKeyRef.current = activationKey;
+      if (isOpen) {
+        setIsOpen(false);
+        return;
+      }
+      openMenu("first");
+      return;
+    }
+    if (isOpen && (event.key === "Home" || event.key === "End")) {
+      // A pointer-opened menu keeps focus on the trigger; Home/End still belong to the menu
+      // and must not scroll the page while it is open.
+      event.preventDefault();
+      focusMenuEdge(event.key === "Home" ? "first" : "last");
+      return;
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    const focusIntent = event.key === "ArrowDown" ? "first" : "last";
+    if (isOpen) {
+      focusMenuEdge(focusIntent);
+      return;
+    }
+    openMenu(focusIntent);
+  };
+
+  const handleRootFocus = () => {
+    focusInsideRef.current = true;
+  };
+
+  const handleRootBlur = (event: ReactFocusEvent<HTMLDivElement>) => {
+    if (!isOpen) return;
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && rootRef.current?.contains(nextTarget)) return;
+    const lostTarget = event.target as HTMLElement;
+    const lostBecauseUnavailable =
+      !lostTarget.isConnected ||
+      (lostTarget instanceof HTMLButtonElement && lostTarget.disabled);
+    if (lostBecauseUnavailable && focusInsideRef.current) {
+      // The focused item was removed or disabled by a props update. The layout effect
+      // repairs focus after the commit; do not silently close and leave focus on <body>.
+      return;
+    }
+    focusInsideRef.current = false;
+    setIsOpen(false);
+  };
+
+  const handleRootKeyUp = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const activationKey = normalizeActivationKey(event.key);
+    if (activationKey === null || heldActivationKeyRef.current !== activationKey) return;
+    // Space activates a focused button on keyup. The key that opened the menu must not
+    // activate whichever menu item received focus, even if the keydown was consumed earlier.
+    event.preventDefault();
+    heldActivationKeyRef.current = null;
+  };
+
+  const handleMenuClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.detail === 0 && heldActivationKeyRef.current !== null) {
+      // Defensive guard for keyboard-synthesized clicks (e.g. an Enter repeat) that raced
+      // past the keydown guard; pointer activations use detail > 0 and stay untouched.
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  const handleMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const activationKey = normalizeActivationKey(event.key);
+    if (activationKey) {
+      if (event.repeat || heldActivationKeyRef.current !== null) {
+        // The sustained key that opened the menu must never activate a menu item.
+        event.preventDefault();
+      }
+      return;
+    }
+    if (!isMenuNavigationKey(event.key)) return;
+    // The menu owns these navigation keys even when every item is disabled and none can take
+    // focus; without this the browser would scroll the page behind the menu.
+    event.preventDefault();
+    const targets = getMenuItems();
+    if (targets.length === 0) return;
+    const current = targets.indexOf(document.activeElement as HTMLButtonElement);
+    let next: number;
+    if (event.key === "ArrowDown") next = current < 0 ? 0 : (current + 1) % targets.length;
+    else if (event.key === "ArrowUp") next = current < 0 ? targets.length - 1 : (current - 1 + targets.length) % targets.length;
+    else if (event.key === "Home") next = 0;
+    else next = targets.length - 1;
+    targets[next]?.focus();
+  };
+
   return (
-    <div className="desk-action-overflow" ref={rootRef}>
+    <div
+      className="desk-action-overflow"
+      onBlur={handleRootBlur}
+      onFocus={handleRootFocus}
+      onKeyUp={handleRootKeyUp}
+      ref={rootRef}
+    >
       <button
         aria-controls="desk-action-overflow-menu"
         aria-expanded={isOpen}
         aria-haspopup="menu"
         className="desk-action-menu__trigger"
         data-testid="desk-action-menu-trigger"
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={handleTriggerClick}
+        onKeyDown={handleTriggerKeyDown}
+        onPointerDown={() => {
+          pointerActivationRef.current = true;
+        }}
         ref={triggerRef}
         type="button"
       >
@@ -137,30 +359,19 @@ function DeskActionOverflowMenu({ items, isEnglish }: { items: readonly MainActi
           aria-label={menuLabel}
           className="desk-action-menu"
           id="desk-action-overflow-menu"
-          onKeyDown={(event) => {
-            const targets = Array.from(
-              event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)'),
-            );
-            if (targets.length === 0) return;
-            const current = targets.indexOf(document.activeElement as HTMLButtonElement);
-            let next = current;
-            if (event.key === "ArrowDown") next = (current + 1 + targets.length) % targets.length;
-            else if (event.key === "ArrowUp") next = (current - 1 + targets.length) % targets.length;
-            else if (event.key === "Home") next = 0;
-            else if (event.key === "End") next = targets.length - 1;
-            if (next !== current && targets[next]) {
-              event.preventDefault();
-              targets[next].focus();
-            }
-          }}
+          onClickCapture={handleMenuClickCapture}
+          onKeyDown={handleMenuKeyDown}
+          ref={menuRef}
           role="menu"
+          tabIndex={-1}
         >
           {items.map((item) => (
             <MainActionButton
               inMenu
               item={{ ...item, onSelect: () => {
                 setIsOpen(false);
-                triggerRef.current?.focus();
+                const trigger = triggerRef.current;
+                if (trigger?.isConnected && !trigger.disabled) trigger.focus();
                 item.onSelect();
               } }}
               key={item.key}

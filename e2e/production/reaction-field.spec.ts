@@ -157,6 +157,128 @@ async function openMainActionMenu(page: Page, locale: "zh" | "en") {
   return menu;
 }
 
+async function focusOverflowTriggerWithTab(page: Page): Promise<void> {
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  await expect(trigger).toBeVisible();
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    if (await trigger.evaluate((node) => node === document.activeElement)) return;
+    await page.keyboard.press("Tab");
+  }
+  throw new Error("Could not reach the More actions trigger with Tab.");
+}
+
+async function readActiveElementSummary(page: Page) {
+  return page.evaluate(() => {
+    const element = document.activeElement as HTMLElement | null;
+    return {
+      tag: element?.tagName ?? null,
+      testId: element?.dataset.testid ?? null,
+      text: (element?.textContent ?? "").trim().slice(0, 40),
+      insideMenu: Boolean(element?.closest('[role="menu"]')),
+      insideOverflow: Boolean(element?.closest(".desk-action-overflow")),
+    };
+  });
+}
+
+async function readGameLogEntryCount(page: Page): Promise<number> {
+  const text = (await page.getByTestId("desk-log-drawer-button").textContent()) ?? "";
+  const match = text.match(/\((\d+)\)/u);
+  if (!match) {
+    throw new Error(`Game log entry count is missing from: ${text}`);
+  }
+  return Number(match[1]);
+}
+
+async function expectActivePlayer(page: Page, playerId: "player_1" | "player_2"): Promise<void> {
+  const otherPlayerId = playerId === "player_1" ? "player_2" : "player_1";
+  await expect(page.locator(`[aria-labelledby="${playerId}-title"] .active-pill`)).toHaveText("当前行动");
+  await expect(page.locator(`[aria-labelledby="${otherPlayerId}-title"] .active-pill`)).toHaveCount(0);
+}
+
+type RecordedKeyEvent = Readonly<{
+  key: string;
+  repeat: boolean;
+  prevented: boolean;
+  targetText: string;
+}>;
+
+async function startRecordingKeyEvents(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const scope = window as unknown as { __rfKeyEvents: Array<RecordedKeyEvent> };
+    scope.__rfKeyEvents = [];
+    document.addEventListener("keydown", (event) => {
+      const element = event.target instanceof HTMLElement ? event.target : null;
+      scope.__rfKeyEvents.push({
+        key: event.key,
+        repeat: event.repeat,
+        prevented: event.defaultPrevented,
+        targetText: (element?.textContent ?? "").trim().slice(0, 40),
+      });
+    });
+  });
+}
+
+async function readRecordedKeyEvents(page: Page): Promise<readonly RecordedKeyEvent[]> {
+  return page.evaluate(
+    () => (window as unknown as { __rfKeyEvents?: Array<RecordedKeyEvent> }).__rfKeyEvents ?? [],
+  );
+}
+
+async function readFocusedMenuSummary(page: Page) {
+  return page.evaluate(() => {
+    const element = document.activeElement as HTMLElement | null;
+    return {
+      isBody: element === document.body,
+      insideMenu: Boolean(element?.closest('[role="menu"]')),
+      skillId: element?.dataset.skillId ?? null,
+      text: (element?.textContent ?? "").trim().slice(0, 40),
+    };
+  });
+}
+
+async function setDeskCardSelection(
+  page: Page,
+  cardInstanceId: string,
+  selected: boolean,
+): Promise<void> {
+  await page.evaluate((cardId) => {
+    const canvas = document.querySelector('[data-testid="desk-table-surface-canvas"]');
+    canvas?.dispatchEvent(new CustomEvent("desk-select-card", { detail: cardId }));
+  }, cardInstanceId);
+  if (selected) {
+    await expect.poll(async () => readDeskCanvasSelectedCardId(page)).toBe(cardInstanceId);
+  } else {
+    await expect.poll(async () => readDeskCanvasSelectedCardId(page)).toBe("");
+  }
+}
+
+async function findReferenceOnlyCard(page: Page): Promise<string> {
+  const ownCards = (await readHitRegions(page)).filter(
+    (region) => region.zone === "own" && region.interactive,
+  );
+  for (const card of ownCards) {
+    await setDeskCardSelection(page, card.cardInstanceId, true);
+    const hint = (await page.locator(".desk-action-bar__hint").textContent()) ?? "";
+    await setDeskCardSelection(page, card.cardInstanceId, false);
+    if (hint.includes("普通出牌") && !hint.includes("执行效果")) {
+      return card.cardInstanceId;
+    }
+  }
+  throw new Error("No reference-only hand card was found.");
+}
+
+async function expectAllMenuItemsDisabled(page: Page): Promise<void> {
+  const items = page.getByRole("menuitem");
+  const count = await items.count();
+  expect(count).toBeGreaterThan(0);
+  await items.evaluateAll((nodes) => {
+    for (const node of nodes) {
+      (node as HTMLButtonElement).disabled = true;
+    }
+  });
+  await expect(page.locator('[role="menuitem"]:not(:disabled)')).toHaveCount(0);
+}
+
 async function visibleActionByName(page: Page, chineseName: string, englishName: string): Promise<Locator | undefined> {
   const name = new RegExp(`^(?:${chineseName}|${englishName})$`, "u");
   const actionBar = page.locator(".desk-action-bar");
@@ -820,6 +942,332 @@ test("正式 /play 双人对局保持书记技能、结束行动与 DIY 可达�
   await expect(page.getByTestId("desk-action-menu-trigger")).toHaveCount(0);
 });
 
+test("正式 /play 键盘可打开 More actions、导航菜单、Tab 离开关闭并让 Escape 恢复触发器焦点", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void networkFailures;
+  void runtimeErrors;
+
+  await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+  const actionBar = page.locator(".desk-action-bar");
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  const menu = page.getByRole("menu", { name: "更多操作" });
+  await expect(actionBar.locator(".desk-action-bar__buttons > button.desk-action-btn")).toHaveCount(3);
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+  await focusOverflowTriggerWithTab(page);
+  await expect(trigger).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeVisible();
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  const menuItems = menu.getByRole("menuitem");
+  await expect(menuItems).toHaveCount(2);
+  const endActionItem = menu.getByRole("menuitem", { name: "结束本次行动" });
+  const diyItem = menu.getByRole("menuitem", { name: "进入主动 DIY" });
+  await expect(endActionItem).toBeFocused();
+  await expect(actionBar.locator(".desk-action-bar__phase-tag")).toHaveText("主行动");
+
+  await page.keyboard.press("ArrowDown");
+  await expect(diyItem).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(endActionItem).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(diyItem).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(endActionItem).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(diyItem).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+  await page.keyboard.press("Space");
+  await expect(menu).toBeVisible();
+  await expect(menuItems).toHaveCount(2);
+  await expect(endActionItem).toBeFocused();
+  await expect(actionBar.locator(".desk-action-bar__phase-tag")).toHaveText("主行动");
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+
+  await page.keyboard.press("ArrowUp");
+  await expect(menu).toBeVisible();
+  await expect(diyItem).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect(endActionItem).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(diyItem).toBeFocused();
+  await expect(menu).toBeVisible();
+  const focusBeforeLeaving = await readActiveElementSummary(page);
+  expect(focusBeforeLeaving.insideMenu).toBe(true);
+
+  await page.keyboard.press("Tab");
+  await expect(menu).toHaveCount(0);
+  const focusAfterLeaving = await readActiveElementSummary(page);
+  expect(focusAfterLeaving.insideMenu).toBe(false);
+  expect(focusAfterLeaving.insideOverflow).toBe(false);
+  expect(focusAfterLeaving.text).not.toBe("更多操作");
+  await expect(trigger).not.toBeFocused();
+
+  await page.keyboard.press("Tab");
+  const focusAfterNextTab = await readActiveElementSummary(page);
+  expect(focusAfterNextTab.text).not.toBe(focusAfterLeaving.text);
+  await page.keyboard.press("Shift+Tab");
+  const focusAfterShiftTab = await readActiveElementSummary(page);
+  expect(focusAfterShiftTab.text).toBe(focusAfterLeaving.text);
+  await expect(menu).toHaveCount(0);
+  await expect(trigger).not.toBeFocused();
+
+  await focusOverflowTriggerWithTab(page);
+  await expect(trigger).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(endActionItem).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(trigger).toBeFocused();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("Shift+Tab");
+  await expect(menu).toHaveCount(0);
+  await expect(trigger).not.toBeFocused();
+
+  await focusOverflowTriggerWithTab(page);
+  await page.keyboard.press("Enter");
+  await expect(endActionItem).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(menu).toHaveCount(0);
+  await expect(page.locator('[aria-labelledby="player_2-title"] .active-pill')).toHaveText("当前行动");
+});
+
+test("正式 /play 长按 Enter 的自动重复不会执行结束行动，释放后一次 Enter 恰好执行一次", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void networkFailures;
+  void runtimeErrors;
+
+  await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  const menu = page.getByRole("menu", { name: "更多操作" });
+  const endActionItem = menu.getByRole("menuitem", { name: "结束本次行动" });
+  await focusOverflowTriggerWithTab(page);
+  await expect(trigger).toBeFocused();
+  const logEntriesBefore = await readGameLogEntryCount(page);
+  await startRecordingKeyEvents(page);
+
+  await page.keyboard.down("Enter");
+  await expect(menu).toBeVisible();
+  await expect(endActionItem).toBeFocused();
+  await expectActivePlayer(page, "player_1");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore);
+
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await page.keyboard.down("Enter");
+  await expect(menu).toBeVisible();
+  await expect(endActionItem).toBeFocused();
+  await expectActivePlayer(page, "player_1");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore);
+
+  const heldEvents = (await readRecordedKeyEvents(page)).filter(
+    (event) => event.key === "Enter" && event.repeat,
+  );
+  expect(heldEvents).toHaveLength(3);
+  for (const event of heldEvents) {
+    expect(event.prevented).toBe(true);
+  }
+
+  await page.keyboard.up("Enter");
+  await expect(menu).toBeVisible();
+  await expect(endActionItem).toBeFocused();
+  await expectActivePlayer(page, "player_1");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore);
+
+  await page.keyboard.press("Enter");
+  await expect(menu).toHaveCount(0);
+  await expectActivePlayer(page, "player_2");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore + 1);
+});
+
+test("正式 /play 结束行动后未释放的 Enter 不会重新打开菜单或再次执行", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void networkFailures;
+  void runtimeErrors;
+
+  await startTwoPlayerGame(page, "clumsy_party_secretary", "clumsy_party_secretary");
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  const menu = page.getByRole("menu", { name: "更多操作" });
+  const endActionItem = menu.getByRole("menuitem", { name: "结束本次行动" });
+  await focusOverflowTriggerWithTab(page);
+  const logEntriesBefore = await readGameLogEntryCount(page);
+
+  await page.keyboard.down("Enter");
+  await expect(menu).toBeVisible();
+  await page.keyboard.down("Enter");
+  await expect(endActionItem).toBeFocused();
+  await expectActivePlayer(page, "player_1");
+
+  await endActionItem.click();
+  await expect(menu).toHaveCount(0);
+  await expectActivePlayer(page, "player_2");
+  await expect(trigger).toBeFocused();
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore + 1);
+
+  await page.keyboard.down("Enter");
+  await expect(menu).toHaveCount(0);
+  await expectActivePlayer(page, "player_2");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore + 1);
+
+  await page.keyboard.up("Enter");
+  await expect(menu).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeVisible();
+  await expectActivePlayer(page, "player_2");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore + 1);
+  await page.keyboard.press("Escape");
+});
+
+test("正式 /play 长按 Space 的 repeat 与 keyup 不会执行菜单项，释放后一次 Space 恰好执行一次", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void networkFailures;
+  void runtimeErrors;
+
+  await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  const menu = page.getByRole("menu", { name: "更多操作" });
+  const endActionItem = menu.getByRole("menuitem", { name: "结束本次行动" });
+  await focusOverflowTriggerWithTab(page);
+  await expect(trigger).toBeFocused();
+  const logEntriesBefore = await readGameLogEntryCount(page);
+
+  await page.keyboard.down("Space");
+  await expect(menu).toBeVisible();
+  await expect(endActionItem).toBeFocused();
+  await expectActivePlayer(page, "player_1");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore);
+
+  await page.keyboard.down("Space");
+  await page.keyboard.down("Space");
+  await expect(menu).toBeVisible();
+  await expect(endActionItem).toBeFocused();
+  await expectActivePlayer(page, "player_1");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore);
+
+  await page.keyboard.up("Space");
+  await expect(menu).toBeVisible();
+  await expect(endActionItem).toBeFocused();
+  await expectActivePlayer(page, "player_1");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore);
+
+  await page.keyboard.press("Space");
+  await expect(menu).toHaveCount(0);
+  await expectActivePlayer(page, "player_2");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore + 1);
+});
+
+test("正式 /play 菜单聚焦普通出牌时选择纯普通出牌手牌会把该项移出菜单并把焦点移回菜单", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void networkFailures;
+  void runtimeErrors;
+
+  await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+  const referenceOnlyCardId = await findReferenceOnlyCard(page);
+  await findCardWithEffectAndReferenceRoutes(page);
+
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  const menu = page.getByRole("menu", { name: "更多操作" });
+  await focusOverflowTriggerWithTab(page);
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("End");
+  await expect(menu.getByRole("menuitem", { name: "普通出牌" })).toBeFocused();
+  const logEntriesBefore = await readGameLogEntryCount(page);
+  await expectActivePlayer(page, "player_1");
+
+  // A real props update: the reference-play item moves from the overflow menu to the primary
+  // row when a reference-only card is selected, while focus is still on that menu item. The
+  // production hand row is hidden (cards live on the canvas), so the canvas selection event
+  // keeps focus on the menu item while React updates the action bar.
+  await setDeskCardSelection(page, referenceOnlyCardId, true);
+
+  await expect(menu.getByRole("menuitem", { name: "普通出牌" })).toHaveCount(0);
+  await expect.poll(async () => (await readFocusedMenuSummary(page)).insideMenu).toBe(true);
+  const focused = await readFocusedMenuSummary(page);
+  expect(focused.isBody).toBe(false);
+  expect(focused.skillId).toBe("exothermic_accident");
+  await expect(menu).toBeVisible();
+  await expectActivePlayer(page, "player_1");
+  expect(await readGameLogEntryCount(page)).toBe(logEntriesBefore);
+
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+});
+
+test("正式 /play 聚焦的 DIY 项被禁用后 props 更新不会把焦点留在 body", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void networkFailures;
+  void runtimeErrors;
+
+  await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  const menu = page.getByRole("menu", { name: "更多操作" });
+  await focusOverflowTriggerWithTab(page);
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("ArrowUp");
+  const diyItem = menu.getByRole("menuitem", { name: "进入主动 DIY" });
+  await expect(diyItem).toBeFocused();
+
+  // Production gameplay cannot disable an already-focused overflow item in place, so force
+  // the disabled state on the rendered item, then drive a real React re-render (locale switch)
+  // without moving focus. This exercises the same commit + focus-repair path.
+  await diyItem.evaluate((node) => {
+    (node as HTMLButtonElement).disabled = true;
+  });
+  await expect.poll(async () => (await readFocusedMenuSummary(page)).isBody).toBe(true);
+  await page.getByRole("button", { name: "English" }).evaluate((node) => {
+    (node as HTMLButtonElement).click();
+  });
+
+  await expect.poll(async () => (await readFocusedMenuSummary(page)).insideMenu).toBe(true);
+  const focused = await readFocusedMenuSummary(page);
+  expect(focused.isBody).toBe(false);
+  expect(focused.text).toBe("End Action");
+  await expect(page.locator('[aria-labelledby="player_1-title"] .active-pill')).toHaveCount(1);
+  await expect(page.getByRole("menu", { name: "More actions" })).toBeVisible();
+});
+
 test("正式 /play 人机模式通过用户界面执行书记技能并更新 AI 对手体力", async ({
   page,
   externalRequests,
@@ -1015,6 +1463,116 @@ test.describe("正式 /play 英文窄屏双人操作栏", () => {
     expect(open.menu!.left).toBeGreaterThanOrEqual(0);
     expect(open.menu!.right).toBeLessThanOrEqual(open.viewport.width);
     await expect(menu.getByRole("menuitem", { name: "结束本次行动" })).toBeVisible();
+  });
+
+  test("英文 More actions 在 844×390 下支持完整键盘操作且不横向溢出", async ({
+    page,
+    externalRequests,
+    networkFailures,
+    runtimeErrors,
+  }) => {
+    void externalRequests;
+    void networkFailures;
+    void runtimeErrors;
+
+    await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+    await page.getByRole("button", { name: "English" }).click();
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, left: 0 }));
+    await expectNoHorizontalOverflow(page);
+
+    const trigger = page.getByTestId("desk-action-menu-trigger");
+    const menu = page.getByRole("menu", { name: "More actions" });
+    await focusOverflowTriggerWithTab(page);
+    await expect(trigger).toBeFocused();
+
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeVisible();
+    const menuItems = menu.getByRole("menuitem");
+    await expect(menuItems).toHaveCount(2);
+    const endActionItem = menu.getByRole("menuitem", { name: "End Action" });
+    const diyItem = menu.getByRole("menuitem", { name: "Active DIY" });
+    await expect(endActionItem).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+
+    const open = await readDeskActionLayout(page);
+    expect(open.viewport.scrollX).toBe(0);
+    expect(open.menu).not.toBeNull();
+    expect(open.menu!.left).toBeGreaterThanOrEqual(0);
+    expect(open.menu!.right).toBeLessThanOrEqual(open.viewport.width);
+    expect(open.menu!.top).toBeGreaterThanOrEqual(0);
+    expect(open.menu!.bottom).toBeLessThanOrEqual(open.viewport.height);
+
+    await page.keyboard.press("ArrowDown");
+    await expect(diyItem).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(diyItem).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(endActionItem).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("844×390 菜单导航键不滚动页面，全不可用菜单也阻止滚动而外部滚动不受影响", async ({
+    page,
+    externalRequests,
+    networkFailures,
+    runtimeErrors,
+  }) => {
+    void externalRequests;
+    void networkFailures;
+    void runtimeErrors;
+
+    await startTwoPlayerGame(page, "clumsy_party_secretary", "clumsy_party_secretary");
+    const trigger = page.getByTestId("desk-action-menu-trigger");
+    const menu = page.getByRole("menu", { name: "更多操作" });
+    const navigationKeys = ["ArrowDown", "ArrowUp", "Home", "End"] as const;
+
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, left: 0 }));
+    const pageIsScrollable = await page.evaluate(
+      () => document.documentElement.scrollHeight > window.innerHeight + 1,
+    );
+    expect(pageIsScrollable).toBe(true);
+
+    await focusOverflowTriggerWithTab(page);
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole("menuitem").first()).toBeFocused();
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, left: 0 }));
+    await startRecordingKeyEvents(page);
+
+    const scrollBeforeNavigation = await page.evaluate(() => window.scrollY);
+    for (const key of navigationKeys) {
+      await page.keyboard.press(key);
+      expect(await page.evaluate(() => window.scrollY), key).toBe(scrollBeforeNavigation);
+    }
+
+    // Normal gameplay cannot produce an all-disabled overflow menu (PASS/DIY stay enabled
+    // whenever the trigger renders), so force that documented state on the live production
+    // menu to exercise the no-target keyboard scroll guard in real Chromium.
+    await expectAllMenuItemsDisabled(page);
+    await page.locator('[role="menu"]').focus();
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, left: 0 }));
+    const scrollBeforeDisabledNavigation = await page.evaluate(() => window.scrollY);
+    for (const key of navigationKeys) {
+      await page.keyboard.press(key);
+      expect(await page.evaluate(() => window.scrollY), key).toBe(scrollBeforeDisabledNavigation);
+    }
+
+    await page.getByRole("button", { name: "中文" }).focus();
+    await page.evaluate(() => window.scrollTo({ top: 0, left: 0 }));
+    await page.keyboard.press("End");
+
+    const navigationEvents = (await readRecordedKeyEvents(page)).filter(
+      (event) => (navigationKeys as readonly string[]).includes(event.key),
+    );
+    expect(navigationEvents).toHaveLength(9);
+    for (const event of navigationEvents.slice(0, 8)) {
+      expect(event.prevented).toBe(true);
+    }
+    expect(navigationEvents[8]?.prevented).toBe(false);
+    await expect.poll(async () => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   });
 });
 

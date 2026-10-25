@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { expect, test as base, type Page } from "@playwright/test";
+import { expect, test as base, type Locator, type Page } from "@playwright/test";
 import {
   clickDeskCanvasCardByDisplayName,
   clickDeskCanvasCardByIndex,
@@ -102,6 +102,117 @@ async function expectNoHorizontalOverflow(page: Page) {
   }));
   expect(widths.bodyScroll).toBeLessThanOrEqual(widths.bodyClient);
   expect(widths.documentScroll).toBeLessThanOrEqual(widths.documentClient);
+}
+
+async function readDeskActionLayout(page: Page) {
+  return page.evaluate(() => {
+    const bounds = (selector: string) => {
+      const node = document.querySelector<HTMLElement>(selector);
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      const round = (value: number) => Math.round(value * 100) / 100;
+      return {
+        left: round(rect.left),
+        right: round(rect.right),
+        top: round(rect.top),
+        bottom: round(rect.bottom),
+        width: round(rect.width),
+        height: round(rect.height),
+      };
+    };
+    return {
+      viewport: { width: window.innerWidth, height: window.innerHeight, scrollX: window.scrollX },
+      body: { clientWidth: document.body.clientWidth, scrollWidth: document.body.scrollWidth },
+      document: {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      },
+      actionBar: bounds(".desk-action-bar"),
+      buttons: bounds(".desk-action-bar__buttons"),
+      trigger: bounds('[data-testid="desk-action-menu-trigger"]'),
+      menu: bounds(".desk-action-menu"),
+      primaryButtonCount: document.querySelectorAll(
+        ".desk-action-bar__buttons > button.desk-action-btn",
+      ).length,
+    };
+  });
+}
+
+async function startTwoPlayerGame(page: Page, player1Character: string, player2Character: string) {
+  await page.goto("/play");
+  await page.getByLabel("对局模式").selectOption("two_player");
+  await page.getByLabel("player_1 角色").selectOption(player1Character);
+  await page.getByLabel("player_2 角色").selectOption(player2Character);
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expectLandscapeDeskTable(page);
+}
+
+async function openMainActionMenu(page: Page, locale: "zh" | "en") {
+  const label = locale === "en" ? "More actions" : "更多操作";
+  const trigger = page.getByTestId("desk-action-menu-trigger");
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  const menu = page.getByRole("menu", { name: label });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+async function visibleActionByName(page: Page, chineseName: string, englishName: string): Promise<Locator | undefined> {
+  const name = new RegExp(`^(?:${chineseName}|${englishName})$`, "u");
+  const actionBar = page.locator(".desk-action-bar");
+  for (const role of ["button", "menuitem"] as const) {
+    const matches = actionBar.getByRole(role, { name, exact: true });
+    for (let index = 0; index < await matches.count(); index += 1) {
+      const match = matches.nth(index);
+      if (await match.isVisible()) return match;
+    }
+  }
+  return undefined;
+}
+
+async function findCardWithEffectAndReferenceRoutes(page: Page): Promise<string> {
+  const ownCards = (await readHitRegions(page)).filter((region) => region.zone === "own");
+  for (let index = 0; index < ownCards.length; index += 1) {
+    const card = ownCards[index];
+    if (!card?.interactive || /SO2/iu.test(card.displayName)) continue;
+    await clickDeskCanvasCardByIndex(page, "own", index);
+    await expect(page.locator(".desk-action-bar__hint")).toContainText(card.displayName);
+
+    const trigger = page.getByTestId("desk-action-menu-trigger");
+    let menuOpen = false;
+    if (await trigger.isVisible()) {
+      await trigger.click();
+      await expect(page.getByRole("menu")).toBeVisible();
+      menuOpen = true;
+    }
+
+    const effect = await visibleActionByName(page, "执行效果", "Run Effect");
+    const reference = await visibleActionByName(page, "普通出牌", "Play");
+    if (effect && reference && await effect.isEnabled() && await reference.isEnabled()) {
+      if (menuOpen) await page.keyboard.press("Escape");
+      return card.displayName;
+    }
+
+    if (menuOpen) await page.keyboard.press("Escape");
+    await clickDeskCanvasCardByIndex(page, "own", index);
+  }
+
+  throw new Error("No visible hand card has both a legal effect route and a legal reference-play route.");
+}
+
+async function clickDeskCanvasCardByTouch(page: Page, zone: "opponent" | "own", index: number) {
+  const canvas = page.locator('[data-testid="desk-table-surface-canvas"]');
+  await expect(canvas).toBeVisible();
+  const regions = (await readHitRegions(page)).filter((region) => region.zone === zone);
+  const region = regions[index];
+  if (!region) throw new Error(`No ${zone} canvas card at index ${index}`);
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("Canvas bounding box is missing.");
+  const cssWidth = await canvas.evaluate((node) => Number.parseFloat(node.style.width) || node.clientWidth);
+  const cssHeight = await canvas.evaluate((node) => Number.parseFloat(node.style.height) || node.clientHeight);
+  const x = box.x + ((region.x + region.width / 2) * box.width) / cssWidth;
+  const y = box.y + ((region.y + region.height / 2) * box.height) / cssHeight;
+  await page.touchscreen.tap(x, y);
 }
 
 for (const [path, playPath, assetPrefix, brandPrefix] of [["/", "/play", "/assets/", "/"], ["/playtest/", "/playtest/play", "/playtest/assets/", "/playtest/"]] as const) {
@@ -647,6 +758,290 @@ test("生产构建在 /playtest/debug 下品牌图片正常加载无 404", async
   expect(teacherSrc).not.toContain("/debug/brand/");
 });
 
+test("正式 /play 双人对局保持书记技能、结束行动与 DIY 可达，并更新已用技能菜单", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+  const actionBar = page.locator(".desk-action-bar");
+  const primarySkills = actionBar.locator('.desk-action-bar__buttons > button[data-skill-id]');
+  await expect(primarySkills).toHaveCount(3);
+  for (const skillId of ["exhaust_leak", "lab_fire", "exothermic_accident"]) {
+    const primarySkill = actionBar.locator(`.desk-action-bar__buttons > button[data-skill-id="${skillId}"]`);
+    await expect(primarySkill).toBeVisible();
+    await expect(primarySkill).toBeEnabled();
+  }
+
+  let menu = await openMainActionMenu(page, "zh");
+  await expect(menu.getByRole("menuitem")).toHaveCount(2);
+  await expect(menu.getByRole("menuitem", { name: "结束本次行动" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "进入主动 DIY" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /执行效果|普通出牌/u })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  menu = await openMainActionMenu(page, "zh");
+  await menu.getByRole("menuitem", { name: "进入主动 DIY" }).click();
+  await expect(actionBar.locator(".desk-action-bar__phase-tag")).toHaveText("主动 DIY");
+  await page.getByRole("button", { name: "取消 DIY" }).click();
+  await expect(actionBar.locator(".desk-action-bar__phase-tag")).toHaveText("主行动");
+
+  await page.getByRole("button", { name: "English" }).click();
+  menu = await openMainActionMenu(page, "en");
+  await expect(menu.getByRole("menuitem", { name: "End Action" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: "Active DIY" })).toBeVisible();
+  await menu.getByRole("menuitem", { name: "End Action" }).click();
+  const player2 = page.locator('[aria-labelledby="player_2-title"]');
+  await expect(player2.locator(".active-pill")).toHaveText("Active");
+  await page.getByRole("button", { name: "中文" }).click();
+
+  await expect(player2.locator(".active-pill")).toHaveText("当前行动");
+  await page.getByRole("button", { name: "结束本次行动" }).click();
+  await expect(page.locator('[aria-labelledby="player_1-title"] .active-pill')).toHaveText("当前行动");
+
+  await clickDeskCanvasCardByIndex(page, "own", 0);
+  menu = await openMainActionMenu(page, "zh");
+  const overflowSkill = menu.locator('[data-skill-id="exothermic_accident"]');
+  await expect(overflowSkill).toBeVisible();
+  await expect(overflowSkill).toBeEnabled();
+  await page.screenshot({ path: "test-results/desk-action-menu-desktop.png" });
+
+  await overflowSkill.click();
+  await expect(player2.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "9");
+  await page.getByRole("button", { name: "结束本次行动" }).click();
+  await expect(page.locator('[aria-labelledby="player_1-title"] .active-pill')).toHaveText("当前行动");
+  await expect(actionBar.locator("[data-skill-id]")).toHaveCount(0);
+  await expect(page.getByTestId("desk-action-menu-trigger")).toHaveCount(0);
+});
+
+test("正式 /play 人机模式通过用户界面执行书记技能并更新 AI 对手体力", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await page.goto("/play");
+  await page.getByLabel("player_1 角色").selectOption("clumsy_party_secretary");
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(page.getByRole("heading", { name: "本地人机对局" })).toBeVisible();
+  for (const skillId of ["exhaust_leak", "lab_fire", "exothermic_accident"]) {
+    await expect(page.locator(`.desk-action-bar [data-skill-id="${skillId}"]`)).toBeVisible();
+  }
+
+  await clickDeskCanvasCardByIndex(page, "own", 0);
+  const menu = await openMainActionMenu(page, "zh");
+  await menu.locator('[data-skill-id="exothermic_accident"]').click();
+  await expect(page.locator('[aria-labelledby="player_2-title"] [role="progressbar"]')).toHaveAttribute(
+    "aria-valuenow",
+    "9",
+  );
+});
+
+test("正式 /play 同一实体卡可普通出牌或执行效果，重载后候选卡稳定且结果不同", async ({
+  page,
+  externalRequests,
+  networkFailures,
+  runtimeErrors,
+}) => {
+  void externalRequests;
+  void runtimeErrors;
+  void networkFailures;
+
+  await startTwoPlayerGame(page, "chemical_factory_ceo", "chemical_factory_ceo");
+  const firstCard = await findCardWithEffectAndReferenceRoutes(page);
+  await expect(page.locator('[aria-labelledby="player_2-title"] [role="progressbar"]')).toHaveAttribute(
+    "aria-valuenow",
+    "10",
+  );
+  await openMainActionMenu(page, "zh");
+  const ordinaryAction = await visibleActionByName(page, "普通出牌", "Play");
+  expect(ordinaryAction).toBeDefined();
+  await ordinaryAction!.click();
+  await expect(page.locator(".desk-action-bar__phase-tag")).toHaveText("主行动");
+  expect((await readDeskCanvasCenterSummary(page))?.referenceName).toBe(firstCard);
+  await expect(page.locator('[aria-labelledby="player_2-title"] [role="progressbar"]')).toHaveAttribute(
+    "aria-valuenow",
+    "10",
+  );
+
+  await page.locator(".desk-table__log-toggle").click();
+  const referenceLog = page.locator(".game-log ol li").filter({ hasText: "不触发原有效果" });
+  await expect(referenceLog).toHaveCount(1);
+  const referenceResult = await referenceLog.last().textContent();
+  await page.locator(".game-log-drawer__close").click();
+
+  await page.reload();
+  await startTwoPlayerGame(page, "chemical_factory_ceo", "chemical_factory_ceo");
+  const secondCard = await findCardWithEffectAndReferenceRoutes(page);
+  expect(secondCard).toBe(firstCard);
+
+  let effectAction = await visibleActionByName(page, "执行效果", "Run Effect");
+  if (!effectAction) {
+    await openMainActionMenu(page, "zh");
+    effectAction = await visibleActionByName(page, "执行效果", "Run Effect");
+  }
+  expect(effectAction).toBeDefined();
+  await effectAction!.click();
+  await expect(page.locator(".desk-action-bar__phase-tag")).toHaveText("响应阶段");
+  await expect(page.locator(".desk-action-bar__hint")).toContainText(firstCard);
+  await expect(page.locator('[aria-labelledby="player_2-title"] [role="progressbar"]')).toHaveAttribute(
+    "aria-valuenow",
+    "10",
+  );
+  await page.locator(".desk-table__log-toggle").click();
+  const attackLog = page.locator(".game-log ol li").filter({ hasText: "等待响应" });
+  await expect(attackLog).toHaveCount(1);
+  await expect(attackLog.last()).toContainText(firstCard);
+  expect(await attackLog.last().textContent()).not.toBe(referenceResult);
+});
+
+test.describe("正式 /play 触屏横屏主行动菜单", () => {
+  test.use({ viewport: { width: 844, height: 390 }, hasTouch: true });
+
+  test("真实触摸可打开菜单并执行溢出的合法书记技能", async ({
+    page,
+    externalRequests,
+    networkFailures,
+    runtimeErrors,
+  }) => {
+    void externalRequests;
+    void runtimeErrors;
+    void networkFailures;
+
+    await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+    await expectLandscapeDeskTable(page);
+    await clickDeskCanvasCardByTouch(page, "own", 0);
+    const trigger = page.getByTestId("desk-action-menu-trigger");
+    await trigger.tap();
+    const menu = page.getByRole("menu", { name: "更多操作" });
+    await expect(menu).toBeVisible();
+    const skill = menu.locator('[data-skill-id="exothermic_accident"]');
+    await expect(skill).toBeVisible();
+    await expect(skill).toBeEnabled();
+    await page.screenshot({ path: "test-results/desk-action-menu-touch-landscape.png" });
+
+    await skill.tap();
+    await expect(page.locator('[aria-labelledby="player_2-title"] [role="progressbar"]')).toHaveAttribute(
+      "aria-valuenow",
+      "9",
+    );
+  });
+});
+
+test.describe("正式 /play 英文窄屏双人操作栏", () => {
+  test.use({ viewport: { width: 844, height: 390 }, hasTouch: true });
+
+  test("书记的 More actions 入口与菜单完整可见，PASS 和 DIY 可达", async ({
+    page,
+    externalRequests,
+    networkFailures,
+    runtimeErrors,
+  }, testInfo) => {
+    void externalRequests;
+    void networkFailures;
+    void runtimeErrors;
+
+    await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+    await page.getByRole("button", { name: "English" }).click();
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, left: 0 }));
+
+    const before = await readDeskActionLayout(page);
+    console.log(`[rf-ui-01-fix1-before] ${JSON.stringify(before)}`);
+    expect(before.viewport.scrollX).toBe(0);
+    await expectNoHorizontalOverflow(page);
+    expect(before.primaryButtonCount).toBeLessThanOrEqual(3);
+    expect(before.actionBar).not.toBeNull();
+    expect(before.buttons).not.toBeNull();
+    expect(before.trigger).not.toBeNull();
+    expect(before.actionBar!.left).toBeGreaterThanOrEqual(0);
+    expect(before.actionBar!.right).toBeLessThanOrEqual(before.viewport.width);
+    expect(before.buttons!.left).toBeGreaterThanOrEqual(before.actionBar!.left);
+    expect(before.buttons!.right).toBeLessThanOrEqual(before.actionBar!.right);
+    expect(before.trigger!.left).toBeGreaterThanOrEqual(0);
+    expect(before.trigger!.right).toBeLessThanOrEqual(before.viewport.width);
+    expect(before.trigger!.top).toBeGreaterThanOrEqual(0);
+    expect(before.trigger!.bottom).toBeLessThanOrEqual(before.viewport.height);
+    expect(before.trigger!.width).toBeGreaterThanOrEqual(44);
+    expect(before.trigger!.height).toBeGreaterThanOrEqual(44);
+
+    const trigger = page.getByTestId("desk-action-menu-trigger");
+    await trigger.click();
+    const menu = page.getByRole("menu", { name: "More actions" });
+    const open = await readDeskActionLayout(page);
+    console.log(`[rf-ui-01-fix1-after] ${JSON.stringify(open)}`);
+    await expectNoHorizontalOverflow(page);
+    expect(open.viewport.scrollX).toBe(0);
+    expect(open.menu).not.toBeNull();
+    expect(open.menu!.left).toBeGreaterThanOrEqual(0);
+    expect(open.menu!.right).toBeLessThanOrEqual(open.viewport.width);
+    const screenshotPath = testInfo.outputPath("desk-action-menu-after.png");
+    await page.screenshot({ path: screenshotPath });
+    console.log(`[rf-ui-01-fix1-screenshot] ${screenshotPath}`);
+    await expect(menu.getByRole("menuitem", { name: "End Action" })).toBeVisible();
+    await expect(menu.getByRole("menuitem", { name: "Active DIY" })).toBeVisible();
+    await menu.getByRole("menuitem", { name: "Active DIY" }).click();
+    await expect(page.locator(".desk-action-bar__phase-tag")).toHaveText("Active DIY");
+    await page.getByRole("button", { name: "Cancel DIY" }).click();
+    await expect(page.locator(".desk-action-bar__phase-tag")).toHaveText("Main Action");
+    await trigger.click();
+    await page.getByRole("menuitem", { name: "End Action" }).click();
+    await expect(page.locator('[aria-labelledby="player_2-title"] .active-pill')).toHaveText("Active");
+  });
+
+  test("中文书记菜单在同一窄屏视口内完整显示", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
+    void externalRequests;
+    void networkFailures;
+    void runtimeErrors;
+    await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, left: 0 }));
+    const before = await readDeskActionLayout(page);
+    expect(before.viewport.scrollX).toBe(0);
+    await expectNoHorizontalOverflow(page);
+    expect(before.trigger!.left).toBeGreaterThanOrEqual(0);
+    expect(before.trigger!.right).toBeLessThanOrEqual(before.viewport.width);
+    const menu = await openMainActionMenu(page, "zh");
+    const open = await readDeskActionLayout(page);
+    await expectNoHorizontalOverflow(page);
+    expect(open.menu!.left).toBeGreaterThanOrEqual(0);
+    expect(open.menu!.right).toBeLessThanOrEqual(open.viewport.width);
+    await expect(menu.getByRole("menuitem", { name: "结束本次行动" })).toBeVisible();
+  });
+});
+
+test.describe("正式 /play 英文桌面双人操作栏", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("菜单保持在英文桌面视口内", async ({ page, externalRequests, networkFailures, runtimeErrors }) => {
+    void externalRequests;
+    void networkFailures;
+    void runtimeErrors;
+    await startTwoPlayerGame(page, "clumsy_party_secretary", "acid_king");
+    await page.getByRole("button", { name: "English" }).click();
+    await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, left: 0 }));
+    const before = await readDeskActionLayout(page);
+    expect(before.viewport.scrollX).toBe(0);
+    await expectNoHorizontalOverflow(page);
+    expect(before.trigger!.left).toBeGreaterThanOrEqual(0);
+    expect(before.trigger!.right).toBeLessThanOrEqual(before.viewport.width);
+    const menu = await openMainActionMenu(page, "en");
+    const open = await readDeskActionLayout(page);
+    await expectNoHorizontalOverflow(page);
+    expect(open.menu!.left).toBeGreaterThanOrEqual(0);
+    expect(open.menu!.right).toBeLessThanOrEqual(open.viewport.width);
+    await expect(menu.getByRole("menuitem", { name: "End Action" })).toBeVisible();
+  });
+});
+
 const tutorialOpponentHandNames = ["Na+", "稀 HCl", "H+", "H2O", "S", "稀 KOH", "Cl-", "稀 H2SO4", "SO2"];
 
 async function openTutorialFromLobby(page: Page) {
@@ -703,13 +1098,14 @@ test("生产构建从大厅进入教学并走完备课、稀 NaOH 出牌、AI �
   await clickDeskCanvasCardByDisplayName(page, "稀 NaOH");
 
   await expect(coachBanner).toContainText("步骤 3/4 · 普通出牌建立基准");
-  const playButtons = page.locator(".desk-action-bar button");
-  await playButtons.filter({ hasText: "执行效果" }).click();
+  const effectButton = await visibleActionByName(page, "执行效果", "Run Effect");
+  expect(effectButton).toBeDefined();
+  await effectButton!.click();
   await expect(coachBanner).toContainText("步骤 3/4 · 普通出牌建立基准");
-  const playRefButton = playButtons.filter({ hasText: "普通出牌" });
-  await expect(playRefButton).toBeVisible();
-  await expect(playRefButton).toHaveClass(/coach-highlight/);
-  await playRefButton.click();
+  const playRefButton = await visibleActionByName(page, "普通出牌", "Play");
+  expect(playRefButton).toBeDefined();
+  await expect(playRefButton!).toHaveClass(/coach-highlight/);
+  await playRefButton!.click();
 
   await expect(coachBanner).toContainText("步骤 4/4 · 响应酸性伤害");
   await expectTutorialOpponentHandHidden(page, tutorialOpponentHandNames);
